@@ -1,0 +1,3 @@
+gradlew linguist-vendored
+gradlew text eol=lf
+gradlew -text

@@ -1,0 +1,647 @@
+package com.chroniclecaravans.entity;
+
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+import com.chroniclecaravans.CCConfig;
+import com.chroniclecaravans.ChronicleCaravans;
+import com.chroniclecaravans.Region;
+import com.chroniclecaravans.Tier;
+import com.chroniclecaravans.world.CaravanData;
+import com.chroniclecaravans.world.CaravanSpawner;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.Difficulty;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.goal.FloatGoal;
+import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
+import net.minecraft.world.entity.ai.goal.LookAtTradingPlayerGoal;
+import net.minecraft.world.entity.ai.goal.PanicGoal;
+import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
+import net.minecraft.world.entity.ai.goal.TradeWithPlayerGoal;
+import net.minecraft.world.entity.ai.navigation.PathNavigation;
+import net.minecraft.world.entity.animal.horse.TraderLlama;
+import net.minecraft.world.entity.monster.AbstractIllager;
+import net.minecraft.world.entity.npc.WanderingTrader;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.trading.MerchantOffer;
+import net.minecraft.world.item.trading.MerchantOffers;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.Vec3;
+
+/**
+ * The head of a caravan. It walks from milestone to milestone (preferring roads), halts at each one to
+ * trade the goods of its home region, and leads a line of pack llamas.
+ */
+public class CaravanMaster extends WanderingTrader {
+    public enum State { TRAVELING, HALTED, LEAVING }
+
+    /** Tag (persistent data) on the bandits of an ambush: the UUID of the caravan they attack. */
+    public static final String AMBUSH_TAG = "ChronicleCaravansAmbush";
+    private static final ResourceLocation ROAD_SPEED = ChronicleCaravans.id("road_speed");
+    /** Speed modifier of the walk goal: about 2.4 blocks per second, slow enough for the llamas. */
+    private static final double WALK_SPEED = 0.46;
+
+    private Region region = Region.STEPPE;
+    private State state = State.TRAVELING;
+    private BlockPos target;
+    private int haltTicks;
+    private int leaveTicks;
+    private int lifeTicks;
+    private final List<BlockPos> visited = new ArrayList<>();
+    private final List<UUID> llamas = new ArrayList<>();
+
+    private int[] offerTiers = new int[0];
+    private MerchantOffers visibleOffers;
+    private boolean savingOffers;
+
+    private boolean ambushDone;
+    private boolean ambushActive;
+    private int ambushTicks;
+    private final List<UUID> raiders = new ArrayList<>();
+    private final Set<UUID> defenders = new HashSet<>();
+    private int scoldCooldown;
+
+    public CaravanMaster(EntityType<? extends WanderingTrader> type, Level level) {
+        super(type, level);
+        setPersistenceRequired();
+    }
+
+    public static AttributeSupplier.Builder createAttributes() {
+        return Mob.createMobAttributes()
+                .add(Attributes.MAX_HEALTH, 40.0)
+                .add(Attributes.MOVEMENT_SPEED, 0.5)
+                .add(Attributes.FOLLOW_RANGE, 48.0);
+    }
+
+    @Override
+    protected PathNavigation createNavigation(Level level) {
+        return new RoadNavigation(this, level);
+    }
+
+    @Override
+    protected void registerGoals() {
+        this.goalSelector.addGoal(0, new FloatGoal(this));
+        this.goalSelector.addGoal(1, new TradeWithPlayerGoal(this));
+        this.goalSelector.addGoal(1, new PanicGoal(this, 0.6));
+        this.goalSelector.addGoal(1, new LookAtTradingPlayerGoal(this));
+        this.goalSelector.addGoal(2, new TravelGoal());
+        this.goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 8.0F));
+        this.goalSelector.addGoal(9, new RandomLookAroundGoal(this));
+    }
+
+    /** Called once, before the caravan is added to the world. */
+    public void setup(Region region, BlockPos target) {
+        this.region = region;
+        this.target = target;
+        this.state = State.TRAVELING;
+        setCustomName(region.caravanName());
+        setDespawnDelay(6000);
+    }
+
+    public Region region() {
+        return region;
+    }
+
+    public State state() {
+        return state;
+    }
+
+    public BlockPos target() {
+        return target;
+    }
+
+    public List<UUID> llamaIds() {
+        return llamas;
+    }
+
+    public boolean ambushActive() {
+        return ambushActive;
+    }
+
+    public void addLlama(TraderLlama llama) {
+        llamas.add(llama.getUUID());
+    }
+
+    // ------------------------------------------------------------------ trading
+
+    @Override
+    protected void updateTrades() {
+        List<Region.Stocked> stock = region.stock(this.random);
+        MerchantOffers all = this.offers;
+        offerTiers = new int[stock.size()];
+        for (int i = 0; i < stock.size(); i++) {
+            all.add(stock.get(i).offer());
+            offerTiers[i] = stock.get(i).tier();
+        }
+    }
+
+    private int tierOf(int index) {
+        return index < offerTiers.length ? offerTiers[index] : 0;
+    }
+
+    /** While a player trades, only the offers their rank unlocks exist. */
+    @Override
+    public MerchantOffers getOffers() {
+        if (!savingOffers && visibleOffers != null && getTradingPlayer() != null) return visibleOffers;
+        return super.getOffers();
+    }
+
+    @Override
+    public InteractionResult mobInteract(Player player, InteractionHand hand) {
+        ItemStack held = player.getItemInHand(hand);
+        if (held.is(Items.VILLAGER_SPAWN_EGG) || !isAlive() || isTrading() || isBaby()) return InteractionResult.PASS;
+        if (!level().isClientSide && player instanceof ServerPlayer sp) {
+            CaravanData data = CaravanData.get(sp.serverLevel());
+            Tier tier = data.tier(sp.getUUID());
+            MerchantOffers all = super.getOffers();
+            MerchantOffers visible = new MerchantOffers();
+            int locked = 0;
+            for (int i = 0; i < all.size(); i++) {
+                MerchantOffer o = all.get(i);
+                if (tierOf(i) > tier.ordinal()) {
+                    locked++;
+                    continue;
+                }
+                o.resetSpecialPriceDiff();
+                if (tier.discount() > 0F && o.getBaseCostA().is(Items.EMERALD)) {
+                    o.setSpecialPriceDiff(-(int) Math.floor(o.getBaseCostA().getCount() * tier.discount()));
+                }
+                visible.add(o);
+            }
+            if (visible.isEmpty()) return InteractionResult.CONSUME;
+            visibleOffers = visible;
+            setTradingPlayer(sp);
+            openTradingScreen(sp, getDisplayName(), 1);
+            Tier next = tier.next();
+            if (locked > 0 && next != null) {
+                sp.displayClientMessage(Component.translatable("msg.chroniclecaravans.locked", locked, next.label()).withStyle(ChatFormatting.GRAY), true);
+            }
+        }
+        return InteractionResult.sidedSuccess(level().isClientSide);
+    }
+
+    @Override
+    protected void stopTrading() {
+        super.stopTrading();
+        if (visibleOffers != null) for (MerchantOffer o : visibleOffers) o.resetSpecialPriceDiff();
+        visibleOffers = null;
+    }
+
+    @Override
+    public void notifyTrade(MerchantOffer offer) {
+        super.notifyTrade(offer);
+        if (getTradingPlayer() instanceof ServerPlayer sp) {
+            CaravanData.get(sp.serverLevel()).addReputation(sp, 1, "reason.chroniclecaravans.trade");
+        }
+    }
+
+    // ------------------------------------------------------------------ life
+
+    @Override
+    public void aiStep() {
+        super.aiStep();
+        if (level() instanceof ServerLevel server && isAlive()) serverTick(server);
+    }
+
+    private void serverTick(ServerLevel level) {
+        lifeTicks++;
+        if (scoldCooldown > 0) scoldCooldown--;
+        if (tickCount % 10 == 0) updateRoadSpeed(level);
+        if (tickCount % 40 == 0) {
+            setDespawnDelay(6000);
+            tendLlamas(level);
+            if (!ambushActive && getHealth() < getMaxHealth()) heal(1.0F);
+        }
+        if (tickCount % 100 == 0) checkTarget(level);
+
+        if (state == State.HALTED) {
+            if (!isTrading() && !ambushActive && --haltTicks <= 0) depart(level);
+        } else if (state == State.LEAVING) {
+            if (++leaveTicks > 1800) vanish(level);
+        } else if (lifeTicks > 72000) {
+            startLeaving(level);
+        }
+
+        if (tickCount % 200 == 0) maybeAmbush(level);
+        if (ambushActive && tickCount % 20 == 0) tickAmbush(level);
+    }
+
+    /** A summoned caravan has no destination yet, and a milestone can be broken on the way. */
+    private void checkTarget(ServerLevel level) {
+        if (state == State.LEAVING) return;
+        CaravanData data = CaravanData.get(level);
+        if (state == State.TRAVELING && (target == null || data.stop(target) == null)) {
+            CaravanData.Stop next = data.nearestStop(blockPosition(), CCConfig.LINK_RANGE.get(), visited);
+            if (next != null) {
+                target = next.pos;
+            } else if (target == null) {
+                state = State.HALTED;
+                haltTicks = CCConfig.HALT_TIME.get() * 20;
+            } else {
+                startLeaving(level);
+            }
+        }
+    }
+
+    private void updateRoadSpeed(ServerLevel level) {
+        AttributeInstance speed = getAttribute(Attributes.MOVEMENT_SPEED);
+        if (speed == null) return;
+        // A mob's real speed grows with the square of the attribute, hence the square root
+        boolean onRoad = CCConfig.ROADS_ENABLED.get() && level.getBlockState(getOnPos()).is(ChronicleCaravans.ROADS);
+        if (onRoad) {
+            speed.addOrUpdateTransientModifier(new AttributeModifier(ROAD_SPEED, Math.sqrt(1.0 + CCConfig.ROAD_SPEED_BONUS.get()) - 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+        } else {
+            speed.removeModifier(ROAD_SPEED);
+        }
+    }
+
+    /** Keeps the pack llamas alive and tied: the first one on a lead, the others follow it in a line. */
+    private void tendLlamas(ServerLevel level) {
+        TraderLlama leader = null;
+        TraderLlama candidate = null;
+        for (Iterator<UUID> it = llamas.iterator(); it.hasNext(); ) {
+            Entity e = level.getEntity(it.next());
+            if (!(e instanceof TraderLlama llama)) continue;
+            if (!llama.isAlive()) {
+                it.remove();
+                continue;
+            }
+            llama.setDespawnDelay(6000);
+            if (llama.getLeashHolder() == this) leader = llama;
+            else if (candidate == null && llama.getLeashHolder() == null && !llama.isTamed() && !llama.inCaravan() && llama.distanceToSqr(this) < 144) candidate = llama;
+        }
+        if (leader == null && candidate != null) candidate.setLeashedTo(this, true);
+    }
+
+    private List<TraderLlama> loadedLlamas(ServerLevel level) {
+        List<TraderLlama> out = new ArrayList<>();
+        for (UUID id : llamas) if (level.getEntity(id) instanceof TraderLlama l && l.isAlive()) out.add(l);
+        return out;
+    }
+
+    // ------------------------------------------------------------------ route
+
+    private void arrive(ServerLevel level) {
+        CaravanData data = CaravanData.get(level);
+        CaravanData.Stop stop = data.stop(target);
+        state = State.HALTED;
+        haltTicks = CCConfig.HALT_TIME.get() * 20;
+        visited.add(target);
+        getNavigation().stop();
+        level.playSound(null, blockPosition(), SoundEvents.WANDERING_TRADER_REAPPEARED, SoundSource.NEUTRAL, 1.2F, 1.0F);
+        level.playSound(null, target, SoundEvents.BELL_BLOCK, SoundSource.BLOCKS, 2.0F, 1.0F);
+        if (stop == null) return;
+        long interval = CCConfig.VISIT_INTERVAL.get() * 20L;
+        stop.nextVisit = Math.max(stop.nextVisit, level.getGameTime() + (long) (interval * (0.75 + random.nextDouble() * 0.5)));
+        data.setDirty();
+        Component msg = Component.translatable("msg.chroniclecaravans.arrived", region.caravanName().withStyle(region.color), stop.displayName());
+        announce(level, msg, stop.owner);
+        if (stop.owner != null && level.getServer().getPlayerList().getPlayer(stop.owner) instanceof ServerPlayer owner) {
+            data.addReputation(owner, 3, "reason.chroniclecaravans.host");
+        }
+    }
+
+    private void depart(ServerLevel level) {
+        CaravanData data = CaravanData.get(level);
+        CaravanData.Stop next = data.nearestStop(blockPosition(), CCConfig.LINK_RANGE.get(), visited);
+        if (next == null) {
+            startLeaving(level);
+            return;
+        }
+        target = next.pos;
+        state = State.TRAVELING;
+        announce(level, Component.translatable("msg.chroniclecaravans.departs", region.caravanName().withStyle(region.color), next.displayName()), null);
+    }
+
+    public void startLeaving(ServerLevel level) {
+        if (state == State.LEAVING) return;
+        state = State.LEAVING;
+        leaveTicks = 0;
+        double a = random.nextDouble() * Math.PI * 2;
+        int x = (int) Math.floor(getX() + Math.cos(a) * 48);
+        int z = (int) Math.floor(getZ() + Math.sin(a) * 48);
+        BlockPos probe = new BlockPos(x, getBlockY(), z);
+        int y = level.isLoaded(probe) ? level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) : getBlockY();
+        target = new BlockPos(x, y, z);
+        announce(level, Component.translatable("msg.chroniclecaravans.leaves", region.caravanName().withStyle(region.color)), null);
+    }
+
+    /** The whole caravan disappears in a puff of smoke (it has left the area). */
+    public void vanish(ServerLevel level) {
+        for (TraderLlama llama : loadedLlamas(level)) {
+            Entity holder = llama.getLeashHolder();
+            if (llama.isTamed() || (holder != null && holder != this)) continue;
+            level.sendParticles(ParticleTypes.POOF, llama.getX(), llama.getY() + 1, llama.getZ(), 12, 0.4, 0.5, 0.4, 0.02);
+            llama.dropLeash(true, false);
+            llama.discard();
+        }
+        level.sendParticles(ParticleTypes.POOF, getX(), getY() + 1, getZ(), 16, 0.3, 0.6, 0.3, 0.02);
+        level.playSound(null, blockPosition(), SoundEvents.WANDERING_TRADER_DISAPPEARED, SoundSource.NEUTRAL, 1.0F, 1.0F);
+        discard();
+    }
+
+    private void announce(ServerLevel level, Component msg, UUID alsoTell) {
+        if (!CCConfig.ANNOUNCEMENTS.get()) return;
+        for (ServerPlayer p : level.players()) {
+            if (p.distanceToSqr(this) <= 64 * 64 || p.getUUID().equals(alsoTell)) p.sendSystemMessage(msg);
+        }
+    }
+
+    /** Next waypoint towards the target: about 24 blocks ahead, on a road when one leads roughly the right way. */
+    private Vec3 nextHop(ServerLevel level) {
+        Vec3 dest = Vec3.atBottomCenterOf(target);
+        double dx = dest.x - getX();
+        double dz = dest.z - getZ();
+        if (dx * dx + dz * dz <= 28 * 28) return dest;
+        double base = Math.atan2(dz, dx);
+        Vec3 best = null;
+        double bestScore = Double.MAX_VALUE;
+        BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
+        for (int i = -3; i <= 3; i++) {
+            double a = base + Math.toRadians(20) * i;
+            int x = (int) Math.floor(getX() + Math.cos(a) * 24);
+            int z = (int) Math.floor(getZ() + Math.sin(a) * 24);
+            if (!level.isLoaded(p.set(x, getBlockY(), z))) continue;
+            int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+            p.set(x, y - 1, z);
+            boolean road = CCConfig.ROADS_ENABLED.get() && level.getBlockState(p).is(ChronicleCaravans.ROADS);
+            boolean wet = !level.getFluidState(p).isEmpty();
+            double score = Math.abs(i) * 4 + (road ? -10 : 0) + (wet ? 30 : 0) + Math.abs(y - getY()) * 0.5;
+            if (score < bestScore) {
+                bestScore = score;
+                best = new Vec3(x + 0.5, y, z + 0.5);
+            }
+        }
+        return best;
+    }
+
+    /** Last resort when the path is blocked for a long time: the caravan reappears a little further. */
+    private void warp(ServerLevel level, Vec3 hop) {
+        if (hop == null) return;
+        BlockPos ground = CaravanSpawner.findGround(level, BlockPos.containing(hop), 0, 4, random);
+        if (ground == null) return;
+        List<TraderLlama> pack = loadedLlamas(level);
+        level.sendParticles(ParticleTypes.POOF, getX(), getY() + 1, getZ(), 10, 0.3, 0.5, 0.3, 0.02);
+        teleportTo(ground.getX() + 0.5, ground.getY(), ground.getZ() + 0.5);
+        for (TraderLlama llama : pack) {
+            if (llama.isTamed() || llama.distanceToSqr(this) > 64 * 64) continue;
+            BlockPos near = CaravanSpawner.findGround(level, ground, 2, 5, random);
+            if (near != null) llama.teleportTo(near.getX() + 0.5, near.getY(), near.getZ() + 0.5);
+        }
+    }
+
+    private class TravelGoal extends Goal {
+        private int cooldown;
+        private int repath;
+        private int stuckTimer;
+        private int stuck;
+        private Vec3 lastPos;
+        private Vec3 hop;
+
+        TravelGoal() {
+            setFlags(EnumSet.of(Flag.MOVE));
+        }
+
+        @Override
+        public boolean canUse() {
+            return state != State.HALTED && target != null && !isTrading();
+        }
+
+        @Override
+        public boolean requiresUpdateEveryTick() {
+            return true;
+        }
+
+        @Override
+        public void start() {
+            cooldown = 0;
+            repath = 0;
+            stuckTimer = 0;
+            stuck = 0;
+            lastPos = null;
+        }
+
+        @Override
+        public void stop() {
+            getNavigation().stop();
+        }
+
+        @Override
+        public void tick() {
+            if (!(level() instanceof ServerLevel level) || target == null) return;
+            double d2 = distanceToSqr(Vec3.atBottomCenterOf(target));
+            if (d2 <= (state == State.LEAVING ? 16.0 : 20.25)) {
+                getNavigation().stop();
+                if (state == State.LEAVING) vanish(level);
+                else arrive(level);
+                return;
+            }
+            if (cooldown > 0) cooldown--;
+            repath++;
+            if (cooldown == 0 && (getNavigation().isDone() || repath >= 100)) {
+                repath = 0;
+                cooldown = 20;
+                hop = nextHop(level);
+                if (hop != null) getNavigation().moveTo(hop.x, hop.y, hop.z, WALK_SPEED);
+            }
+            if (++stuckTimer >= 200) {
+                stuckTimer = 0;
+                if (lastPos != null && position().distanceToSqr(lastPos) < 4.0) {
+                    if (++stuck >= 3) {
+                        stuck = 0;
+                        warp(level, hop);
+                    }
+                } else {
+                    stuck = 0;
+                }
+                lastPos = position();
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ ambush
+
+    private void maybeAmbush(ServerLevel level) {
+        if (ambushDone || ambushActive || state == State.LEAVING || !CCConfig.AMBUSH_ENABLED.get()) return;
+        if (level.getDifficulty() == Difficulty.PEACEFUL || lifeTicks < 600) return;
+        if (level.getNearestPlayer(this, 48) == null) return;
+        if (random.nextDouble() < CCConfig.AMBUSH_CHANCE.get()) startAmbush(level);
+    }
+
+    /** Bandits appear nearby and go for the caravan. Returns the number of bandits. */
+    public int startAmbush(ServerLevel level) {
+        if (ambushActive) return 0;
+        BlockPos center = CaravanSpawner.findGround(level, blockPosition(), 16, 24, random);
+        if (center == null) return 0;
+        int count = 2 + level.getDifficulty().getId();
+        raiders.clear();
+        defenders.clear();
+        for (int i = 0; i < count + (level.getDifficulty() == Difficulty.HARD ? 1 : 0); i++) {
+            EntityType<? extends AbstractIllager> type = i >= count ? EntityType.VINDICATOR : EntityType.PILLAGER;
+            AbstractIllager bandit = type.create(level);
+            if (bandit == null) continue;
+            BlockPos at = i == 0 ? center : CaravanSpawner.findGround(level, center, 1, 4, random);
+            if (at == null) at = center;
+            bandit.moveTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, random.nextFloat() * 360F, 0F);
+            bandit.finalizeSpawn(level, level.getCurrentDifficultyAt(at), MobSpawnType.EVENT, null);
+            bandit.setCanJoinRaid(false);
+            bandit.getPersistentData().putUUID(AMBUSH_TAG, getUUID());
+            bandit.setTarget(this);
+            level.addFreshEntity(bandit);
+            raiders.add(bandit.getUUID());
+        }
+        if (raiders.isEmpty()) return 0;
+        ambushActive = true;
+        ambushDone = true;
+        ambushTicks = 0;
+        level.playSound(null, getX(), getY(), getZ(), SoundEvents.RAID_HORN, SoundSource.HOSTILE, 24.0F, 1.0F);
+        announce(level, Component.translatable("msg.chroniclecaravans.ambush", region.caravanName().withStyle(region.color)).withStyle(ChatFormatting.RED), null);
+        return raiders.size();
+    }
+
+    private void tickAmbush(ServerLevel level) {
+        ambushTicks += 20;
+        int alive = 0;
+        for (UUID id : raiders) {
+            Entity e = level.getEntity(id);
+            if (e != null && e.isAlive()) alive++;
+        }
+        if (alive > 0 && ambushTicks < 3600) return;
+        ambushActive = false;
+        raiders.clear();
+        if (alive > 0) return;
+        if (defenders.isEmpty()) {
+            announce(level, Component.translatable("msg.chroniclecaravans.repelled", region.caravanName().withStyle(region.color)), null);
+            return;
+        }
+        announce(level, Component.translatable("msg.chroniclecaravans.saved", region.caravanName().withStyle(region.color)).withStyle(ChatFormatting.GREEN), null);
+        playCelebrateSound();
+        spawnAtLocation(new ItemStack(Items.EMERALD, 3 + random.nextInt(4)));
+        spawnAtLocation(region.gift(random));
+        CaravanData data = CaravanData.get(level);
+        for (UUID id : defenders) {
+            if (level.getServer().getPlayerList().getPlayer(id) instanceof ServerPlayer p) data.addReputation(p, 5, "reason.chroniclecaravans.rescue");
+        }
+        defenders.clear();
+    }
+
+    /** A player killed one of the bandits of this caravan's ambush. */
+    public void onBanditKilled(ServerPlayer player) {
+        defenders.add(player.getUUID());
+        CaravanData.get(player.serverLevel()).addReputation(player, 2, "reason.chroniclecaravans.bandit");
+    }
+
+    @Override
+    public boolean hurt(DamageSource source, float amount) {
+        boolean hurt = super.hurt(source, amount);
+        if (hurt && source.getEntity() instanceof ServerPlayer p && !p.isCreative() && scoldCooldown == 0) {
+            scoldCooldown = 40;
+            CaravanData.get(p.serverLevel()).addReputation(p, -5, "reason.chroniclecaravans.attack");
+        }
+        return hurt;
+    }
+
+    @Override
+    public void die(DamageSource source) {
+        super.die(source);
+        if (level() instanceof ServerLevel level) {
+            announce(level, Component.translatable("msg.chroniclecaravans.lost", region.caravanName().withStyle(region.color)).withStyle(ChatFormatting.DARK_RED), null);
+            if (source.getEntity() instanceof ServerPlayer p && !p.isCreative()) {
+                CaravanData.get(level).addReputation(p, -25, "reason.chroniclecaravans.murder");
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ storage
+
+    @Override
+    public void addAdditionalSaveData(CompoundTag tag) {
+        savingOffers = true;
+        try {
+            super.addAdditionalSaveData(tag);
+        } finally {
+            savingOffers = false;
+        }
+        tag.putString("CaravanRegion", region.name());
+        tag.putString("CaravanState", state.name());
+        if (target != null) tag.putLong("CaravanTarget", target.asLong());
+        tag.putInt("HaltTicks", haltTicks);
+        tag.putInt("LeaveTicks", leaveTicks);
+        tag.putInt("LifeTicks", lifeTicks);
+        tag.putLongArray("Visited", visited.stream().mapToLong(BlockPos::asLong).toArray());
+        tag.put("Llamas", uuids(llamas));
+        tag.putIntArray("OfferTiers", offerTiers);
+        tag.putBoolean("AmbushDone", ambushDone);
+        tag.putBoolean("AmbushActive", ambushActive);
+        tag.putInt("AmbushTicks", ambushTicks);
+        tag.put("Raiders", uuids(raiders));
+        tag.put("Defenders", uuids(defenders));
+    }
+
+    @Override
+    public void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        region = Region.byName(tag.getString("CaravanRegion"));
+        try {
+            state = State.valueOf(tag.getString("CaravanState"));
+        } catch (IllegalArgumentException e) {
+            state = State.TRAVELING;
+        }
+        target = tag.contains("CaravanTarget") ? BlockPos.of(tag.getLong("CaravanTarget")) : null;
+        haltTicks = tag.getInt("HaltTicks");
+        leaveTicks = tag.getInt("LeaveTicks");
+        lifeTicks = tag.getInt("LifeTicks");
+        visited.clear();
+        for (long l : tag.getLongArray("Visited")) visited.add(BlockPos.of(l));
+        readUuids(tag, "Llamas", llamas);
+        offerTiers = tag.getIntArray("OfferTiers");
+        ambushDone = tag.getBoolean("AmbushDone");
+        ambushActive = tag.getBoolean("AmbushActive");
+        ambushTicks = tag.getInt("AmbushTicks");
+        readUuids(tag, "Raiders", raiders);
+        readUuids(tag, "Defenders", defenders);
+    }
+
+    private static ListTag uuids(Iterable<UUID> ids) {
+        ListTag list = new ListTag();
+        for (UUID id : ids) list.add(NbtUtils.createUUID(id));
+        return list;
+    }
+
+    private static void readUuids(CompoundTag tag, String key, java.util.Collection<UUID> into) {
+        into.clear();
+        ListTag list = tag.getList(key, Tag.TAG_INT_ARRAY);
+        for (Tag t : list) into.add(NbtUtils.loadUUID(t));
+    }
+}

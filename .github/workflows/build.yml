@@ -1,0 +1,195 @@
+name: Build Chronicle Caravans
+
+on:
+  push:
+    branches: [ '**' ]
+    paths-ignore: [ 'releases/**', 'curseforge/**', '*.md' ]
+  workflow_dispatch:
+    inputs:
+      publish_curseforge:
+        description: "Force the upload of the current version to CurseForge (main only)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  # ─────────────── 1. Build the jar ───────────────
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    if: github.ref_name != 'ci-logs' && !startsWith(github.ref_name, 'mc-libs-')
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [ neoforge-1.21.1 ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ matrix.target }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle.properties') }}
+          restore-keys: gradle-${{ matrix.target }}-
+
+      - name: Build
+        env:
+          T: ${{ matrix.target }}
+        shell: bash
+        run: |
+          set -o pipefail
+          V=$(grep '^mod_version' gradle.properties | cut -d= -f2 | tr -d '[:space:]')
+          chmod +x gradlew
+          mkdir -p out
+          ./gradlew build --no-daemon 2>&1 | tee "out/build-$T.log"
+          cp "build/libs/chroniclecaravans-$V-$T.jar" out/
+          ls -l out
+
+      - name: Upload jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: jar-${{ matrix.target }}
+          path: out/*.jar
+          if-no-files-found: error
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildlog-${{ matrix.target }}
+          path: out/*.log
+
+  # ─────────────── 2. In-game test: real server + real client, screenshots ───────────────
+  test:
+    name: Test ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: neoforge-1.21.1, target: neoforge-1.21.1, loader_version: 21.1.265 }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: jar-${{ matrix.target }}
+          path: out
+
+      - name: Test server and client
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1-mesa-dri mesa-utils > /dev/null
+          pip install -q portablemc==5.0.6
+          bash tools/ci_test.sh out/*.jar "${{ matrix.loader_version }}" "${{ matrix.name }}"
+
+      - name: Upload logs and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-${{ matrix.name }}
+          path: ci-out/${{ matrix.name }}
+
+  # ─────────────── 3. Logs and screenshots on the ci-logs branch ───────────────
+  logs:
+    name: Publish logs
+    runs-on: ubuntu-latest
+    needs: [ build, test ]
+    if: always() && github.ref_name != 'ci-logs' && !startsWith(github.ref_name, 'mc-libs-')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: all
+      - name: Push to ci-logs
+        run: |
+          NAME=$(echo "${GITHUB_REF_NAME}" | tr '/' '_')
+          mkdir -p "/tmp/logs/$NAME"
+          for d in all/test-*; do [ -d "$d" ] && cp -r "$d" "/tmp/logs/$NAME/${d#all/test-}"; done
+          for d in all/buildlog-*; do [ -d "$d" ] && cp "$d"/*.log "/tmp/logs/$NAME/" 2>/dev/null; done
+          {
+            echo "build: ${{ needs.build.result }}  test: ${{ needs.test.result }}  ${GITHUB_SHA}"
+            for f in /tmp/logs/$NAME/*/selftest.log; do [ -f "$f" ] && echo "$(basename $(dirname $f)) server: $(grep -o 'RESULT: .*' "$f" | tail -1)"; done
+            for f in /tmp/logs/$NAME/*/clienttest.log; do [ -f "$f" ] && echo "$(basename $(dirname $f)) client: $(grep -o 'RESULT: .*' "$f" | tail -1)"; done
+          } > "/tmp/logs/$NAME/status.txt"
+          cat "/tmp/logs/$NAME/status.txt"
+          cd /tmp/logs
+          git init -q -b ci-logs
+          git config user.email "actions@github.com"
+          git config user.name "github-actions"
+          git add -A && git commit -qm "logs ${GITHUB_SHA}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-logs
+
+  # ─────────────── 4. GitHub release + jars in releases/ + CurseForge (main only) ───────────────
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [ build, test ]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: jar-*
+          path: out
+          merge-multiple: true
+
+      - name: Publish release and commit the jars
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(grep '^mod_version' gradle.properties | cut -d= -f2 | tr -d '[:space:]')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          ls -l out
+          if gh release view "v${VERSION}" >/dev/null 2>&1; then
+            gh release upload "v${VERSION}" out/*.jar --clobber
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            awk -v v="## ${VERSION}" 'index($0,v)==1{f=1;next} /^## /{if(f)exit} f' CHANGELOG.md > release-notes.md
+            [ -s release-notes.md ] || cp CHANGELOG.md release-notes.md
+            gh release create "v${VERSION}" out/*.jar --title "Chronicle Caravans ${VERSION}" \
+              --notes-file release-notes.md --target "${GITHUB_SHA}"
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+          mkdir -p releases
+          for j in out/*.jar; do
+            cp "$j" releases/
+            T=$(basename "$j" .jar | sed "s/^chroniclecaravans-${VERSION}-//")
+            cp "$j" "releases/chroniclecaravans-latest-$T.jar"
+          done
+          git config user.email "actions@github.com"
+          git config user.name "github-actions"
+          git add releases/
+          if ! git diff --cached --quiet; then
+            git commit -qm "Jars compilés ${VERSION} (${GITHUB_SHA::7})"
+            git pull -q --rebase origin main || true
+            git push -q origin HEAD:main
+          fi
+
+      - name: Upload to CurseForge (new version, needs CURSEFORGE_TOKEN + CURSEFORGE_PROJECT_ID)
+        if: steps.release.outputs.new == 'true' || inputs.publish_curseforge
+        env:
+          CF_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+          CF_PROJECT: ${{ vars.CURSEFORGE_PROJECT_ID }}
+          V: ${{ steps.release.outputs.version }}
+        run: |
+          if [ -z "$CF_TOKEN" ] || [ -z "$CF_PROJECT" ]; then
+            echo "::notice::CurseForge skipped: add the CURSEFORGE_TOKEN secret and the CURSEFORGE_PROJECT_ID variable (see curseforge/SETUP.md)."
+            exit 0
+          fi
+          bash curseforge/upload.sh "out/chroniclecaravans-$V-neoforge-1.21.1.jar" "$V" "Chronicle Caravans $V (NeoForge 1.21.1)" "1.21.1" "NeoForge" "Java 21"
