@@ -278,7 +278,7 @@
   "gui.chroniclecaravans.post.output": "Recette",
   "gui.chroniclecaravans.post.output.help": "Ce que le comptoir a gagné. Un entonnoir dessous le vide, un comparateur le lit.",
   "gui.chroniclecaravans.post.trading": "Commerce : %s marchés",
-  "gui.chroniclecaravans.post.nothing": "Caravane là, aucun échange possible",
+  "gui.chroniclecaravans.post.nothing": "Aucun échange possible",
   "gui.chroniclecaravans.post.paused": "En pause (signal de redstone)",
   "gui.chroniclecaravans.post.full": "La recette est pleine",
   "gui.chroniclecaravans.post.off": "Désactivé sur ce serveur",

@@ -684,11 +684,14 @@ public final class SelfTest {
 
     private static void clearBandits(ServerLevel level) {
         int n = 0;
+        // Collect first: discarding while walking the live entity list can leave holes in it (26.x)
+        List<Entity> bandits = new ArrayList<>();
         for (Entity en : level.getAllEntities()) {
-            if (Nbt.hasUUID(en.getPersistentData(), CaravanMaster.AMBUSH_TAG)) {
-                en.discard();
-                n++;
-            }
+            if (en != null && Nbt.hasUUID(en.getPersistentData(), CaravanMaster.AMBUSH_TAG)) bandits.add(en);
+        }
+        for (Entity en : bandits) {
+            en.discard();
+            n++;
         }
         log("bandits left=" + n);
     }

@@ -278,7 +278,7 @@
   "gui.chroniclecaravans.post.output": "Takings",
   "gui.chroniclecaravans.post.output.help": "What the post earned. A hopper below empties it, a comparator reads it.",
   "gui.chroniclecaravans.post.trading": "Trading: %s deals",
-  "gui.chroniclecaravans.post.nothing": "A caravan is here, no deal possible",
+  "gui.chroniclecaravans.post.nothing": "No deal possible",
   "gui.chroniclecaravans.post.paused": "Paused (redstone signal)",
   "gui.chroniclecaravans.post.full": "The takings row is full",
   "gui.chroniclecaravans.post.off": "Disabled on this server",
