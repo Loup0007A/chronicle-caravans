@@ -20,7 +20,7 @@ import net.minecraft.world.phys.AABB;
 /** The trading post: standing orders, input, output, and what it is doing. */
 public class TradingPostMenu extends AbstractContainerMenu {
     public static final int D_STATUS = 0, D_DEALS = 1, D_TOTAL = 2, D_SIGNAL = 3, DATA = 4;
-    public static final int ROW_X = 8, ORDERS_Y = 32, INPUT_Y = 66, OUTPUT_Y = 100, INV_Y = 140;
+    public static final int WIDTH = 192, HEIGHT = 242, ROW_X = 16, ORDERS_Y = 40, INPUT_Y = 76, OUTPUT_Y = 112, INV_Y = 154;
 
     private final Container post;
     private final TradingPostBlockEntity be;
@@ -41,7 +41,7 @@ public class TradingPostMenu extends AbstractContainerMenu {
         for (int c = 0; c < 9; c++) addSlot(new Slot(post, TradingPostBlockEntity.INPUT + c, ROW_X + c * 18, INPUT_Y));
         for (int c = 0; c < 9; c++) addSlot(new MenuSlots.Output(post, TradingPostBlockEntity.OUTPUT + c, ROW_X + c * 18, OUTPUT_Y));
         addSlot(new MenuSlots.Hidden(info, 0));
-        MenuSlots.player(inv, 8, INV_Y, this::addSlot);
+        MenuSlots.player(inv, 16, INV_Y, this::addSlot);
         addDataSlots(data);
         if (be != null) update();
     }

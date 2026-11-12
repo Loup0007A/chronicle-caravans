@@ -163,19 +163,27 @@ public class CaravanScreen extends CCScreen implements MenuAccess<CaravanMenu> {
         g.fill(x0 + 61, y0 + 28, x0 + 66, y0 + 33, colorOf(r.color));
         UiKit.text(g, font, Component.translatable("gui.chroniclecaravans.from", Component.translatable("region.chroniclecaravans." + r.key())),
                 x0 + 71, y0 + 27, UiKit.INK);
+        String coins = String.valueOf(emeralds());
+        // The status stops short of the player's emeralds (on the right)
         UiKit.icon(g, statusIcon(), x0 + 59, y0 + 39);
-        UiKit.text(g, font, status(), x0 + 71, y0 + 40, UiKit.INK_SOFT);
+        UiKit.text(g, font, UiKit.fit(font, status().getString(), W - 72 - font.width(coins) - 71 - 4), x0 + 71, y0 + 40, UiKit.INK_SOFT);
         // The player: level seal, title, emeralds
         int level = menu.get(CaravanMenu.D_LEVEL), xp = menu.get(CaravanMenu.D_XP), skills = menu.get(CaravanMenu.D_SKILLS);
         UiKit.seal(g, font, x0 + W - 46, y0 + 14, String.valueOf(level));
         String t = Guild.title(xp, skills).getString();
         UiKit.text(g, font, Component.literal(t).withStyle(ChatFormatting.ITALIC), x0 + W - 52 - font.width(Component.literal(t).withStyle(ChatFormatting.ITALIC)), y0 + 18, UiKit.GOLD);
-        String coins = String.valueOf(emeralds());
         g.renderItem(new ItemStack(Items.EMERALD), x0 + W - 70 - font.width(coins), y0 + 28);
         UiKit.text(g, font, coins, x0 + W - 52 - font.width(coins), y0 + 33, UiKit.INK);
         if (in(mx, my, x0 + W - 46, y0 + 14, 28, 28)) {
             hoverTip = List.of(Component.translatable("gui.chroniclecaravans.level", level), Guild.title(xp, skills));
         }
+    }
+
+    /** A price: the item in its frame, and its count written beside it ("×12"), easier to read than the stack number. */
+    private void price(GuiGraphics g, ItemStack stack, int x, int y, boolean highlight) {
+        UiKit.slot(g, x, y, highlight);
+        g.renderItem(stack, x + 1, y + 1);
+        UiKit.text(g, font, "×" + stack.getCount(), x + 20, y + 5, UiKit.INK);
     }
 
     private int statusIcon() {
@@ -269,8 +277,7 @@ public class CaravanScreen extends CCScreen implements MenuAccess<CaravanMenu> {
             int px = rx + rw - 96;
             if (requests) {
                 UiKit.icon(g, UiKit.I_ARROW, px + 8, ry + 8);
-                UiKit.slot(g, px + 26, ry + 3, can > 0 && lock == 0);
-                UiKit.item(g, font, res, px + 27, ry + 4);
+                price(g, res, px + 26, ry + 3, can > 0 && lock == 0);
                 if (in(mx, my, px + 26, ry + 3, 18, 18)) tipStack[0] = res;
             } else if (!b.isEmpty()) {
                 UiKit.slot(g, px, ry + 3, false);
@@ -281,8 +288,7 @@ public class CaravanScreen extends CCScreen implements MenuAccess<CaravanMenu> {
                 if (in(mx, my, px, ry + 3, 18, 18)) tipStack[0] = a;
                 if (in(mx, my, px + 26, ry + 3, 18, 18)) tipStack[0] = b;
             } else {
-                UiKit.slot(g, px + 26, ry + 3, can > 0 && lock == 0);
-                UiKit.item(g, font, a, px + 27, ry + 4);
+                price(g, a, px + 26, ry + 3, can > 0 && lock == 0);
                 if (in(mx, my, px + 26, ry + 3, 18, 18)) tipStack[0] = a;
             }
             if (in(mx, my, rx + 3, ry + 3, 18, 18)) tipStack[0] = main;
@@ -454,7 +460,7 @@ public class CaravanScreen extends CCScreen implements MenuAccess<CaravanMenu> {
         int level = menu.get(CaravanMenu.D_LEVEL), points = menu.get(CaravanMenu.D_POINTS);
         int lx = x0 + 14, lw = 116, bh = H - 96;
         UiKit.card(g, lx, cy, lw, bh, UiKit.CARD);
-        int y = UiKit.wrap(g, font, Guild.title(xp, skills).withStyle(ChatFormatting.BOLD), lx + 6, cy + 6, lw - 12, UiKit.HEAD);
+        int y = UiKit.wrap(g, font, Component.literal(Guild.title(xp, skills).getString()).withStyle(ChatFormatting.BOLD), lx + 6, cy + 6, lw - 12, UiKit.HEAD);
         UiKit.text(g, font, Component.translatable("gui.chroniclecaravans.level", level), lx + 6, y + 2, UiKit.INK);
         int need = Math.max(1, menu.get(CaravanMenu.D_NEEDED)), prog = menu.get(CaravanMenu.D_PROGRESS);
         boolean max = level >= Guild.MAX_LEVEL;

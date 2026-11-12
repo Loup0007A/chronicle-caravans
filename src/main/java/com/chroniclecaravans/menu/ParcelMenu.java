@@ -32,7 +32,7 @@ import net.minecraft.world.item.Items;
  */
 public class ParcelMenu extends AbstractContainerMenu {
     public static final int D_FEE = 0, D_HOPS = 1, DATA = 2;
-    public static final int GRID_X = 62, GRID_Y = 40, INV_Y = 128;
+    public static final int WIDTH = 192, HEIGHT = 214, GRID_X = 70, GRID_Y = 40, INV_Y = 128;
 
     private final SimpleContainer crate = new SimpleContainer(9);
     /** Hidden slots: 0 = where it goes, 1 = where it leaves from. */
@@ -60,7 +60,7 @@ public class ParcelMenu extends AbstractContainerMenu {
         }
         addSlot(new MenuSlots.Hidden(info, 0));
         addSlot(new MenuSlots.Hidden(info, 1));
-        MenuSlots.player(inv, 8, INV_Y, this::addSlot);
+        MenuSlots.player(inv, 16, INV_Y, this::addSlot);
         addDataSlots(data);
         if (origin != null && inv.player.level() instanceof ServerLevel level) {
             CaravanData cd = CaravanData.get(level);

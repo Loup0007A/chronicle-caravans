@@ -22,7 +22,7 @@ import net.minecraft.world.item.Items;
 /** The loading dock: its nine slots, where it sends to, and how the last shipment went. */
 public class DockMenu extends AbstractContainerMenu {
     public static final int D_STATUS = 0, D_AGE = 1, D_FEE = 2, D_HOPS = 3, D_OUT = 4, D_SHIPMENTS = 5, D_HAS_STOP = 6, DATA = 7;
-    public static final int GRID_X = 62, GRID_Y = 44, INV_Y = 120;
+    public static final int WIDTH = 192, HEIGHT = 218, GRID_X = 70, GRID_Y = 56, INV_Y = 130;
 
     private final Container dock;
     private final DockBlockEntity be;
@@ -43,7 +43,7 @@ public class DockMenu extends AbstractContainerMenu {
             for (int c = 0; c < 3; c++) addSlot(new Slot(dock, c + r * 3, GRID_X + c * 18, GRID_Y + r * 18));
         }
         for (int i = 0; i < 3; i++) addSlot(new MenuSlots.Hidden(info, i));
-        MenuSlots.player(inv, 8, INV_Y, this::addSlot);
+        MenuSlots.player(inv, 16, INV_Y, this::addSlot);
         addDataSlots(data);
         if (be != null) update();
     }

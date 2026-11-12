@@ -14,11 +14,12 @@ case "$LOADER" in
 esac
 
 # ---- Server ----
+# (26.x pauses an empty server after 60 s: the self-test runs before anyone joins, so never pause)
 mkdir -p srv && cd srv
 curl -sSfL -o installer.jar "$INSTALLER" || { echo "installer not found: $INSTALLER"; exit 1; }
 java -jar installer.jar --installServer . > installer.log 2>&1 || (tail -30 installer.log; exit 1)
 echo "eula=true" > eula.txt
-printf 'online-mode=false\nwhite-list=false\nenforce-whitelist=false\nspawn-protection=0\nlevel-seed=%s\ngamemode=creative\ndifficulty=normal\nview-distance=8\n' "${SEED:-caravans}" > server.properties
+printf 'online-mode=false\nwhite-list=false\nenforce-whitelist=false\nspawn-protection=0\nlevel-seed=%s\ngamemode=creative\ndifficulty=normal\nview-distance=8\npause-when-empty-seconds=0\n' "${SEED:-caravans}" > server.properties
 mkdir -p mods && cp "$JAR" mods/
 printf -- '\n-Dchroniclecaravans.selftest=true\n' >> user_jvm_args.txt
 chmod +x run.sh

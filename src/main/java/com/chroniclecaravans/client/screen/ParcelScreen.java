@@ -11,7 +11,7 @@ import net.minecraft.world.item.Items;
 /** Packing a parcel: the crate, where it goes, what it costs. Closing the screen hands it over. */
 public class ParcelScreen extends CCContainerScreen<ParcelMenu> {
     public ParcelScreen(ParcelMenu menu, Inventory inv, Component title) {
-        super(menu, inv, title, 176, 214);
+        super(menu, inv, title, ParcelMenu.WIDTH, ParcelMenu.HEIGHT);
     }
 
     @Override
