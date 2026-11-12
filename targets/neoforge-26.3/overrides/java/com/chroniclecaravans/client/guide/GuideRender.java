@@ -76,8 +76,7 @@ public final class GuideRender {
         /** The origin of the scene, like {@link GuideScreen#view}: centred, at 52% of the height. */
         @Override
         protected float getTranslateY(int height, int guiScale) {
-            // the picture's y axis points up: 52% from the top is 48% from the bottom
-            return height * 0.48F;
+            return height * 0.52F;
         }
 
         @Override
@@ -92,8 +91,8 @@ public final class GuideRender {
         int light = LightCoordsUtil.FULL_BRIGHT;
         float scale = screen.sceneScale(s);
         ps.pushPose();
-        // y points up in the picture (unlike the GUI)
-        ps.scale(scale, scale, scale);
+        // y points down as in the GUI, but depth goes the other way: flip z too
+        ps.scale(scale, -scale, -scale);
         ps.rotateDegrees(Axis.XP, screen.pitch);
         ps.rotateDegrees(Axis.YP, screen.yaw);
         ps.translate(-s.sizeX / 2F, -1F, -s.sizeZ / 2F);
