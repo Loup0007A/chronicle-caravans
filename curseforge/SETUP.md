@@ -15,7 +15,8 @@ La création du projet est **manuelle** (une seule fois) : CurseForge fait relir
    - **Licence** : MIT. **Code source** : `https://github.com/Loup0007A/chronicle-caravans`. **Issues** : `https://github.com/Loup0007A/chronicle-caravans/issues`.
 4. Premier fichier : envoie `releases/chroniclecaravans-latest-neoforge-1.21.1.jar` (ou celui de la Release GitHub) avec :
    - Version de jeu **1.21.1**, chargeur **NeoForge**, environnements **Client** et **Server**, **Java 21**.
-   - Type : **Beta** tant que la version est en 0.x. Notes : la section correspondante de `CHANGELOG.md`.
+   - Type : **Release** (les versions 0.x partent en Beta). Notes : la section correspondante de `CHANGELOG.md`.
+   - Les trois autres fichiers (Forge 1.21.1, Forge 1.20.1, NeoForge 26.3) seront envoyés automatiquement dès que l'envoi est branché (étape 2).
 5. Ajoute les captures du dossier [`screenshots/`](screenshots/) dans l'onglet **Images** (galerie).
 6. Envoie en modération. L'**ID du projet** (un nombre) s'affiche dans l'encadré « About Project » de la page du projet.
 

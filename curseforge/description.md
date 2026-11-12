@@ -6,7 +6,7 @@ Chronicle Caravans
 
 ## Summary
 
-Living trade caravans travel between the milestones you place and follow the roads you build. Trade regional goods, earn reputation, defend them from bandits.
+Living trade caravans travel between villages and the milestones you place, following your roads. Covered wagons, regional goods, reputation, bandit ambushes, and an animated guide.
 
 ## Description (Markdown)
 
@@ -23,7 +23,10 @@ Place a second milestone, build a road between the two, and you have a **trade r
 - Right-click the master or the wagon to trade.
 
 ### ✦ A guide in the style of Create's Ponder
-Hold **[W]** over the Caravan Milestone in your inventory: five animated 3D scenes show how everything works, with text bubbles and a timeline. Turn the scene, zoom in, replay. Or type `/caravanguide`.
+Hold **[W]** over the Caravan Milestone in your inventory: six animated 3D scenes show how everything works, with text bubbles and a timeline. Turn the scene, zoom in, replay. Or type `/caravanguide`.
+
+### ✦ Villages come alive
+Every village bell is a caravan stop: caravans travel between villages **on their own**, with no milestone to build. Village paths are already roads, so they follow them from one village to the next. Your milestones join the same network.
 
 ### ✦ Milestones and roads
 - **Caravan Milestone**: lantern + emerald + 3 stone bricks. A lit stone marker, and a stop for every caravan. Right-click it to see when the next one is due.
@@ -46,6 +49,6 @@ While you are near a caravan, bandits may attack it. Defeat them all and the car
 - Commands for admins and creators: `/caravans summon [region]`, `/caravans ambush`, `/caravans reputation <player> <value>`.
 - English and French.
 
-**NeoForge 1.21.1.** Install on both the client and the server.
+**Forge 1.20.1 · Forge 1.21.1 · NeoForge 1.21.1 · NeoForge 26.3.** Install on both the client and the server.
 
 Feel free to include it in any modpack.

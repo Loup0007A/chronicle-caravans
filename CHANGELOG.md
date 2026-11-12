@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0
+
+- **Caravans visit villages**: every village bell is now a caravan stop, with no milestone needed. Caravans travel between nearby villages and your milestones as one network of trade routes, and follow the village paths. Switch it off with `villageStops` in the config.
+- Caravans arrive on a road when there is one, and never appear on a roof.
+- New guide scene: "Villages" (six scenes in all).
+- **Now on four versions**: NeoForge 1.21.1, Forge 1.21.1, Forge 1.20.1 and NeoForge 26.3.
+
 ## 0.2.0
 
 - **A real caravan**: the master now leads a draft llama hitched to a **covered wagon** (new 3D model): spoked wheels with iron tyres that roll as it moves, wooden hoops, cargo crates and barrels, a lantern glowing at the front. The canopy takes the colour of the caravan's home region.
