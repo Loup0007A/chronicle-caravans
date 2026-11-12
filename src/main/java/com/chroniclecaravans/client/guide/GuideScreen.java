@@ -29,6 +29,9 @@ import net.minecraft.world.entity.Leashable;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
@@ -66,6 +69,7 @@ public class GuideScreen extends Screen {
     public void jump(int scene, int tick) {
         if (scene != index) {
             for (Actor a : scene().actors) a.entity = null;
+            blockEntities.clear();
             index = Mth.clamp(scene, 0, scenes.size() - 1);
         }
         time = Mth.clamp(tick, 0, scene().length);
@@ -161,6 +165,8 @@ public class GuideScreen extends Screen {
             ps.pushPose();
             ps.translate(p.getX(), p.getY() + drop, p.getZ());
             minecraft.getBlockRenderer().renderSingleBlock(c.state(), ps, buffers, light, OverlayTexture.NO_OVERLAY);
+            BlockEntity be = blockEntity(p, c.state());
+            if (be != null) minecraft.getBlockEntityRenderDispatcher().renderItem(be, ps, buffers, light, OverlayTexture.NO_OVERLAY);
             ps.popPose();
         }
 
@@ -208,6 +214,20 @@ public class GuideScreen extends Screen {
         ps.popPose();
         Lighting.setupFor3DItems();
         return view;
+    }
+
+    private final Map<BlockPos, BlockEntity> blockEntities = new java.util.HashMap<>();
+
+    /** Bells, chests...: the part drawn by a block entity renderer. */
+    private BlockEntity blockEntity(BlockPos pos, BlockState state) {
+        if (!(state.getBlock() instanceof EntityBlock eb)) return null;
+        BlockEntity be = blockEntities.get(pos);
+        if (be == null || be.getBlockState() != state) {
+            be = eb.newBlockEntity(pos, state);
+            if (be != null && minecraft.level != null) be.setLevel(minecraft.level);
+            blockEntities.put(pos, be);
+        }
+        return be;
     }
 
     /** Puts an actor's entity where the scene wants it at time {@code t}. */

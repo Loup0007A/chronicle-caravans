@@ -22,7 +22,7 @@ public final class ClientTest {
     private static final int[] SHOTS = {200, 270, 340, 500, 600, 850, 930};
     /** Guide: {client tick, scene, scene tick to jump to}; the screenshot is taken 14 ticks later. */
     private static final int[][] GUIDE = {
-            {960, 0, 100}, {1000, 1, 236}, {1040, 2, 70}, {1080, 2, 280}, {1120, 3, 120}, {1160, 3, 300}, {1200, 4, 80}};
+            {960, 0, 100}, {1000, 1, 236}, {1040, 2, 70}, {1080, 2, 280}, {1120, 3, 60}, {1160, 3, 200}, {1200, 4, 120}, {1240, 4, 300}, {1280, 5, 80}};
 
     private static int t;
     private static int total;

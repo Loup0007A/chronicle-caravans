@@ -83,5 +83,10 @@
   "guide.chroniclecaravans.ambush.reputation": "Trading, hosting and protecting caravans earns reputation. Each rank unlocks rarer goods; the last two give discounts.",
   "guide.chroniclecaravans.hire.title": "Hiring a Caravan",
   "guide.chroniclecaravans.hire.use": "In a hurry? Use an Emerald Block on a milestone to hire a caravan right away.",
-  "guide.chroniclecaravans.hire.config": "The guild then needs 10 minutes before taking another order. Every delay, chance and bonus can be changed in config/chroniclecaravans-common.toml."
+  "guide.chroniclecaravans.hire.config": "The guild then needs 10 minutes before taking another order. Every delay, chance and bonus can be changed in config/chroniclecaravans-common.toml.",
+  "stop.chroniclecaravans.village": "Village (%s, %s)",
+  "guide.chroniclecaravans.villages.title": "Villages",
+  "guide.chroniclecaravans.villages.bells": "Caravans also travel between villages on their own: every village bell is a stop, no milestone needed.",
+  "guide.chroniclecaravans.villages.paths": "Village paths are already roads: caravans follow them from one village to the next.",
+  "guide.chroniclecaravans.villages.network": "Villages and milestones less than 320 blocks apart form one network of trade routes."
 }

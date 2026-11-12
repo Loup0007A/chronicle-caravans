@@ -129,7 +129,25 @@ public final class SelfTest {
         CaravanData data = CaravanData.get(level);
         data.addStop(stop, null, "SelfTest", "", Long.MAX_VALUE / 4);
         check(data.stop(stop) != null, "milestone registered");
+        villages(level, data);
         spawn(level, Region.DUNES);
+    }
+
+    /** A bell 56 blocks away is found and registered as a village stop, then removed again. */
+    private static void villages(ServerLevel level, CaravanData data) {
+        int bx = stop.getX(), bz = stop.getZ() - 56;
+        int by = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, bx, bz);
+        BlockPos bell = new BlockPos(bx, by, bz);
+        level.setBlockAndUpdate(bell, Blocks.BELL.defaultBlockState());
+        int added = CaravanSpawner.scanVillages(level, bell);
+        CaravanData.Stop v = data.stop(bell);
+        log("village scan added " + added + " at " + bell);
+        check(v != null && v.village, "village bell registered as a stop");
+        check(CaravanSpawner.scanVillages(level, bell) == 0, "village not registered twice");
+        BlockPos road = CaravanSpawner.findGround(level, stop.offset(ROAD / 2, 0, 0), 0, 3, level.random);
+        check(road != null && level.getBlockState(road.below()).is(Blocks.DIRT_PATH), "arrival point prefers the road");
+        data.removeStop(bell);
+        level.setBlockAndUpdate(bell, Blocks.AIR.defaultBlockState());
     }
 
     private static void spawn(ServerLevel level, Region region) {

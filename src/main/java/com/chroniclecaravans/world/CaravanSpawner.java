@@ -16,9 +16,14 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.animal.horse.TraderLlama;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.entity.ai.village.poi.PoiManager;
+import net.minecraft.world.entity.ai.village.poi.PoiTypes;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
@@ -35,13 +40,18 @@ public final class CaravanSpawner {
         if (!(e.getLevel() instanceof ServerLevel level) || level.dimension() != Level.OVERWORLD) return;
         if (level.getGameTime() % 100 != 0) return;
         CaravanData data = CaravanData.get(level);
+        if (CCConfig.VILLAGE_STOPS.get() && level.getGameTime() % 600 == 0) {
+            for (ServerPlayer p : level.players()) scanVillages(level, p.blockPosition());
+        }
         if (data.stops().isEmpty()) return;
         long now = level.getGameTime();
         List<CaravanMaster> active = caravans(level);
         List<BlockPos> stale = new ArrayList<>();
         for (CaravanData.Stop stop : data.stops()) {
             if (now < stop.nextVisit || !level.isLoaded(stop.pos)) continue;
-            if (!level.getBlockState(stop.pos).is(ChronicleCaravans.MILESTONE.get())) {
+            boolean valid = stop.village ? level.getBlockState(stop.pos).is(Blocks.BELL) && CCConfig.VILLAGE_STOPS.get()
+                    : level.getBlockState(stop.pos).is(ChronicleCaravans.MILESTONE.get());
+            if (!valid) {
                 stale.add(stop.pos);
                 continue;
             }
@@ -59,6 +69,23 @@ public final class CaravanSpawner {
             if (master != null) active.add(master);
         }
         for (BlockPos p : stale) data.removeStop(p);
+    }
+
+    /**
+     * Registers the village bells around {@code center} as stops (unless a stop is already close by).
+     * The first caravan comes after a random part of the usual interval. Returns the number of new stops.
+     */
+    public static int scanVillages(ServerLevel level, BlockPos center) {
+        CaravanData data = CaravanData.get(level);
+        long interval = CCConfig.VISIT_INTERVAL.get() * 20L;
+        int[] added = {0};
+        level.getPoiManager().findAll(h -> h.is(PoiTypes.MEETING), p -> true, center, 128, PoiManager.Occupancy.ANY)
+                .forEach(bell -> {
+                    if (!level.getBlockState(bell).is(Blocks.BELL) || data.nearestStop(bell, 48, null) != null) return;
+                    data.addVillage(bell, level.getGameTime() + 200 + (long) (level.random.nextDouble() * interval));
+                    added[0]++;
+                });
+        return added[0];
     }
 
     /** A bandit of an ambush dies: credit the player who killed it. */
@@ -156,20 +183,32 @@ public final class CaravanSpawner {
         return master;
     }
 
-    /** A random dry, free spot on the surface, between {@code min} and {@code max} blocks from the centre. */
+    /**
+     * A dry, free spot on the surface between {@code min} and {@code max} blocks from the centre: on a path when
+     * there is one, otherwise on natural ground, never on a roof.
+     */
     public static BlockPos findGround(ServerLevel level, BlockPos center, int min, int max, RandomSource random) {
-        BlockPos fallback = null;
-        for (int i = 0; i < 40; i++) {
+        BlockPos best = null;
+        int bestScore = Integer.MAX_VALUE;
+        for (int i = 0; i < 48; i++) {
             double a = random.nextDouble() * Math.PI * 2;
             double d = min + random.nextDouble() * (max - min);
             int x = (int) Math.floor(center.getX() + 0.5 + Math.cos(a) * d);
             int z = (int) Math.floor(center.getZ() + 0.5 + Math.sin(a) * d);
             BlockPos p = standable(level, x, z, center.getY());
             if (p == null) continue;
-            if (Math.abs(p.getY() - center.getY()) <= 10) return p;
-            if (fallback == null) fallback = p;
+            BlockState ground = level.getBlockState(p.below());
+            if (ground.is(BlockTags.PLANKS) || ground.is(BlockTags.LOGS) || ground.is(BlockTags.STAIRS)
+                    || ground.is(BlockTags.SLABS) || ground.is(BlockTags.LEAVES) || ground.is(BlockTags.WOOL)) continue;
+            int score = ground.is(ChronicleCaravans.ROADS) ? 0
+                    : ground.is(BlockTags.DIRT) || ground.is(BlockTags.SAND) || ground.is(BlockTags.SNOW) ? 10 : 20;
+            score += Math.abs(p.getY() - center.getY()) > 10 ? 30 : Math.abs(p.getY() - center.getY());
+            if (score < bestScore) {
+                bestScore = score;
+                best = p;
+            }
         }
-        return fallback;
+        return best;
     }
 
     private static BlockPos standable(ServerLevel level, int x, int z, int nearY) {
@@ -178,7 +217,9 @@ public final class CaravanSpawner {
         BlockPos p = new BlockPos(x, y, z);
         BlockPos below = p.below();
         BlockState ground = level.getBlockState(below);
-        if (!ground.isFaceSturdy(level, below, Direction.UP)) return null;
+        // Dirt paths are 15/16 high: any ground with a solid top half will do
+        VoxelShape shape = ground.getCollisionShape(level, below);
+        if (shape.isEmpty() || shape.max(Direction.Axis.Y) < 0.5) return null;
         if (!level.getFluidState(p).isEmpty() || !level.getFluidState(below).isEmpty()) return null;
         if (!level.getBlockState(p).getCollisionShape(level, p).isEmpty()) return null;
         if (!level.getBlockState(p.above()).getCollisionShape(level, p.above()).isEmpty()) return null;

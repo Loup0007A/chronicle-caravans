@@ -34,6 +34,10 @@ public final class CCConfig {
             .comment("Cooldown after hiring a caravan with an emerald block, in seconds.")
             .defineInRange("hireCooldownSeconds", 600, 0, 86400);
 
+    public static final ModConfigSpec.BooleanValue VILLAGE_STOPS = B
+            .comment("Village bells are caravan stops too: caravans travel between villages without any milestone.")
+            .define("villageStops", true);
+
     public static final ModConfigSpec.BooleanValue ROADS_ENABLED = B
             .comment("Caravans prefer walking on road blocks (block tag chroniclecaravans:roads) and are faster on them.")
             .define("roadsEnabled", true);

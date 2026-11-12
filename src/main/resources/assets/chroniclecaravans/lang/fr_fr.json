@@ -83,5 +83,10 @@
   "guide.chroniclecaravans.ambush.reputation": "Commercer, accueillir et protéger les caravanes rapporte de la réputation. Chaque rang débloque des marchandises plus rares ; les deux derniers donnent des remises.",
   "guide.chroniclecaravans.hire.title": "Engager une caravane",
   "guide.chroniclecaravans.hire.use": "Pressé ? Utilisez un bloc d'émeraude sur une borne pour engager une caravane tout de suite.",
-  "guide.chroniclecaravans.hire.config": "La guilde demande ensuite 10 minutes avant une nouvelle commande. Délais, probabilités et bonus se règlent dans config/chroniclecaravans-common.toml."
+  "guide.chroniclecaravans.hire.config": "La guilde demande ensuite 10 minutes avant une nouvelle commande. Délais, probabilités et bonus se règlent dans config/chroniclecaravans-common.toml.",
+  "stop.chroniclecaravans.village": "Village (%s, %s)",
+  "guide.chroniclecaravans.villages.title": "Les villages",
+  "guide.chroniclecaravans.villages.bells": "Les caravanes voyagent aussi d'elles-mêmes entre les villages : chaque cloche de village est un arrêt, sans borne.",
+  "guide.chroniclecaravans.villages.paths": "Les chemins des villages sont déjà des routes : les caravanes les suivent d'un village à l'autre.",
+  "guide.chroniclecaravans.villages.network": "Villages et bornes à moins de 320 blocs les uns des autres forment un seul réseau de routes commerciales."
 }

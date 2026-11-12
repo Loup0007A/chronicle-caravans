@@ -32,7 +32,7 @@ public final class GuideScenes {
     private static final BlockState PATH = Blocks.DIRT_PATH.defaultBlockState();
 
     public static List<GuideScene> all() {
-        return List.of(milestone(), route(), caravan(), ambush(), hire());
+        return List.of(milestone(), route(), caravan(), villages(), ambush(), hire());
     }
 
     private static BlockState milestoneBlock() {
@@ -150,7 +150,27 @@ public final class GuideScenes {
         return s;
     }
 
-    // ---------------------------------------------------------------- 4. ambushes and reputation
+    // ---------------------------------------------------------------- 4. villages
+
+    static GuideScene villages() {
+        GuideScene s = new GuideScene("villages", 330, 18, 9, new ItemStack(Items.BELL));
+        s.plate(GRASS);
+        for (int x = 0; x < 18; x++) s.ground(x, 4, PATH);
+        for (int z = 0; z < 9; z++) if (z != 4) s.ground(13, z, PATH);
+        s.block(14, 1, 6, Blocks.BELL.defaultBlockState(), 8);
+        s.block(15, 1, 7, Blocks.HAY_BLOCK.defaultBlockState(), 12).block(16, 1, 7, Blocks.HAY_BLOCK.defaultBlockState(), 14)
+                .block(15, 2, 7, Blocks.HAY_BLOCK.defaultBlockState(), 16).block(11, 1, 6, Blocks.COMPOSTER.defaultBlockState(), 18)
+                .block(16, 1, 2, Blocks.OAK_FENCE.defaultBlockState(), 20).block(16, 2, 2, Blocks.LANTERN.defaultBlockState(), 22)
+                .block(11, 1, 1, Blocks.OAK_LOG.defaultBlockState(), 24).block(11, 2, 1, Blocks.OAK_LEAVES.defaultBlockState(), 26);
+        s.actor(l -> EntityType.VILLAGER.create(l)).appear(20).key(20, 15.5, 1, 5.6).facing(160F);
+        Actor[] t = train(s, 4.5, Region.WOODS, 1, 0, 9.2, 120, 9.2, 220, 12.6);
+        s.text(26, 118, "bells", GuideScene.at(14.5, 2.0, 6.5)).icons(new ItemStack(Items.BELL)).highlight(14, 1, 6);
+        s.text(124, 230, "paths", GuideScene.above(t[2], 2.8)).highlight(new AABB(0, 0, 4, 18, 1, 5));
+        s.text(236, 326, "network", GuideScene.above(t[0], 2.1)).icons(new ItemStack(Items.BELL), GuideScene.ARROW, milestoneItem());
+        return s;
+    }
+
+    // ---------------------------------------------------------------- 5. ambushes and reputation
 
     static GuideScene ambush() {
         GuideScene s = new GuideScene("ambush", 390, 15, 7, new ItemStack(Items.CROSSBOW));
@@ -183,7 +203,7 @@ public final class GuideScenes {
         return s;
     }
 
-    // ---------------------------------------------------------------- 5. hiring a caravan
+    // ---------------------------------------------------------------- 6. hiring a caravan
 
     static GuideScene hire() {
         GuideScene s = new GuideScene("hire", 270, 7, 7, new ItemStack(Items.EMERALD_BLOCK));

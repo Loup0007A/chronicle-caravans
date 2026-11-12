@@ -38,6 +38,8 @@ public class CaravanData extends SavedData {
         public String name = "";
         /** Game time of the next scheduled visit. */
         public long nextVisit;
+        /** A village bell rather than a milestone. */
+        public boolean village;
         /** Game time of the last hired caravan. */
         public long lastCall = Long.MIN_VALUE / 2;
 
@@ -47,6 +49,7 @@ public class CaravanData extends SavedData {
 
         public Component displayName() {
             if (!name.isEmpty()) return Component.literal(name).withStyle(ChatFormatting.YELLOW);
+            if (village) return Component.translatable("stop.chroniclecaravans.village", pos.getX(), pos.getZ()).withStyle(ChatFormatting.YELLOW);
             return Component.translatable("stop.chroniclecaravans.default", ownerName.isEmpty() ? "?" : ownerName).withStyle(ChatFormatting.YELLOW);
         }
     }
@@ -81,6 +84,19 @@ public class CaravanData extends SavedData {
         stops.put(s.pos, s);
         setDirty();
         return s;
+    }
+
+    /** A village bell becomes a stop (no owner). */
+    public Stop addVillage(BlockPos pos, long firstVisit) {
+        Stop s = addStop(pos, null, "", "", firstVisit);
+        s.village = true;
+        return s;
+    }
+
+    public int villageCount() {
+        int n = 0;
+        for (Stop s : stops.values()) if (s.village) n++;
+        return n;
     }
 
     public void removeStop(BlockPos pos) {
@@ -156,6 +172,7 @@ public class CaravanData extends SavedData {
             s.name = t.getString("Name");
             s.nextVisit = t.getLong("NextVisit");
             if (t.contains("LastCall")) s.lastCall = t.getLong("LastCall");
+            s.village = t.getBoolean("Village");
             d.stops.put(s.pos, s);
         }
         CompoundTag rep = tag.getCompound("Reputation");
@@ -181,6 +198,7 @@ public class CaravanData extends SavedData {
             t.putString("Name", s.name);
             t.putLong("NextVisit", s.nextVisit);
             t.putLong("LastCall", s.lastCall);
+            if (s.village) t.putBoolean("Village", true);
             list.add(t);
         }
         tag.put("Stops", list);

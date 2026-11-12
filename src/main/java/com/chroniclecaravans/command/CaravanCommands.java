@@ -77,6 +77,7 @@ public final class CaravanCommands {
             return 0;
         }
         for (CaravanData.Stop s : data.stops()) {
+            if (s.village && !CCConfig.VILLAGE_STOPS.get()) continue;
             c.getSource().sendSuccess(() -> Component.translatable("msg.chroniclecaravans.stop_line", s.displayName(),
                     s.pos.getX(), s.pos.getY(), s.pos.getZ()), false);
         }
