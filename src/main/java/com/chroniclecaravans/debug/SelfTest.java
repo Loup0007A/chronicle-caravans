@@ -112,13 +112,16 @@ public final class SelfTest {
         int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, spawn.getX(), spawn.getZ());
         y = Math.max(y, level.getSeaLevel() + 1);
         stop = new BlockPos(spawn.getX(), y, spawn.getZ());
-        for (int dx = -3; dx <= ROAD + 3; dx++) {
-            for (int dz = -2; dz <= 2; dz++) {
+        // A wide clearing, so the cameras of the test client are never inside a tree or a hill
+        for (int dx = -14; dx <= ROAD + 16; dx++) {
+            for (int dz = -12; dz <= 18; dz++) {
                 BlockPos p = new BlockPos(stop.getX() + dx, y - 1, stop.getZ() + dz);
                 boolean path = Math.abs(dz) <= 1 && dx >= 2;
-                level.setBlockAndUpdate(p, path ? Blocks.DIRT_PATH.defaultBlockState() : Blocks.GRASS_BLOCK.defaultBlockState());
-                for (int dy = 1; dy <= 3; dy++) level.setBlockAndUpdate(p.below(dy), Blocks.DIRT.defaultBlockState());
-                for (int dy = 1; dy <= 7; dy++) level.setBlockAndUpdate(p.above(dy), Blocks.AIR.defaultBlockState());
+                level.setBlock(p, path ? Blocks.DIRT_PATH.defaultBlockState() : Blocks.GRASS_BLOCK.defaultBlockState(), 2);
+                for (int dy = 1; dy <= 3; dy++) level.setBlock(p.below(dy), Blocks.DIRT.defaultBlockState(), 2);
+                for (int dy = 1; dy <= 26; dy++) {
+                    if (!level.getBlockState(p.above(dy)).isAir()) level.setBlock(p.above(dy), Blocks.AIR.defaultBlockState(), 2);
+                }
             }
         }
         level.setBlockAndUpdate(stop, ChronicleCaravans.MILESTONE.get().defaultBlockState());
