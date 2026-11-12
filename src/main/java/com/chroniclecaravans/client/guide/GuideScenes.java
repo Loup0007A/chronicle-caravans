@@ -4,11 +4,14 @@ import java.util.List;
 
 import com.chroniclecaravans.ChronicleCaravans;
 import com.chroniclecaravans.Region;
+import com.chroniclecaravans.block.DockBlock;
+import com.chroniclecaravans.block.TradingPostBlock;
 import com.chroniclecaravans.Guild;
 import com.chroniclecaravans.client.guide.GuideScene.Actor;
 import com.chroniclecaravans.entity.CaravanWagon;
 import com.chroniclecaravans.platform.Compat;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.entity.Entity;
@@ -21,6 +24,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ComparatorBlock;
+import net.minecraft.world.level.block.HopperBlock;
+import net.minecraft.world.level.block.LeverBlock;
+import net.minecraft.world.level.block.RedstoneLampBlock;
+import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -33,7 +41,7 @@ public final class GuideScenes {
     private static final BlockState PATH = Blocks.DIRT_PATH.defaultBlockState();
 
     public static List<GuideScene> all() {
-        return List.of(milestone(), route(), caravan(), villages(), ambush(), hire(), inn(), services());
+        return List.of(milestone(), route(), caravan(), villages(), ambush(), hire(), inn(), services(), weather(), freight(), automation());
     }
 
     private static BlockState milestoneBlock() {
@@ -272,6 +280,83 @@ public final class GuideScenes {
         s.actor(GuideScenes::guard).appear(222).key(222, 5.6, 1, 2.4).facing(20F);
         s.actor(GuideScenes::guard).appear(230).key(230, 9.4, 1, 2.4).facing(-20F);
         s.text(236, 376, "escort", GuideScene.at(7.5, 3.3, 1.6)).icons(new ItemStack(Items.EMERALD, 14), GuideScene.ARROW, new ItemStack(Items.IRON_SWORD));
+        return s;
+    }
+
+    // ---------------------------------------------------------------- 9. weather and camps
+
+    static GuideScene weather() {
+        GuideScene s = new GuideScene("weather", 400, 15, 7, new ItemStack(Items.CAMPFIRE));
+        s.plate(GRASS);
+        for (int x = 0; x < 15; x++) s.ground(x, 3, PATH);
+        Actor[] t = train(s, 3.5, Region.HIGHLANDS, 1, 0, -1.0, 92, 7.6, 300, 7.6, 392, 15.2);
+        s.block(8, 1, 5, Blocks.CAMPFIRE.defaultBlockState(), 98).block(8, 1, 5, Blocks.AIR.defaultBlockState(), 296);
+        s.block(9, 1, 6, Blocks.SPRUCE_LOG.defaultBlockState(), 104).block(9, 1, 6, Blocks.AIR.defaultBlockState(), 296);
+        s.text(100, 196, "storm", GuideScene.above(t[0], 2.1)).icons(new ItemStack(Items.CAMPFIRE)).highlight(8, 1, 5);
+        s.text(200, 292, "night", GuideScene.at(8.5, 1.8, 5.5)).icons(new ItemStack(ChronicleCaravans.INN_SIGN_ITEM.get()));
+        s.text(300, 396, "onward", GuideScene.above(t[2], 2.8));
+        return s;
+    }
+
+    // ---------------------------------------------------------------- 10. freight and loading docks
+
+    static GuideScene freight() {
+        GuideScene s = new GuideScene("freight", 520, 19, 8, new ItemStack(ChronicleCaravans.PARCEL.get()));
+        s.plate(GRASS);
+        for (int x = 0; x < 19; x++) s.ground(x, 5, PATH);
+        BlockState sending = ChronicleCaravans.DOCK.get().defaultBlockState().setValue(DockBlock.OUTGOING, true);
+        BlockState receiving = ChronicleCaravans.DOCK.get().defaultBlockState();
+        s.block(3, 1, 4, milestoneBlock(), 4).block(3, 1, 3, sending, 10);
+        s.block(16, 1, 4, milestoneBlock(), 8).block(16, 2, 3, receiving, 14)
+                .block(16, 1, 3, Blocks.HOPPER.defaultBlockState().setValue(HopperBlock.FACING, Direction.WEST), 14)
+                .block(15, 1, 3, Blocks.BARREL.defaultBlockState(), 16);
+        ItemStack parcel = new ItemStack(ChronicleCaravans.PARCEL.get());
+        Vec3 dockA = new Vec3(3.5, 2.1, 3.5), dockB = new Vec3(16.5, 3.1, 3.5);
+        s.item(new ItemStack(Items.COBBLESTONE, 16), 22, 36, 126, new Vec3(3.5, 4.4, 3.5), dockA);
+        s.item(new ItemStack(Items.OAK_LOG, 8), 28, 42, 126, new Vec3(3.5, 4.4, 3.5), dockA);
+        s.item(new ItemStack(Items.EMERALD, 2), 34, 48, 126, new Vec3(3.5, 4.4, 3.5), dockA);
+        s.text(20, 116, "dock", GuideScene.at(3.5, 2.0, 3.5))
+                .icons(new ItemStack(Items.ANVIL), GuideScene.ARROW, new ItemStack(ChronicleCaravans.DOCK_ITEM.get()), new ItemStack(Items.EMERALD))
+                .highlight(3, 1, 3);
+        Actor[] t = train(s, 5.5, Region.COAST, 1, 0, -1.0, 110, 6.2, 196, 6.2, 330, 19.4);
+        s.item(parcel, 130, 146, 330, dockA, new Vec3(0.95, 2.2, 5.5));
+        s.text(124, 236, "carry", GuideScene.above(t[2], 2.8)).icons(parcel, GuideScene.ARROW, milestoneItem(), GuideScene.ARROW, milestoneItem());
+        s.item(parcel, 338, 352, 372, t[2].pos(330).add(0, 1.6, 0), dockB);
+        s.item(new ItemStack(Items.COBBLESTONE, 16), 376, 392, 520, new Vec3(16.5, 1.5, 3.5), new Vec3(15.5, 2.1, 3.5));
+        s.text(338, 436, "receive", GuideScene.at(16.5, 3.0, 3.5)).icons(new ItemStack(ChronicleCaravans.DOCK_ITEM.get()), GuideScene.ARROW, new ItemStack(Items.HOPPER))
+                .highlight(new AABB(16, 1, 3, 17, 3, 4));
+        s.text(440, 516, "parcel", GuideScene.above(t[0], 2.1)).icons(parcel);
+        return s;
+    }
+
+    // ---------------------------------------------------------------- 11. automation: redstone and the trading post
+
+    static GuideScene automation() {
+        GuideScene s = new GuideScene("automation", 420, 13, 8, new ItemStack(Items.COMPARATOR));
+        s.plate(GRASS);
+        for (int x = 0; x < 13; x++) s.ground(x, 5, PATH);
+        BlockState comparator = Blocks.COMPARATOR.defaultBlockState().setValue(ComparatorBlock.FACING, Direction.SOUTH);
+        BlockState lamp = Blocks.REDSTONE_LAMP.defaultBlockState();
+        BlockState lever = Blocks.LEVER.defaultBlockState().setValue(LeverBlock.FACE, AttachFace.FLOOR);
+        s.block(6, 1, 4, milestoneBlock(), 4).block(5, 1, 4, Blocks.BARREL.defaultBlockState(), 8).block(5, 2, 4, lever, 10)
+                .block(6, 1, 3, comparator, 12).block(6, 1, 2, lamp, 14);
+        s.block(5, 2, 4, lever.setValue(LeverBlock.POWERED, true), 52).block(5, 2, 4, lever, 76);
+        s.block(6, 1, 3, comparator.setValue(ComparatorBlock.POWERED, true), 160).block(6, 1, 2, lamp.setValue(RedstoneLampBlock.LIT, true), 160);
+        s.item(new ItemStack(Items.EMERALD_BLOCK), 20, 36, 56, new Vec3(5.5, 4.2, 4.5), new Vec3(5.5, 1.6, 4.5));
+        s.text(18, 128, "call", GuideScene.at(5.5, 2.4, 4.5))
+                .icons(new ItemStack(Items.LEVER), new ItemStack(Items.EMERALD_BLOCK), GuideScene.ARROW, milestoneItem())
+                .highlight(new AABB(5, 1, 4, 7, 3, 5));
+        Actor[] t = train(s, 5.5, Region.JUNGLE, 1, 0, -2.0, 84, -2.0, 158, 8.6);
+        s.text(164, 252, "comparator", GuideScene.at(6.5, 1.6, 3.0)).icons(new ItemStack(Items.COMPARATOR), new ItemStack(Items.REDSTONE_LAMP))
+                .highlight(new AABB(6, 1, 2, 7, 2, 4));
+        s.block(9, 1, 3, ChronicleCaravans.POST.get().defaultBlockState().setValue(TradingPostBlock.FACING, Direction.SOUTH), 18)
+                .block(9, 2, 3, Blocks.HOPPER.defaultBlockState(), 22);
+        s.item(new ItemStack(Items.IRON_INGOT, 8), 40, 56, 270, new Vec3(9.5, 4.4, 3.5), new Vec3(9.5, 2.6, 3.5));
+        Vec3 master = t[0].pos(200).add(0, 1.3, 0);
+        s.item(new ItemStack(Items.EMERALD, 4), 272, 288, 420, master, new Vec3(9.3, 1.25, 3.4));
+        s.item(new ItemStack(Items.BAMBOO, 8), 280, 296, 420, master, new Vec3(9.75, 1.25, 3.6));
+        s.text(258, 416, "post", GuideScene.at(9.5, 1.9, 3.5)).icons(new ItemStack(ChronicleCaravans.POST_ITEM.get()), new ItemStack(Items.HOPPER))
+                .highlight(new AABB(9, 1, 3, 10, 3, 4));
         return s;
     }
 }

@@ -1,6 +1,8 @@
 {
   "replace": false,
   "values": [
-    "chroniclecaravans:inn_sign"
+    "chroniclecaravans:inn_sign",
+    "chroniclecaravans:loading_dock",
+    "chroniclecaravans:trading_post"
   ]
 }

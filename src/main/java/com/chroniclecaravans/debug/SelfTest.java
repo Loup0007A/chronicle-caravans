@@ -3,21 +3,35 @@ package com.chroniclecaravans.debug;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.chroniclecaravans.CCConfig;
 import com.chroniclecaravans.ChronicleCaravans;
 import com.chroniclecaravans.Guild;
 import com.chroniclecaravans.Region;
 import com.chroniclecaravans.Trading;
+import com.chroniclecaravans.block.DockBlock;
+import com.chroniclecaravans.block.DockBlockEntity;
 import com.chroniclecaravans.block.InnSignBlock;
 import com.chroniclecaravans.block.MilestoneBlock;
+import com.chroniclecaravans.block.TradingPostBlock;
+import com.chroniclecaravans.block.TradingPostBlockEntity;
 import com.chroniclecaravans.entity.CaravanGuard;
 import com.chroniclecaravans.entity.RoadBuilder;
 import com.chroniclecaravans.item.AtlasItem;
+import com.chroniclecaravans.menu.AtlasMenu;
 import com.chroniclecaravans.menu.CaravanMenu;
+import com.chroniclecaravans.menu.DockMenu;
 import com.chroniclecaravans.platform.Compat;
+import com.chroniclecaravans.world.Logistics;
+import com.chroniclecaravans.world.Market;
+import com.chroniclecaravans.world.Parcel;
 import com.chroniclecaravans.world.RoadWorks;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.MerchantOffer;
@@ -68,6 +82,13 @@ public final class SelfTest {
     private static CaravanMaster second;
     private static BlockPos stopB, innPos, roadA, roadB;
     private static boolean atlasOpened;
+    // Market, freight, automation and weather
+    private static BlockPos hamlet, outDock, inDock, hopper, postPos, thirdFire;
+    private static Item postBought;
+    private static CaravanMaster third;
+    // The viewer's tour of the new screens: 0 none, 1 going to the dock, 2 dock open, 3 going to the post, 4 post open
+    private static int menuStep, menuTick, atlasTick;
+    private static BlockPos menuFocus;
 
     private SelfTest() {}
 
@@ -128,12 +149,20 @@ public final class SelfTest {
             if (tick == 700) checkRoad(level);
             if (tick == 800 && master != null) afterTravel(level);
             if (tick == 805 && master != null) trades(level);
+            if (tick == 806 && master != null) market(level);
+            if (tick == 810 && master != null) freight(level);
+            if (tick == 815 && master != null) tradingPost(level);
             if (tick == 820 && master != null) check(master.startAmbush(level) >= 2, "ambush started with several bandits");
             if (tick == 830 && master != null) escort(level);
             if (tick == 840) secondCaravan(level);
             if (tick == 845) dispatchTest(level);
             if (tick == 850) innTest(level);
-            if (tick == 900) clearBandits(level);
+            if (tick == 870 && hopper != null) hopperCheck(level);
+            if (tick == 900) {
+                clearBandits(level);
+                postCheck(level);
+            }
+            if (tick == 940) postPaused(level);
             if (tick == 1000 && master != null) {
                 List<CaravanGuard> guards = master.guards(level);
                 int close = 0;
@@ -143,7 +172,12 @@ public final class SelfTest {
                 check(close == guards.size(), "guards stay with the caravan");
             }
             if (tick == 1080) afterNight(level);
-            if (tick == 1100) {
+            if (tick == 1090) redstoneCall(level);
+            if (tick == 1100) command(level, "weather thunder 100000");
+            if (tick == 1220) stormCaravan(level);
+            if (tick == 1340) stormCheck(level);
+            if (tick == 1460) afterStorm(level);
+            if (tick == 1480) {
                 log("RESULT: " + (failures.isEmpty() ? "OK" : "FAIL " + failures));
                 log("READY");
             }
@@ -377,13 +411,219 @@ public final class SelfTest {
         inv.setItem(0, new ItemStack(Items.EMERALD, 64));
         List<ItemStack> got = new ArrayList<>();
         int uses = buy.getUses();
-        int value = Trading.execute(buy, 0, inv, got::add, 1);
-        check(value > 0 && !got.isEmpty() && got.get(0).is(buy.getResult().getItem()), "buying gives the goods");
+        Trading.Quote q = Trading.quote(buy, 0, 1F);
+        int done = Trading.execute(buy, q, inv, got::add, 1);
+        check(done == 1 && !got.isEmpty() && got.get(0).is(buy.getResult().getItem()), "buying gives the goods");
         check(inv.getItem(0).getCount() == 64 - buy.getBaseCostA().getCount(), "buying takes the price");
         check(buy.getUses() == uses + 1, "buying uses the stock");
-        int haggled = Trading.costA(buy, Guild.Skill.HAGGLER.bit() | Guild.Skill.MERCHANT_PRINCE.bit()).getCount();
+        int haggled = Trading.quote(buy, Guild.Skill.HAGGLER.bit() | Guild.Skill.MERCHANT_PRINCE.bit(), 1F).a().getCount();
         check(haggled <= buy.getBaseCostA().getCount(), "skills lower the price");
-        check(Trading.execute(buy, 0, new SimpleContainer(36), got::add, 1) == 0, "no emeralds, no deal");
+        check(Trading.execute(buy, q, new SimpleContainer(36), got::add, 1) == 0, "no emeralds, no deal");
+        // Redstone: a comparator next to the milestone reads 15 while a caravan halts there
+        check(CaravanSpawner.signal(level, stop) == 15, "a comparator reads 15 while a caravan halts");
+    }
+
+    // ---------------------------------------------------------------- market, freight, automation, weather
+
+    /** Supply and demand: deals move the prices, the marks fade with the days, each region has its news. */
+    private static void market(ServerLevel level) {
+        CaravanData data = CaravanData.get(level);
+        long now = level.getGameTime();
+        MerchantOffer request = null, good = null;
+        for (MerchantOffer o : master.stock()) {
+            int k = Region.kindOf(o);
+            if (request == null && k == Region.KIND_SELL) request = o;
+            if (good == null && k == Region.KIND_BUY && !o.getResult().is(Items.ENCHANTED_BOOK)) good = o;
+        }
+        check(request != null && good != null, "the market has a request and a good to price");
+        if (request == null || good == null) return;
+        Region r = master.region();
+        float sell0 = Market.factor(data, r, request, now), buy0 = Market.factor(data, r, good, now);
+        Market.traded(data, request, 6, now);
+        Market.traded(data, good, 6, now);
+        float sell1 = Market.factor(data, r, request, now), buy1 = Market.factor(data, r, good, now);
+        log(String.format("market: request %.2f -> %.2f, good %.2f -> %.2f", sell0, sell1, buy0, buy1));
+        check(sell1 < sell0, "selling a lot lowers what the caravans pay");
+        check(buy1 > buy0, "buying a lot raises the prices");
+        Item wanted = request.getBaseCostA().getItem();
+        double h0 = Market.heat(data, wanted, now), h2 = Market.heat(data, wanted, now + 2 * Market.DAY);
+        check(h0 > 5 && h2 < h0 * 0.3, "the market calms down over the days");
+        check(r.wantedItems().contains(Market.shortage(r, now)), "the shortage of the day is a requested good");
+        check(r.soldItems().contains(Market.surplus(r, now)), "the surplus of the day is a good of the region");
+        Trading.Quote normal = Trading.quote(request, 0, 1F), dear = Trading.quote(request, 0, Market.SHORTAGE);
+        check(dear.result().getCount() >= normal.result().getCount() && dear.percent(Region.KIND_SELL) == 50, "a shortage pays more");
+        data.market().clear();
+        data.setDirty();
+    }
+
+    /** Freight: a dock ships goods, a caravan carries them over the legs of the network, a dock receives them. */
+    private static void freight(ServerLevel level) {
+        CaravanData data = CaravanData.get(level);
+        long far = Long.MAX_VALUE / 4;
+        // Routing over several legs: E is within reach of the spawn milestone, D only of E
+        int reach = CCConfig.LINK_RANGE.get();
+        BlockPos e = stop.offset(reach * 3 / 4, 0, 0), d = stop.offset(reach * 3 / 2, 0, 0);
+        data.addStop(e, null, "SelfTest", "", far);
+        data.addStop(d, null, "SelfTest", "", far);
+        int hops = Logistics.hops(data, stop, d);
+        log("freight route to a far stop: " + hops + " legs, first stop " + Logistics.nextHop(data, stop, d));
+        check(hops == 2 && e.equals(Logistics.nextHop(data, stop, d)), "parcels travel over several legs");
+        check(Logistics.feeBetween(data, stop, d) == Logistics.fee(2) && Logistics.fee(2) > Logistics.fee(1), "the freight fee grows with the legs");
+        data.removeStop(e);
+        data.removeStop(d);
+        // A dock named "Hamlet" next to the spawn milestone sends there; an unnamed dock at the hamlet receives
+        hamlet = stop.offset(-12, 0, -9);
+        level.setBlockAndUpdate(hamlet, ChronicleCaravans.MILESTONE.get().defaultBlockState());
+        CaravanData.Stop h = data.addStop(hamlet, null, "SelfTest", "Hamlet", far);
+        outDock = stop.offset(-2, 0, -3);
+        inDock = hamlet.offset(1, 0, 0);
+        ItemStack named = new ItemStack(ChronicleCaravans.DOCK_ITEM.get());
+        Compat.setName(named, Component.literal("Hamlet"));
+        placeDock(level, outDock, named);
+        placeDock(level, inDock, new ItemStack(ChronicleCaravans.DOCK_ITEM.get()));
+        if (!(level.getBlockEntity(outDock) instanceof DockBlockEntity out) || !(level.getBlockEntity(inDock) instanceof DockBlockEntity in)) {
+            check(false, "loading docks placed");
+            return;
+        }
+        check(out.outgoing() && level.getBlockState(outDock).getValue(DockBlock.OUTGOING), "a dock named after a stop sends");
+        check(!in.outgoing() && !level.getBlockState(inDock).getValue(DockBlock.OUTGOING), "an unnamed dock receives");
+        CaravanData.Stop owner = Logistics.stopOf(level, outDock);
+        check(owner != null && owner.pos.equals(stop), "a dock belongs to the closest milestone");
+        out.setItem(0, new ItemStack(Items.COBBLESTONE, 16));
+        out.setItem(1, new ItemStack(Items.OAK_LOG, 8));
+        out.setItem(2, new ItemStack(Items.EMERALD, 3));
+        int fee = Logistics.feeBetween(data, stop, hamlet);
+        int shipped = Logistics.collectDocks(level, data.stop(stop));
+        List<Parcel> depot = data.depots().get(stop);
+        log("dock shipped=" + shipped + " fee=" + fee + " emeralds left=" + out.emeralds() + " waiting parcels=" + (depot == null ? 0 : depot.size()));
+        check(shipped == 1 && out.goodsCount() == 0, "the dock hands its goods to the guild");
+        check(out.emeralds() == 3 - fee && out.status() == DockBlockEntity.SHIPPED, "the dock pays the freight");
+        check(hamlet.equals(Logistics.pickNext(level, stop)), "waiting parcels choose the caravan's next stop");
+        int loaded = Logistics.load(level, master, stop, hamlet);
+        check(loaded == 1 && master.cargo().size() == 1, "the caravan loads the parcel");
+        int delivered = Logistics.unload(level, master, h);
+        check(delivered == 1 && master.cargo().isEmpty(), "the parcel is delivered at its stop");
+        int cobble = 0, logs = 0;
+        for (int i = 0; i < in.getContainerSize(); i++) {
+            ItemStack s = in.getItem(i);
+            if (s.is(Items.COBBLESTONE)) cobble += s.getCount();
+            if (s.is(Items.OAK_LOG)) logs += s.getCount();
+        }
+        check(cobble == 16 && logs == 8, "the goods land in the receiving dock");
+        // A parcel sent by a player arrives boxed, and the box holds what was sent
+        Logistics.deliver(level, h, Parcel.of(level, List.of(new ItemStack(Items.APPLE, 5)), stop, hamlet, null, "Tester", false));
+        ItemStack box = ItemStack.EMPTY;
+        for (int i = 0; i < in.getContainerSize(); i++) if (Logistics.isParcel(in.getItem(i))) box = in.getItem(i);
+        check(!box.isEmpty(), "a player's parcel arrives as a parcel");
+        CompoundTag tag = box.isEmpty() ? null : Compat.data(box);
+        List<ItemStack> inside = tag == null ? List.of() : Parcel.load(tag).unpack(level);
+        check(inside.size() == 1 && inside.get(0).is(Items.APPLE) && inside.get(0).getCount() == 5, "the parcel holds what was sent");
+        // A hopper under the receiving dock empties it
+        hopper = inDock.below();
+        level.setBlockAndUpdate(hopper, Blocks.HOPPER.defaultBlockState());
+    }
+
+    private static void placeDock(ServerLevel level, BlockPos pos, ItemStack stack) {
+        level.setBlockAndUpdate(pos, ChronicleCaravans.DOCK.get().defaultBlockState());
+        ChronicleCaravans.DOCK.get().setPlacedBy(level, pos, level.getBlockState(pos), null, stack);
+    }
+
+    private static void hopperCheck(ServerLevel level) {
+        int n = 0;
+        if (level.getBlockEntity(hopper) instanceof Container c) for (int i = 0; i < c.getContainerSize(); i++) n += c.getItem(i).getCount();
+        log("hopper under the receiving dock holds " + n + " items");
+        check(n > 0, "a hopper empties the receiving dock");
+    }
+
+    /** A trading post next to the stop trades on its own with the halted caravan. */
+    private static void tradingPost(ServerLevel level) {
+        postPos = stop.offset(3, 0, -3);
+        level.setBlockAndUpdate(postPos, ChronicleCaravans.POST.get().defaultBlockState().setValue(TradingPostBlock.FACING, Direction.SOUTH));
+        if (!(level.getBlockEntity(postPos) instanceof TradingPostBlockEntity post)) {
+            check(false, "trading post placed");
+            return;
+        }
+        MerchantOffer request = null, good = null;
+        for (MerchantOffer o : master.stock()) {
+            int k = Region.kindOf(o);
+            if (o.isOutOfStock() || !Trading.unlocked(o, 0, 0) || !o.getCostB().isEmpty()) continue;
+            if (request == null && k == Region.KIND_SELL) request = o;
+            if (good == null && k == Region.KIND_BUY && o.getBaseCostA().is(Items.EMERALD) && !o.getResult().is(Items.ENCHANTED_BOOK)) good = o;
+        }
+        check(request != null && good != null, "the caravan has a request and a good for the trading post");
+        if (request == null || good == null) return;
+        if (good.getResult().is(request.getBaseCostA().getItem())) return;
+        postBought = good.getResult().getItem();
+        post.setItem(TradingPostBlockEntity.INPUT, request.getBaseCostA().copy());
+        post.setItem(TradingPostBlockEntity.INPUT + 1, new ItemStack(Items.EMERALD, 64));
+        post.setItem(TradingPostBlockEntity.ORDERS, new ItemStack(postBought, 1));
+        log("trading post: sells " + request.getBaseCostA().getCount() + " " + Market.key(request.getBaseCostA().getItem()) + ", orders " + Market.key(postBought));
+    }
+
+    private static void postCheck(ServerLevel level) {
+        if (postBought == null || !(level.getBlockEntity(postPos) instanceof TradingPostBlockEntity post)) return;
+        int emeralds = 0, goods = 0;
+        for (int i = TradingPostBlockEntity.OUTPUT; i < TradingPostBlockEntity.SIZE; i++) {
+            ItemStack s = post.getItem(i);
+            if (s.is(Items.EMERALD)) emeralds += s.getCount();
+            if (s.is(postBought)) goods += s.getCount();
+        }
+        log("trading post: deals=" + post.totalDeals() + " status=" + post.status() + " output " + emeralds + " emeralds, " + goods + " goods, comparator " + post.signal());
+        check(emeralds > 0, "the trading post sells what the caravan asks for");
+        check(goods > 0, "the trading post buys what its orders ask for");
+        check(post.signal() > 0, "a comparator reads the trading post");
+        level.setBlockAndUpdate(postPos.east(), Blocks.REDSTONE_BLOCK.defaultBlockState());
+    }
+
+    private static void postPaused(ServerLevel level) {
+        if (postBought == null || !(level.getBlockEntity(postPos) instanceof TradingPostBlockEntity post)) return;
+        check(post.status() == TradingPostBlockEntity.PAUSED, "a redstone signal pauses the trading post");
+        level.setBlockAndUpdate(postPos.east(), Blocks.AIR.defaultBlockState());
+    }
+
+    /** A redstone pulse on a milestone calls a caravan, paid with an emerald block from the chest beside it. */
+    private static void redstoneCall(ServerLevel level) {
+        CaravanData data = CaravanData.get(level);
+        BlockPos call = stop.offset(10, 0, -8), chest = call.east(), power = call.west();
+        level.setBlockAndUpdate(call, ChronicleCaravans.MILESTONE.get().defaultBlockState());
+        CaravanData.Stop c = data.addStop(call, null, "SelfTest", "Relay", Long.MAX_VALUE / 4);
+        level.setBlockAndUpdate(chest, Blocks.CHEST.defaultBlockState());
+        if (level.getBlockEntity(chest) instanceof Container box) box.setItem(0, new ItemStack(Items.EMERALD_BLOCK, 2));
+        check(CaravanSpawner.signal(level, call) == 0, "no caravan expected: the comparator reads 0");
+        level.setBlockAndUpdate(power, Blocks.REDSTONE_BLOCK.defaultBlockState());
+        boolean powered = level.getBlockState(call).getValue(MilestoneBlock.POWERED);
+        int left = level.getBlockEntity(chest) instanceof Container box ? box.getItem(0).getCount() : -1;
+        log("redstone call: powered=" + powered + " emerald blocks left=" + left + " hired=" + c.hired);
+        check(powered, "the milestone notices a redstone signal");
+        check(left == 1 && c.hired && c.nextVisit <= level.getGameTime(), "a redstone pulse calls a caravan, paid from the chest");
+        level.setBlockAndUpdate(power, Blocks.AIR.defaultBlockState());
+        if (level.getBlockEntity(chest) instanceof Container box) box.clearContent();
+        level.setBlockAndUpdate(chest, Blocks.AIR.defaultBlockState());
+        level.setBlockAndUpdate(call, Blocks.AIR.defaultBlockState());
+        data.removeStopAndRoutes(call);
+    }
+
+    /** A caravan on the road when a thunderstorm breaks makes camp, then goes on when it is over. */
+    private static void stormCaravan(ServerLevel level) {
+        third = CaravanSpawner.spawnCaravanAt(level, stop.offset(44, 0, 6), stop, Region.WOODS);
+        log("storm caravan spawned=" + (third != null) + " thundering=" + level.isThundering());
+    }
+
+    private static void stormCheck(ServerLevel level) {
+        thirdFire = third == null ? null : third.campfire();
+        log("storm: thundering=" + level.isThundering() + " caravan " + (third == null ? "none" : third.state() + " reason=" + third.campReason() + " campfire=" + thirdFire
+                + " speed=" + String.format("%.3f", third.getAttributeValue(Attributes.MOVEMENT_SPEED))));
+        check(third != null && third.isAlive() && third.state() == CaravanMaster.State.CAMPING && third.campReason() == CaravanMaster.CAMP_STORM,
+                "a caravan caught in a thunderstorm makes camp");
+        check(thirdFire != null && level.getBlockState(thirdFire).is(Blocks.CAMPFIRE), "the camp has a campfire");
+        command(level, "weather clear 100000");
+    }
+
+    private static void afterStorm(ServerLevel level) {
+        log("after the storm: " + (third == null ? "none" : third.state() + " thundering=" + level.isThundering()));
+        check(third != null && third.isAlive() && third.state() != CaravanMaster.State.CAMPING, "the caravan breaks camp after the storm");
+        check(thirdFire == null || !level.getBlockState(thirdFire).is(Blocks.CAMPFIRE), "the campfire is put out");
+        if (third != null) third.vanish(level);
     }
 
     private static void escort(ServerLevel level) {
@@ -410,6 +650,9 @@ public final class SelfTest {
         check(sent == second, "a free caravan is sent to the waiting stop");
         check(after == before, "no new caravan appears when one is free");
         check(stopB.equals(second.target()), "the free caravan heads to the stop");
+        int signal = CaravanSpawner.signal(level, stopB);
+        log("comparator at the waiting stop: " + signal);
+        check(signal >= 1 && signal <= 7, "a comparator tells that a caravan is on its way");
     }
 
     /** At night, a travelling caravan goes to the inn. */
@@ -460,19 +703,51 @@ public final class SelfTest {
         }
         if (t == 640 && master != null && master.isAlive()) master.startEscort(level, 3, 6000, true, null);
         if (t == 760 && master != null && master.isAlive()) master.startAmbush(level);
-        if (t == 1740 && (master == null || !master.isAlive())) spawn(level, Region.DUNES);
-        if (t == 1750 && master != null && master.isAlive()) {
+        if (t == 1890 && (master == null || !master.isAlive())) spawn(level, Region.DUNES);
+        if (t == 1900 && master != null && master.isAlive()) {
             log("opening the caravan interface for the viewer");
             master.openFor(viewer);
         }
-        if (t > 1790 && !atlasOpened && !(viewer.containerMenu instanceof CaravanMenu)) {
+        if (t > 1940 && !atlasOpened && !(viewer.containerMenu instanceof CaravanMenu)) {
             atlasOpened = true;
+            atlasTick = t;
             log("opening the atlas for the viewer");
             AtlasItem.open(viewer);
         }
+        // Then the loading dock and the trading post, seen from close by (a container screen closes when its block is far)
+        if (atlasOpened && menuStep == 0 && t > atlasTick + 20 && !(viewer.containerMenu instanceof AtlasMenu) && outDock != null) {
+            menuStep = 1;
+            menuTick = t;
+            menuFocus = outDock;
+        }
+        if (menuStep == 1 && t == menuTick + 12) {
+            menuStep = 2;
+            if (level.getBlockEntity(outDock) instanceof DockBlockEntity dock) {
+                dock.setItem(3, new ItemStack(Items.OAK_LOG, 32));
+                dock.setItem(4, new ItemStack(Items.WHITE_WOOL, 16));
+                dock.setItem(5, new ItemStack(Items.EMERALD, 4));
+                log("opening the loading dock for the viewer");
+                viewer.openMenu(dock);
+            }
+        }
+        if (menuStep == 2 && !(viewer.containerMenu instanceof DockMenu) && postPos != null) {
+            menuStep = 3;
+            menuTick = t;
+            menuFocus = postPos;
+        }
+        if (menuStep == 3 && t == menuTick + 12) {
+            menuStep = 4;
+            if (level.getBlockEntity(postPos) instanceof TradingPostBlockEntity post) {
+                log("opening the trading post for the viewer");
+                viewer.openMenu(post);
+            }
+        }
         if (t % 5 != 0) return;
         double x, y, z, lx, ly, lz;
-        if (t < 60 || master == null || !master.isAlive()) {
+        if (menuStep > 0 && menuFocus != null) {
+            x = menuFocus.getX() + 3.0; y = menuFocus.getY() + 2.0; z = menuFocus.getZ() + 4.0;
+            lx = menuFocus.getX() + 0.5; ly = menuFocus.getY() + 0.5; lz = menuFocus.getZ() + 0.5;
+        } else if (t < 60 || master == null || !master.isAlive()) {
             x = stop.getX() + 8; y = stop.getY() + 4; z = stop.getZ() + 9;
             lx = stop.getX() + 14; ly = stop.getY() + 1; lz = stop.getZ();
         } else if (master.state() == CaravanMaster.State.TRAVELING) {

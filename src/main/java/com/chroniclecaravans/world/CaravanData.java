@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -114,6 +116,8 @@ public class CaravanData extends SavedData {
         public BlockPos pos = BlockPos.ZERO;
         public Region region = Region.STEPPE;
         public BlockPos target;
+        /** It carries parcels: never moved elsewhere while asleep. */
+        public boolean cargo;
     }
 
     private final Map<BlockPos, Stop> stops = new LinkedHashMap<>();
@@ -121,6 +125,12 @@ public class CaravanData extends SavedData {
     private final Map<String, Route> routes = new LinkedHashMap<>();
     private final Map<UUID, Profile> profiles = new HashMap<>();
     private final Map<UUID, Caravan> caravans = new LinkedHashMap<>();
+    /** Supply and demand: per item id, {heat, game time of the last change}. */
+    private final Map<String, double[]> market = new HashMap<>();
+    /** Parcels waiting at a stop for a caravan going their way. */
+    private final Map<BlockPos, List<Parcel>> depots = new LinkedHashMap<>();
+    /** Loading docks (checked against the world when used). */
+    private final Set<BlockPos> docks = new LinkedHashSet<>();
     /** Game time before which no new caravan appears. */
     public long nextSpawn;
 
@@ -281,12 +291,44 @@ public class CaravanData extends SavedData {
 
     /** Called by every caravan now and then: it is still on the roads. */
     public void seen(UUID id, long now, BlockPos pos, Region region, BlockPos target) {
+        seen(id, now, pos, region, target, false);
+    }
+
+    public void seen(UUID id, long now, BlockPos pos, Region region, BlockPos target, boolean cargo) {
         Caravan c = caravans.computeIfAbsent(id, k -> new Caravan());
         c.lastSeen = now;
         c.pos = pos.immutable();
         c.region = region;
         c.target = target;
+        c.cargo = cargo;
         setDirty();
+    }
+
+    // ---------------------------------------------------------------- market, parcels, docks
+
+    public Map<String, double[]> market() {
+        return market;
+    }
+
+    /** The parcels waiting at a stop (a live list: changes must be followed by {@link #setDirty()}). */
+    public List<Parcel> depot(BlockPos stop) {
+        return depots.computeIfAbsent(stop.immutable(), k -> new ArrayList<>());
+    }
+
+    public Map<BlockPos, List<Parcel>> depots() {
+        return depots;
+    }
+
+    public Set<BlockPos> docks() {
+        return docks;
+    }
+
+    public void addDock(BlockPos pos) {
+        if (docks.add(pos.immutable())) setDirty();
+    }
+
+    public void removeDock(BlockPos pos) {
+        if (docks.remove(pos)) setDirty();
     }
 
     public boolean knows(UUID id) {
@@ -330,6 +372,22 @@ public class CaravanData extends SavedData {
         p.skills |= skill.bit();
         setDirty();
         return true;
+    }
+
+    /** Same, for a player who may be offline (a trading post trades for its owner). */
+    public void traded(MinecraftServer server, UUID player, int emeralds) {
+        if (player == null || emeralds <= 0) return;
+        ServerPlayer online = server.getPlayerList().getPlayer(player);
+        if (online != null) {
+            traded(online, emeralds);
+            return;
+        }
+        Profile p = profile(player);
+        p.traded += emeralds;
+        int points = p.traded / 10;
+        p.traded %= 10;
+        if (points > 0 && CCConfig.REPUTATION_ENABLED.get()) p.xp += points;
+        setDirty();
     }
 
     /** Emeralds traded with a caravan: one experience point every ten. */
@@ -418,8 +476,22 @@ public class CaravanData extends SavedData {
             c.pos = BlockPos.of(Nbt.getLong(t, "Pos"));
             c.region = Region.byName(Nbt.getString(t, "Region"));
             if (t.contains("Target")) c.target = BlockPos.of(Nbt.getLong(t, "Target"));
+            c.cargo = Nbt.getBoolean(t, "Cargo");
             d.caravans.put(Nbt.getUUID(t, "Id"), c);
         }
+        list = Nbt.getList(tag, "Market");
+        for (int i = 0; i < list.size(); i++) {
+            CompoundTag t = Nbt.at(list, i);
+            d.market.put(Nbt.getString(t, "K"), new double[] {Nbt.getDouble(t, "H"), Nbt.getLong(t, "T")});
+        }
+        list = Nbt.getList(tag, "Depots");
+        for (int i = 0; i < list.size(); i++) {
+            CompoundTag t = Nbt.at(list, i);
+            List<Parcel> parcels = new ArrayList<>();
+            Parcel.loadAll(Nbt.getList(t, "Parcels"), parcels);
+            if (!parcels.isEmpty()) d.depots.put(BlockPos.of(Nbt.getLong(t, "Stop")), parcels);
+        }
+        for (long l : Nbt.getLongArray(tag, "Docks")) d.docks.add(BlockPos.of(l));
         CompoundTag prof = Nbt.getCompound(tag, "Guild");
         for (String k : Nbt.keys(prof)) {
             try {
@@ -509,9 +581,30 @@ public class CaravanData extends SavedData {
             t.putLong("Pos", c.pos.asLong());
             t.putString("Region", c.region.name());
             if (c.target != null) t.putLong("Target", c.target.asLong());
+            if (c.cargo) t.putBoolean("Cargo", true);
             list.add(t);
         }
         tag.put("Caravans", list);
+        list = new ListTag();
+        for (Map.Entry<String, double[]> e : market.entrySet()) {
+            if (e.getValue()[0] < 0.01) continue;
+            CompoundTag t = new CompoundTag();
+            t.putString("K", e.getKey());
+            t.putDouble("H", e.getValue()[0]);
+            t.putLong("T", (long) e.getValue()[1]);
+            list.add(t);
+        }
+        tag.put("Market", list);
+        list = new ListTag();
+        for (Map.Entry<BlockPos, List<Parcel>> e : depots.entrySet()) {
+            if (e.getValue().isEmpty()) continue;
+            CompoundTag t = new CompoundTag();
+            t.putLong("Stop", e.getKey().asLong());
+            t.put("Parcels", Parcel.saveAll(e.getValue()));
+            list.add(t);
+        }
+        tag.put("Depots", list);
+        tag.putLongArray("Docks", docks.stream().mapToLong(BlockPos::asLong).toArray());
         CompoundTag prof = new CompoundTag();
         profiles.forEach((k, p) -> {
             CompoundTag t = new CompoundTag();

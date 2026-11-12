@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Dessine les textures des nouveautés 1.1 : enseigne d'auberge, atlas, peaux des gardes et des bâtisseurs,
-et écrit les modèles de l'enseigne.  Usage : python3 tools/assets.py"""
+"""Dessine les textures des nouveautés 1.1 et 1.2 : enseigne d'auberge, atlas, peaux des gardes et des bâtisseurs,
+quai de chargement, comptoir de commerce, colis ; écrit leurs modèles et états de blocs.
+Usage : python3 tools/assets.py [--preview]  (--preview : planche agrandie dans /tmp/assets_preview.png)"""
 import json
 import os
 import random
@@ -192,4 +193,268 @@ jsave({'variants': {
     'facing=south': {'model': 'chroniclecaravans:block/inn_sign', 'y': 180},
     'facing=west': {'model': 'chroniclecaravans:block/inn_sign', 'y': 270},
 }}, 'blockstates', 'inn_sign.json')
+
+# ------------------------------------------------------------------ 1.2: loading dock, trading post, parcel
+rnd = random.Random(12)
+DARK = (54, 35, 18)
+FRAME = (96, 64, 34)
+PLANK = (152, 110, 64)
+IRON = (176, 176, 182)
+IRON_D = (104, 104, 112)
+IRON_L = (226, 226, 232)
+
+
+def px(img, x, y, c, k=1.0):
+    img.putpixel((x, y), shade(c, k))
+
+
+def planks(img, x0, y0, x1, y1, base, seams, vertical=False, grain=0.10):
+    """Planks with darker seams (rows, or columns when vertical) and a little grain."""
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            pos = x if vertical else y
+            k = 1 - grain / 2 + grain * rnd.random()
+            if pos in seams:
+                k *= 0.72
+            elif (pos - 1) in seams:
+                k *= 1.08
+            px(img, x, y, base, k)
+
+
+def outline(img, c=DARK):
+    for i in range(16):
+        for (x, y) in ((i, 0), (i, 15), (0, i), (15, i)):
+            px(img, x, y, c)
+
+
+def crate(seams=(5, 10)):
+    img = Image.new('RGBA', (16, 16))
+    planks(img, 1, 1, 14, 14, PLANK, seams)
+    outline(img)
+    for i in range(1, 15):
+        for (x, y) in ((i, 1), (i, 14), (1, i), (14, i)):
+            px(img, x, y, FRAME, 0.95 + 0.1 * rnd.random())
+    # Iron corner brackets with a rivet
+    for (cx, cy, dx, dy) in ((1, 1, 1, 1), (14, 1, -1, 1), (1, 14, 1, -1), (14, 14, -1, -1)):
+        for (x, y) in ((cx, cy), (cx + dx, cy), (cx + 2 * dx, cy), (cx, cy + dy), (cx, cy + 2 * dy), (cx + dx, cy + dy)):
+            px(img, x, y, IRON, 0.92 + 0.12 * rnd.random())
+        px(img, cx + dx, cy + dy, IRON_L)
+        px(img, cx + 2 * dx, cy + dy, IRON_D)
+        px(img, cx + dx, cy + 2 * dy, IRON_D)
+    return img
+
+
+ARROW_UP = [(3, 7, 8), (4, 6, 9), (5, 5, 10), (6, 4, 11), (7, 6, 9), (8, 6, 9), (9, 6, 9), (10, 6, 9), (11, 6, 9)]
+
+
+def paint_arrow(img, color, down):
+    pts = set()
+    for (row, a, b) in ARROW_UP:
+        r = 15 - row if down else row
+        for x in range(a, b + 1):
+            pts.add((x, r))
+    for (x, y) in pts:
+        # Stencilled paint: darker on the seams, a little worn
+        base = img.getpixel((x, y))
+        seam = sum(base[:3]) < sum(shade(PLANK, 0.8)[:3])
+        k = (0.8 if seam else 1.0) * (0.92 + 0.1 * rnd.random())
+        px(img, x, y, color, k)
+    # Darker paint on the right and lower edges of the arrow, for some relief
+    for (x, y) in pts:
+        if (x + 1, y) not in pts or (x, y + 1) not in pts:
+            img.putpixel((x, y), shade(img.getpixel((x, y)), 0.82))
+
+
+GREEN = (92, 182, 84)
+BLUE = (84, 146, 214)
+side_out = crate()
+paint_arrow(side_out, GREEN, False)
+save(side_out, 'textures', 'block', 'loading_dock_side_out.png')
+side_in = crate()
+paint_arrow(side_in, BLUE, True)
+save(side_in, 'textures', 'block', 'loading_dock_side_in.png')
+
+# Top: a hatch of vertical planks held by two iron bands, with a ring
+top = Image.new('RGBA', (16, 16))
+planks(top, 1, 1, 14, 14, shade(PLANK, 1.06), (5, 10), vertical=True)
+outline(top)
+for i in range(1, 15):
+    for (x, y) in ((i, 1), (i, 14), (1, i), (14, i)):
+        px(top, x, y, FRAME, 0.95 + 0.1 * rnd.random())
+for y in (4, 11):
+    for x in range(2, 14):
+        px(top, x, y, IRON, 0.94 + 0.1 * rnd.random())
+        px(top, x, y + 1, IRON_D, 0.95 + 0.1 * rnd.random())
+    px(top, 3, y, IRON_L)
+    px(top, 12, y, IRON_L)
+for (x, y) in ((7, 6), (8, 6), (6, 7), (9, 7), (6, 8), (9, 8), (7, 9), (8, 9)):
+    px(top, x, y, IRON_L if y < 8 else IRON)
+save(top, 'textures', 'block', 'loading_dock_top.png')
+
+bottom = Image.new('RGBA', (16, 16))
+planks(bottom, 1, 1, 14, 14, shade(PLANK, 0.9), (5, 10))
+outline(bottom)
+save(bottom, 'textures', 'block', 'loading_dock_bottom.png')
+
+for name, side in (('loading_dock_in', 'loading_dock_side_in'), ('loading_dock_out', 'loading_dock_side_out')):
+    jsave({'parent': 'minecraft:block/cube_bottom_top', 'textures': {
+        'side': 'chroniclecaravans:block/' + side,
+        'top': 'chroniclecaravans:block/loading_dock_top',
+        'bottom': 'chroniclecaravans:block/loading_dock_bottom'}}, 'models', 'block', name + '.json')
+jsave({'variants': {
+    'outgoing=false': {'model': 'chroniclecaravans:block/loading_dock_in'},
+    'outgoing=true': {'model': 'chroniclecaravans:block/loading_dock_out'},
+}}, 'blockstates', 'loading_dock.json')
+jsave({'parent': 'chroniclecaravans:block/loading_dock_out'}, 'models', 'item', 'loading_dock.json')
+
+# ------------------------------------------------------------------ trading post
+CLOTH = (52, 128, 70)
+CREAM = (236, 222, 184)
+GOLD = (226, 182, 64)
+EMERALD = (64, 214, 118)
+WOOD = (122, 84, 48)
+
+# Front of the counter (the model shows rows 7-15, columns 1-14): planks, a green cloth with an emerald
+front = Image.new('RGBA', (16, 16))
+planks(front, 0, 0, 15, 15, WOOD, (3, 7, 11), vertical=True)
+for x in range(1, 15):
+    px(front, x, 7, DARK)
+    px(front, x, 15, DARK)
+for y in range(7, 16):
+    px(front, 1, y, DARK)
+    px(front, 14, y, DARK)
+for y in range(8, 13):
+    for x in range(2, 14):
+        px(front, x, y, CLOTH, 0.9 + 0.12 * rnd.random() - (0.1 if y == 8 else 0))
+for x in range(2, 14):
+    if x % 2 == 0:
+        px(front, x, 13, CLOTH, 0.8)
+    px(front, x, 12, GOLD, 0.9 + 0.1 * rnd.random())
+for (x, y, k) in ((7, 9, 1.25), (8, 9, 1.0), (6, 10, 1.0), (7, 10, 1.1), (8, 10, 0.95), (9, 10, 0.8), (7, 11, 0.85), (8, 11, 0.7)):
+    px(front, x, y, EMERALD, k)
+save(front, 'textures', 'block', 'trading_post_front.png')
+
+side = Image.new('RGBA', (16, 16))
+planks(side, 0, 0, 15, 15, WOOD, (3, 7, 11), vertical=True)
+for x in range(1, 15):
+    px(side, x, 7, DARK)
+    px(side, x, 15, DARK)
+for y in range(7, 16):
+    px(side, 1, y, DARK)
+    px(side, 14, y, DARK)
+for i in range(11):
+    # A diagonal brace
+    x, y = 2 + i * 12 // 10, 14 - i * 6 // 10
+    px(side, min(13, x), max(8, y), FRAME, 1.1)
+save(side, 'textures', 'block', 'trading_post_side.png')
+
+# Counter top: light planks, an open ledger, a stack of emeralds and a few coins
+ctop = Image.new('RGBA', (16, 16))
+planks(ctop, 0, 0, 15, 15, (176, 134, 82), (4, 9, 14))
+for x in range(16):
+    px(ctop, x, 0, FRAME)
+for y in range(3, 10):
+    for x in range(2, 9):
+        edge = y in (3, 9) or x in (2, 8)
+        px(ctop, x, y, (120, 52, 36) if edge else CREAM, 1.0 if edge else 0.95 + 0.06 * rnd.random())
+for y in range(4, 9):
+    px(ctop, 5, y, (170, 150, 120))
+for (x, y) in ((3, 5), (4, 5), (6, 5), (7, 5), (3, 7), (4, 7), (6, 7)):
+    px(ctop, x, y, (110, 100, 90))
+for (x, y, k) in ((11, 4, 1.2), (12, 4, 1.0), (10, 5, 1.0), (11, 5, 1.1), (12, 5, 0.9), (13, 5, 0.75), (11, 6, 0.8), (12, 6, 0.65)):
+    px(ctop, x, y, EMERALD, k)
+for (x, y, k) in ((10, 8, 1.15), (11, 8, 0.9), (12, 9, 1.0), (13, 9, 0.8)):
+    px(ctop, x, y, GOLD, k)
+save(ctop, 'textures', 'block', 'trading_post_top.png')
+
+# Board at the back: a striped awning cloth (the model shows rows 0-4)
+board = Image.new('RGBA', (16, 16))
+for y in range(16):
+    for x in range(16):
+        c = CLOTH if (x // 2) % 2 == 0 else CREAM
+        k = 0.92 + 0.1 * rnd.random()
+        if y % 5 == 0:
+            k *= 0.75
+        if y % 5 == 4:
+            k *= 0.88 if x % 2 == 0 else 1.05
+        px(board, x, y, c, k)
+save(board, 'textures', 'block', 'trading_post_board.png')
+
+
+def box_faces(**tex):
+    return {f: ({'texture': t} if isinstance(t, str) else t) for f, t in tex.items()}
+
+
+post = {
+    'parent': 'minecraft:block/block',
+    'textures': {
+        'particle': 'minecraft:block/spruce_planks',
+        'planks': 'minecraft:block/spruce_planks',
+        'front': 'chroniclecaravans:block/trading_post_front',
+        'side': 'chroniclecaravans:block/trading_post_side',
+        'top': 'chroniclecaravans:block/trading_post_top',
+        'board': 'chroniclecaravans:block/trading_post_board',
+        'post': 'minecraft:block/stripped_spruce_log',
+    },
+    'elements': [
+        {'from': [1, 0, 1], 'to': [15, 9, 15], 'faces': box_faces(north='#front', south='#side', east='#side', west='#side', down='#planks')},
+        {'from': [0, 9, 0], 'to': [16, 11, 16], 'faces': box_faces(north='#planks', south='#planks', east='#planks', west='#planks', up='#top', down='#planks')},
+        {'from': [0, 11, 13], 'to': [1.5, 16, 16], 'faces': box_faces(north='#post', south='#post', east='#post', west='#post', up='#post')},
+        {'from': [14.5, 11, 13], 'to': [16, 16, 16], 'faces': box_faces(north='#post', south='#post', east='#post', west='#post', up='#post')},
+        {'from': [1.5, 11.5, 14], 'to': [14.5, 16, 15.5], 'faces': box_faces(
+            north={'texture': '#board', 'uv': [0, 0, 13, 4.5]}, south='#planks', up='#planks', down='#planks')},
+    ],
+}
+jsave(post, 'models', 'block', 'trading_post.json')
+jsave({'parent': 'chroniclecaravans:block/trading_post'}, 'models', 'item', 'trading_post.json')
+jsave({'variants': {
+    'facing=north': {'model': 'chroniclecaravans:block/trading_post'},
+    'facing=east': {'model': 'chroniclecaravans:block/trading_post', 'y': 90},
+    'facing=south': {'model': 'chroniclecaravans:block/trading_post', 'y': 180},
+    'facing=west': {'model': 'chroniclecaravans:block/trading_post', 'y': 270},
+}}, 'blockstates', 'trading_post.json')
+
+# ------------------------------------------------------------------ parcel (16x16 item): kraft paper, string, wax seal
+parcel = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+KRAFT = (184, 140, 88)
+for y in range(5, 14):
+    for x in range(2, 13):
+        px(parcel, x, y, KRAFT, 0.92 + 0.1 * rnd.random())
+for y in range(3, 13):
+    for x in range(13, 15):
+        if y - 3 <= (x - 13) * 2 + 1 or x == 13:
+            px(parcel, x, y, KRAFT, 0.72 + 0.06 * rnd.random())
+for (y, a, b) in ((3, 4, 14), (4, 3, 13)):
+    for x in range(a, b + 1):
+        px(parcel, x, y, KRAFT, 1.15 + 0.05 * rnd.random())
+for x in range(2, 15):
+    for y in range(2, 15):
+        c = parcel.getpixel((x, y))
+        if c[3] == 0:
+            continue
+        n = [parcel.getpixel((x + dx, y + dy))[3] if 0 <= x + dx < 16 and 0 <= y + dy < 16 else 0 for (dx, dy) in ((1, 0), (-1, 0), (0, 1), (0, -1))]
+        if 0 in n:
+            parcel.putpixel((x, y), shade(c, 0.62))
+STRING = (240, 230, 196)
+for y in range(4, 14):
+    px(parcel, 7, y, STRING, 0.95 if y > 4 else 1.05)
+for x in range(2, 13):
+    px(parcel, x, 9, STRING, 0.95)
+for (x, y) in ((13, 7), (14, 6)):
+    px(parcel, x, y, STRING, 0.8)
+for (x, y, k) in ((7, 8, 1.15), (6, 9, 1.0), (7, 9, 0.95), (8, 9, 0.8), (7, 10, 0.7), (6, 8, 1.0), (8, 10, 0.65), (6, 10, 0.8), (8, 8, 0.9)):
+    px(parcel, x, y, (172, 36, 32), k)
+save(parcel, 'textures', 'item', 'caravan_parcel.png')
+jsave({'parent': 'minecraft:item/generated', 'textures': {'layer0': 'chroniclecaravans:item/caravan_parcel'}}, 'models', 'item', 'caravan_parcel.json')
+
+import sys
+if '--preview' in sys.argv:
+    names = [('block', 'loading_dock_side_out'), ('block', 'loading_dock_side_in'), ('block', 'loading_dock_top'), ('block', 'loading_dock_bottom'),
+             ('block', 'trading_post_front'), ('block', 'trading_post_side'), ('block', 'trading_post_top'), ('block', 'trading_post_board'),
+             ('item', 'caravan_parcel'), ('block', 'inn_sign'), ('item', 'caravan_atlas')]
+    sheet = Image.new('RGBA', (len(names) * 136, 136), (40, 40, 48, 255))
+    for i, (kind, n) in enumerate(names):
+        t = Image.open(os.path.join(ASSETS, 'textures', kind, n + '.png')).convert('RGBA').resize((128, 128), Image.NEAREST)
+        sheet.alpha_composite(t, (i * 136 + 4, 4))
+    sheet.save('/tmp/assets_preview.png')
 print('ok')

@@ -17,6 +17,8 @@ import com.chroniclecaravans.block.InnSignBlock;
 import com.chroniclecaravans.menu.CaravanMenu;
 import com.chroniclecaravans.world.CaravanData;
 import com.chroniclecaravans.world.CaravanSpawner;
+import com.chroniclecaravans.world.Logistics;
+import com.chroniclecaravans.world.Parcel;
 import com.chroniclecaravans.platform.Compat;
 import com.chroniclecaravans.platform.Nbt;
 import net.minecraft.ChatFormatting;
@@ -64,7 +66,10 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * trade, spends the night at an inn when there is one, and leads its train: draft llama, wagon, pack llamas.
  */
 public class CaravanMaster extends WanderingTrader {
-    public enum State { TRAVELING, HALTED, LODGING, LEAVING }
+    public enum State { TRAVELING, HALTED, LODGING, LEAVING, CAMPING }
+
+    /** Why a caravan camps: a thunderstorm, or a night with no inn within reach. */
+    public static final int CAMP_STORM = 1, CAMP_NIGHT = 2;
 
     /** Tag (persistent data) on the bandits of an ambush: the UUID of the caravan they attack. */
     public static final String AMBUSH_TAG = "ChronicleCaravansAmbush";
@@ -102,6 +107,11 @@ public class CaravanMaster extends WanderingTrader {
     private final List<UUID> raiders = new ArrayList<>();
     private final Set<UUID> defenders = new HashSet<>();
     private int scoldCooldown;
+
+    /** Parcels carried to another stop. */
+    private final List<Parcel> cargo = new ArrayList<>();
+    private int campReason;
+    private BlockPos campfire;
 
     private final List<UUID> guards = new ArrayList<>();
     private int escortTicks;
@@ -275,7 +285,7 @@ public class CaravanMaster extends WanderingTrader {
                 return;
             }
             registered = true;
-            data.seen(getUUID(), level.getGameTime(), blockPosition(), region, target);
+            data.seen(getUUID(), level.getGameTime(), blockPosition(), region, target, !cargo.isEmpty());
         }
         lifeTicks++;
         if (scoldCooldown > 0) scoldCooldown--;
@@ -297,7 +307,7 @@ public class CaravanMaster extends WanderingTrader {
             if (!serving() && !ambushActive && --haltTicks <= 0) depart(level);
         } else if (state == State.LEAVING) {
             if (++leaveTicks > 1800) vanish(level, true);
-        } else if (state == State.TRAVELING && lifeTicks > LIFETIME && !toInn) {
+        } else if (state == State.TRAVELING && lifeTicks > LIFETIME && !toInn && cargo.isEmpty()) {
             startLeaving(level);
         }
 
@@ -307,8 +317,8 @@ public class CaravanMaster extends WanderingTrader {
 
     /** A summoned caravan has no destination yet, and a milestone can be broken on the way. */
     private void checkTarget(ServerLevel level) {
-        if (state == State.LEAVING || state == State.LODGING || toInn) {
-            if (toInn && CaravanData.get(level).inn(target) == null) leaveInn(level);
+        if (state == State.LEAVING || state == State.LODGING || state == State.CAMPING || toInn) {
+            if (toInn && state != State.CAMPING && CaravanData.get(level).inn(target) == null) leaveInn(level);
             return;
         }
         CaravanData data = CaravanData.get(level);
@@ -328,12 +338,21 @@ public class CaravanMaster extends WanderingTrader {
     private void updateRoadSpeed(ServerLevel level) {
         // A mob's real speed grows with the square of the attribute, hence the square root
         boolean onRoad = CCConfig.ROADS_ENABLED.get() && level.getBlockState(getOnPos()).is(ChronicleCaravans.ROADS);
-        Compat.speedBonus(this, onRoad ? Math.sqrt(1.0 + CCConfig.ROAD_SPEED_BONUS.get()) - 1.0 : 0);
+        // Rain makes the ground heavy: a quarter slower
+        boolean wet = CCConfig.WEATHER.get() && level.isRainingAt(blockPosition().above());
+        double factor = (onRoad ? 1.0 + CCConfig.ROAD_SPEED_BONUS.get() : 1.0) * (wet ? 0.75 : 1.0);
+        Compat.speedBonus(this, Math.sqrt(factor) - 1.0);
     }
 
     /** Sent to a stop by the guilds (a stop waits for a caravan, or someone hired one). */
     public void redirect(ServerLevel level, BlockPos stop) {
         if (state == State.LODGING) return;
+        if (state == State.CAMPING) {
+            // Breaks camp when the weather (or the night) allows, then goes there
+            if (toInn) resumeTarget = stop;
+            else target = stop;
+            return;
+        }
         if (toInn) {
             resumeTarget = stop;
             return;
@@ -348,18 +367,36 @@ public class CaravanMaster extends WanderingTrader {
 
     /** Free for another job: on the road between two stops, about to leave a stop, or leaving the area. */
     public boolean available() {
-        return !toInn && !ambushActive && (state == State.TRAVELING || state == State.LEAVING || (state == State.HALTED && haltTicks < 600 && !serving()));
+        return !toInn && !ambushActive && cargo.isEmpty() && (state == State.TRAVELING || state == State.LEAVING || (state == State.HALTED && haltTicks < 600 && !serving()));
     }
 
     // ------------------------------------------------------------------ night and inns
 
+    /** Not moving: halted at a stop, at an inn, or camping (a trading post nearby can trade). */
+    public boolean stationary() {
+        return state == State.HALTED || state == State.LODGING || state == State.CAMPING;
+    }
+
+    public int campReason() {
+        return state == State.CAMPING ? campReason : 0;
+    }
+
     private void checkNight(ServerLevel level) {
         boolean night = Compat.isNight(level);
+        boolean storm = CCConfig.WEATHER.get() && level.isThundering();
+        if (state == State.CAMPING) {
+            if (!storm && !(campReason == CAMP_NIGHT && night)) breakCamp(level);
+            return;
+        }
         if (!night) {
             lodgedTonight = false;
             if (state == State.LODGING) leaveInn(level);
+        }
+        if (state == State.TRAVELING && storm && !ambushActive) {
+            startCamp(level, CAMP_STORM);
             return;
         }
+        if (!night) return;
         if (toInn || lodgedTonight || state == State.LEAVING || state == State.LODGING || ambushActive) return;
         if (state == State.HALTED && haltTicks > 200) return;
         CaravanData.Inn inn = null;
@@ -371,7 +408,11 @@ public class CaravanMaster extends WanderingTrader {
                 inn = i;
             }
         }
-        if (inn == null) return;
+        if (inn == null) {
+            // No inn within reach: the caravan makes camp for the night
+            if (state == State.TRAVELING && CCConfig.NIGHT_CAMPS.get()) startCamp(level, CAMP_NIGHT);
+            return;
+        }
         resumeTarget = state == State.HALTED ? null : target;
         target = inn.pos;
         toInn = true;
@@ -410,6 +451,67 @@ public class CaravanMaster extends WanderingTrader {
             target = next == null ? null : next.pos;
             if (target == null) startLeaving(level);
         }
+    }
+
+    // ------------------------------------------------------------------ camps
+
+    private void startCamp(ServerLevel level, int reason) {
+        state = State.CAMPING;
+        campReason = reason;
+        getNavigation().stop();
+        campfire = placeCampfire(level);
+        announce(level, Component.translatable(reason == CAMP_STORM ? "msg.chroniclecaravans.camp_storm" : "msg.chroniclecaravans.camp_night",
+                region.caravanName().withStyle(region.color)), null);
+    }
+
+    /** A campfire beside the road (on solid ground, never on top of anything). */
+    private BlockPos placeCampfire(ServerLevel level) {
+        if (!CCConfig.CAMPFIRES.get()) return null;
+        float yaw = getYRot() * Mth.DEG_TO_RAD;
+        double sx = Mth.cos(yaw), sz = Mth.sin(yaw);
+        for (int side : new int[] {1, -1}) {
+            for (double d = 2.5; d <= 4.5; d += 1.0) {
+                BlockPos p = BlockPos.containing(getX() + sx * d * side, getY() + 0.5, getZ() + sz * d * side);
+                for (int dy = 0; dy >= -1; dy--) {
+                    BlockPos q = p.above(dy);
+                    BlockPos below = q.below();
+                    if (level.getBlockState(q).isAir() && level.getFluidState(q).isEmpty()
+                            && level.getBlockState(below).isFaceSturdy(level, below, Direction.UP)) {
+                        level.setBlock(q, net.minecraft.world.level.block.Blocks.CAMPFIRE.defaultBlockState(), 3);
+                        return q;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private void removeCampfire(ServerLevel level) {
+        if (campfire != null && level.isLoaded(campfire) && level.getBlockState(campfire).is(net.minecraft.world.level.block.Blocks.CAMPFIRE)) {
+            level.removeBlock(campfire, false);
+        }
+        campfire = null;
+    }
+
+    private void breakCamp(ServerLevel level) {
+        removeCampfire(level);
+        campReason = 0;
+        state = State.TRAVELING;
+    }
+
+    public BlockPos campfire() {
+        return campfire;
+    }
+
+    // ------------------------------------------------------------------ cargo
+
+    public List<Parcel> cargo() {
+        return cargo;
+    }
+
+    /** Parcels the caravan can carry: the wagon holds six, every llama two more. */
+    public int cargoCapacity() {
+        return 6 + 2 * llamas.size();
     }
 
     // ------------------------------------------------------------------ escort
@@ -670,6 +772,11 @@ public class CaravanMaster extends WanderingTrader {
         level.playSound(null, target, SoundEvents.BELL_BLOCK, SoundSource.BLOCKS, 2.0F, 1.0F);
         restock(true);
         if (stop == null) return;
+        // Freight: parcels for here are delivered, the others wait for their next leg; the docks hand over theirs
+        if (CCConfig.FREIGHT.get()) {
+            Logistics.unload(level, this, stop);
+            Logistics.collectDocks(level, stop);
+        }
         long now = level.getGameTime();
         long interval = CCConfig.VISIT_INTERVAL.get() * 20L;
         stop.nextVisit = now + (long) (interval * (0.75 + random.nextDouble() * 0.5));
@@ -708,6 +815,8 @@ public class CaravanMaster extends WanderingTrader {
                 if (s.village) score -= 4;
                 if (taken) score += 25;
                 if (level.getNearestPlayer(s.pos.getX(), s.pos.getY(), s.pos.getZ(), 96, false) != null) score -= 5;
+                List<Parcel> waiting = data.depots().get(s.pos);
+                if (waiting != null && !waiting.isEmpty()) score -= 6;
                 score += random.nextDouble() * 3;
                 if (score < bestScore) {
                     bestScore = score;
@@ -719,11 +828,17 @@ public class CaravanMaster extends WanderingTrader {
     }
 
     private void depart(ServerLevel level) {
-        CaravanData.Stop next = chooseNext(level);
-        if (next == null || lifeTicks > LIFETIME) {
+        CaravanData data = CaravanData.get(level);
+        BlockPos here = target;
+        // Parcels waiting here decide the way, if any can travel
+        BlockPos freight = here == null || !CCConfig.FREIGHT.get() ? null : Logistics.pickNext(level, here);
+        CaravanData.Stop next = freight != null ? data.stop(freight) : null;
+        if (next == null) next = chooseNext(level);
+        if (next == null || (lifeTicks > LIFETIME && cargo.isEmpty() && freight == null)) {
             startLeaving(level);
             return;
         }
+        if (here != null && CCConfig.FREIGHT.get()) Logistics.load(level, this, here, next.pos);
         target = next.pos;
         state = State.TRAVELING;
         announce(level, Component.translatable("msg.chroniclecaravans.departs", region.caravanName().withStyle(region.color), next.displayName()), null);
@@ -761,6 +876,8 @@ public class CaravanMaster extends WanderingTrader {
             wagon.discard();
         }
         dismissGuards(level);
+        removeCampfire(level);
+        Logistics.store(level, blockPosition(), cargo);
         if (effects) {
             level.sendParticles(ParticleTypes.POOF, getX(), getY() + 1, getZ(), 16, 0.3, 0.6, 0.3, 0.02);
             level.playSound(null, blockPosition(), SoundEvents.WANDERING_TRADER_DISAPPEARED, SoundSource.NEUTRAL, 1.0F, 1.0F);
@@ -1011,6 +1128,9 @@ public class CaravanMaster extends WanderingTrader {
         super.die(source);
         if (level() instanceof ServerLevel level) {
             breakTrain(level);
+            removeCampfire(level);
+            // The cargo falls on the road
+            Logistics.spill(level, blockPosition(), cargo);
             CaravanData.get(level).forget(getUUID());
             announce(level, Component.translatable("msg.chroniclecaravans.lost", region.caravanName().withStyle(region.color)).withStyle(ChatFormatting.DARK_RED), null);
             if (source.getEntity() instanceof ServerPlayer p && !p.isCreative()) {
@@ -1071,6 +1191,9 @@ public class CaravanMaster extends WanderingTrader {
         Nbt.putUUIDs(tag, "Guards", guards);
         tag.putInt("EscortTicks", escortTicks);
         if (escortBuyer != null) Nbt.putUUID(tag, "EscortBuyer", escortBuyer);
+        tag.put("Cargo", Parcel.saveAll(cargo));
+        tag.putInt("CampReason", campReason);
+        if (campfire != null) tag.putLong("Campfire", campfire.asLong());
     }
 
     private void readCaravan(CompoundTag tag) {
@@ -1100,5 +1223,8 @@ public class CaravanMaster extends WanderingTrader {
         Nbt.getUUIDs(tag, "Guards", guards);
         escortTicks = Nbt.getInt(tag, "EscortTicks");
         escortBuyer = Nbt.hasUUID(tag, "EscortBuyer") ? Nbt.getUUID(tag, "EscortBuyer") : null;
+        Parcel.loadAll(Nbt.getList(tag, "Cargo"), cargo);
+        campReason = Nbt.getInt(tag, "CampReason");
+        campfire = tag.contains("Campfire") ? BlockPos.of(Nbt.getLong(tag, "Campfire")) : null;
     }
 }

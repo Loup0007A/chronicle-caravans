@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.0
+
+- **A new look for every screen**: the caravan interface, the atlas and the new blocks share a hand-drawn "trader's ledger" style: a wooden frame with brass corners, parchment pages, leather tabs, wooden buttons, wax seals and icons, the caravan master's portrait, the colours of his region, one card per offer and the market news of the day.
+- **Freight**: send goods with the caravans. In the new **Freight** tab of a halted caravan, pack a parcel for any stop of the network: it travels from stop to stop (over several legs if needed) and lands in a dock or a chest at its destination. Fee: 1 emerald, plus 1 per leg.
+- **Supply and demand**: every deal moves the market. Sell a lot of one good and the caravans pay less for it; buy a lot and the price rises. The effect fades by half every day. Each region also has its **news of the day**: a shortage (one request paid 50% more) and a surplus (one good 25% cheaper).
+- **Weather and camps**: rain slows the caravans by a quarter. In a thunderstorm, or at night with no inn within reach, they make camp beside the road around a campfire, then set off again.
+- **Loading Dock** (barrel + hopper + lead): name it after a stop with an anvil and place it near a milestone: what you put in (with emeralds for the fee) leaves with the next caravan. Unnamed, it receives the deliveries. Hoppers fill a sending dock and empty a receiving one.
+- **Trading Post** (chest + emerald + comparator + wool + slab): a market stall that trades on its own with the caravans halting nearby. It sells them what they ask for from its stock, then buys what its orders show. Hoppers in and out, a comparator reads the takings, a redstone signal pauses it.
+- **Redstone milestones**: a comparator next to a milestone reads 15 while a caravan halts there and 1 to 7 while one is on its way. A redstone pulse calls a caravan, paid with an emerald block taken from a chest or barrel next to the milestone.
+- Docks and trading posts work with the pipes and funnels of other mods.
+- Three new guide scenes: weather and camps, freight and docks, redstone and trading posts (eleven in all). Hold [W] over a dock or a trading post to open its scene.
+- New config options: `weatherEffects`, `nightCamps`, `campfires`, `marketPrices`, `freightEnabled`, `tradingPostsEnabled`, `redstoneMilestones`.
+
 ## 1.1.1
 
 - Atlas: names of nearby places no longer overlap.

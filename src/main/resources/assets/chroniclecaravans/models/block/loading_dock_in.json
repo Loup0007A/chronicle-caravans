@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "side": "chroniclecaravans:block/loading_dock_side_in",
+    "top": "chroniclecaravans:block/loading_dock_top",
+    "bottom": "chroniclecaravans:block/loading_dock_bottom"
+  }
+}

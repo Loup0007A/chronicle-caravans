@@ -32,6 +32,9 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
@@ -49,8 +52,103 @@ public class MilestoneBlock extends Block {
     /** Schedules of milestones being broken by a player, until their drops are made. */
     private static final Map<BlockPos, CompoundTag> BREAKING = new HashMap<>();
 
+    /** Powered by redstone (a rising edge calls a caravan). */
+    public static final BooleanProperty POWERED = BlockStateProperties.POWERED;
+
     public MilestoneBlock(Properties properties) {
         super(properties);
+        registerDefaultState(stateDefinition.any().setValue(POWERED, false));
+    }
+
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(POWERED);
+    }
+
+    // ---------------------------------------------------------------- redstone
+
+    //#if mc120
+    //$$ @Override
+    //$$ public void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, BlockPos from, boolean moving) {
+    //$$     super.neighborChanged(state, level, pos, block, from, moving);
+    //$$     redstone(state, level, pos);
+    //$$ }
+    //$$
+    //$$ @Override
+    //$$ public boolean hasAnalogOutputSignal(BlockState state) {
+    //$$     return true;
+    //$$ }
+    //$$
+    //$$ @Override
+    //$$ public int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
+    //$$     return level instanceof ServerLevel s ? CaravanSpawner.signal(s, pos) : 0;
+    //$$ }
+    //#elif mc26
+    //$$ @Override
+    //$$ protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, net.minecraft.world.level.redstone.Orientation orientation, boolean moving) {
+    //$$     super.neighborChanged(state, level, pos, block, orientation, moving);
+    //$$     redstone(state, level, pos);
+    //$$ }
+    //$$
+    //$$ @Override
+    //$$ protected boolean hasAnalogOutputSignal(BlockState state) {
+    //$$     return true;
+    //$$ }
+    //$$
+    //$$ @Override
+    //$$ protected int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos, net.minecraft.core.Direction direction) {
+    //$$     return level instanceof ServerLevel s ? CaravanSpawner.signal(s, pos) : 0;
+    //$$ }
+    //#else
+    @Override
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, BlockPos from, boolean moving) {
+        super.neighborChanged(state, level, pos, block, from, moving);
+        redstone(state, level, pos);
+    }
+
+    /** Comparator: 0 nothing expected, 1 to 7 a caravan on its way (the closer, the stronger), 15 a caravan halted here. */
+    @Override
+    protected boolean hasAnalogOutputSignal(BlockState state) {
+        return true;
+    }
+
+    @Override
+    protected int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
+        return level instanceof ServerLevel s ? CaravanSpawner.signal(s, pos) : 0;
+    }
+    //#endif
+
+    private static void redstone(BlockState state, Level level, BlockPos pos) {
+        if (level.isClientSide() || !state.hasProperty(POWERED)) return;
+        boolean powered = level.hasNeighborSignal(pos);
+        if (powered == state.getValue(POWERED)) return;
+        level.setBlock(pos, state.setValue(POWERED, powered), Block.UPDATE_CLIENTS);
+        if (powered && level instanceof ServerLevel server) redstoneCall(server, pos);
+    }
+
+    /** A redstone pulse calls a caravan, paid with an emerald block taken from a container next to the milestone. */
+    public static boolean redstoneCall(ServerLevel level, BlockPos pos) {
+        if (!CCConfig.REDSTONE.get()) return false;
+        CaravanData data = CaravanData.get(level);
+        CaravanData.Stop stop = data.stop(pos);
+        if (stop == null || CaravanSpawner.caravanHeadingTo(level, pos) != null) return false;
+        long now = level.getGameTime();
+        if (stop.lastCall + CCConfig.CALL_COOLDOWN.get() * 20L > now) return false;
+        for (net.minecraft.core.Direction d : net.minecraft.core.Direction.values()) {
+            if (!(level.getBlockEntity(pos.relative(d)) instanceof net.minecraft.world.Container c)) continue;
+            for (int i = 0; i < c.getContainerSize(); i++) {
+                if (!c.getItem(i).is(Items.EMERALD_BLOCK)) continue;
+                c.removeItem(i, 1);
+                c.setChanged();
+                stop.lastCall = now;
+                stop.nextVisit = now;
+                stop.hired = true;
+                data.setDirty();
+                level.playSound(null, pos, SoundEvents.BELL_BLOCK, SoundSource.BLOCKS, 2.0F, 0.8F);
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

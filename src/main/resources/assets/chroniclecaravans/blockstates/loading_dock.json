@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "outgoing=false": {
+      "model": "chroniclecaravans:block/loading_dock_in"
+    },
+    "outgoing=true": {
+      "model": "chroniclecaravans:block/loading_dock_out"
+    }
+  }
+}

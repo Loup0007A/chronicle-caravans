@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:chest",
+    "minecraft:emerald",
+    "minecraft:comparator",
+    "#minecraft:wool",
+    "#minecraft:wooden_slabs"
+  ],
+  "result": {
+    "id": "chroniclecaravans:trading_post"
+  }
+}

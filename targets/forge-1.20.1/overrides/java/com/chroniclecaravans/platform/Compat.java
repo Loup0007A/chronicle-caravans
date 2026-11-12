@@ -47,8 +47,9 @@ public final class Compat {
         AttributeInstance speed = e.getAttribute(Attributes.MOVEMENT_SPEED);
         if (speed == null) return;
         AttributeModifier current = speed.getModifier(ROAD_SPEED);
-        if (current != null && (bonus <= 0 || current.getAmount() != bonus)) speed.removeModifier(ROAD_SPEED);
-        if (bonus > 0 && speed.getModifier(ROAD_SPEED) == null) {
+        boolean none = Math.abs(bonus) <= 1e-6;
+        if (current != null && (none || current.getAmount() != bonus)) speed.removeModifier(ROAD_SPEED);
+        if (!none && speed.getModifier(ROAD_SPEED) == null) {
             speed.addTransientModifier(new AttributeModifier(ROAD_SPEED, "Road speed", bonus, AttributeModifier.Operation.MULTIPLY_TOTAL));
         }
     }
@@ -109,5 +110,13 @@ public final class Compat {
     /** An operator (permission level 2). */
     public static boolean isOp(net.minecraft.server.level.ServerPlayer p) {
         return p.hasPermissions(2);
+    }
+
+    public static CompoundTag saveStack(Level level, ItemStack stack) {
+        return stack.isEmpty() ? new CompoundTag() : stack.save(new CompoundTag());
+    }
+
+    public static ItemStack loadStack(Level level, CompoundTag tag) {
+        return tag.isEmpty() ? ItemStack.EMPTY : ItemStack.of(tag);
     }
 }

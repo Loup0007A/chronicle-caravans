@@ -66,6 +66,30 @@ public final class CCConfig {
             .comment("Chat messages when a caravan arrives, leaves or is attacked.")
             .define("announcements", true);
 
+    public static final ModConfigSpec.BooleanValue WEATHER = B
+            .comment("Weather matters: rain slows caravans down by a quarter, thunderstorms make them camp until the storm passes.")
+            .define("weatherEffects", true);
+    public static final ModConfigSpec.BooleanValue NIGHT_CAMPS = B
+            .comment("At night, a travelling caravan with no inn within reach makes camp until morning (you can still trade with it).")
+            .define("nightCamps", true);
+    public static final ModConfigSpec.BooleanValue CAMPFIRES = B
+            .comment("Camping caravans light a campfire beside the road (removed when they leave).")
+            .define("campfires", true);
+    public static final ModConfigSpec.BooleanValue MARKET_PRICES = B
+            .comment("Supply and demand: goods sold a lot are paid less, goods bought a lot cost more (it fades by half every day),",
+                    "plus a daily shortage and surplus per region.")
+            .define("marketPrices", true);
+    public static final ModConfigSpec.BooleanValue FREIGHT = B
+            .comment("Freight: parcels and loading docks, carried by the caravans from stop to stop.")
+            .define("freightEnabled", true);
+    public static final ModConfigSpec.BooleanValue TRADING_POSTS = B
+            .comment("Trading posts trade on their own with the caravans halting nearby.")
+            .define("tradingPostsEnabled", true);
+    public static final ModConfigSpec.BooleanValue REDSTONE = B
+            .comment("Milestones give a comparator signal (caravan coming / halted) and a redstone pulse calls a caravan,",
+                    "paid with an emerald block from a container next to the milestone.")
+            .define("redstoneMilestones", true);
+
     public static final ModConfigSpec SPEC = B.build();
 
     private CCConfig() {}

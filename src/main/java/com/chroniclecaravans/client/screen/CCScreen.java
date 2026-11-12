@@ -14,9 +14,6 @@ import net.minecraft.world.item.ItemStack;
  * mouse and keyboard events, tooltips), so the screens themselves are written once.
  */
 public abstract class CCScreen extends Screen {
-    public static final int GOLD = 0xFFE0A84A, BROWN = 0xFF6E4A22, DARK = 0xF01C150F, PANEL = 0xF02A2016, TEXT = 0xFFEDE3D0,
-            MUTED = 0xFFA89A84, GREEN = 0xFF7FD46A, RED = 0xFFE06A5A, LIGHT = 0x30FFFFFF;
-
     protected CCScreen(Component title) {
         super(title);
     }
@@ -70,37 +67,13 @@ public abstract class CCScreen extends Screen {
         //#endif
     }
 
-    protected void frame(GuiGraphics g, int x, int y, int w, int h, int fill, int border) {
-        g.fill(x, y, x + w, y + h, fill);
-        g.fill(x, y, x + w, y + 1, border);
-        g.fill(x, y + h - 1, x + w, y + h, border);
-        g.fill(x, y, x + 1, y + h, border);
-        g.fill(x + w - 1, y, x + w, y + h, border);
-    }
-
-    protected void item(GuiGraphics g, ItemStack stack, int x, int y) {
-        if (stack.isEmpty()) return;
-        g.renderItem(stack, x, y);
-        g.renderItemDecorations(font, stack, x, y);
-    }
-
-    protected void text(GuiGraphics g, Component c, int x, int y, int color) {
-        g.drawString(font, c, x, y, color, false);
-    }
-
-    protected void text(GuiGraphics g, String s, int x, int y, int color) {
-        g.drawString(font, s, x, y, color, false);
-    }
-
-    /** Text cut to {@code width} pixels (with an ellipsis). */
-    protected String fit(String s, int width) {
-        if (font.width(s) <= width) return s;
-        while (!s.isEmpty() && font.width(s + "…") > width) s = s.substring(0, s.length() - 1);
-        return s + "…";
-    }
-
     protected void ding() {
         minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+    }
+
+    /** The sound of a ledger's page turning. */
+    protected void page() {
+        minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.BOOK_PAGE_TURN, 1.0F));
     }
 
     protected static boolean in(double mx, double my, int x, int y, int w, int h) {
@@ -120,17 +93,17 @@ public abstract class CCScreen extends Screen {
     //#if mc120
     //$$ @Override
     //$$ public void renderBackground(GuiGraphics g) {
-    //$$     g.fill(0, 0, width, height, 0xA0000000);
+    //$$     g.fillGradient(0, 0, width, height, 0x90100804, 0xB0100804);
     //$$ }
     //#elif mc26
     //$$ @Override
     //$$ public void extractBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-    //$$     g.fill(0, 0, width, height, 0xA0000000);
+    //$$     g.fillGradient(0, 0, width, height, 0x90100804, 0xB0100804);
     //$$ }
     //#else
     @Override
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        g.fill(0, 0, width, height, 0xA0000000);
+        g.fillGradient(0, 0, width, height, 0x90100804, 0xB0100804);
     }
     //#endif
 

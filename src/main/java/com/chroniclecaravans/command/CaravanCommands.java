@@ -60,6 +60,8 @@ public final class CaravanCommands {
                     AtlasItem.open(c.getSource().getPlayerOrException());
                     return 1;
                 }))
+                .then(Commands.literal("dock")
+                        .then(Commands.argument("address", StringArgumentType.greedyString()).executes(c -> dockAddress(c, StringArgumentType.getString(c, "address")))))
                 .then(Commands.literal("rename")
                         .then(Commands.literal("stop").then(Commands.argument("pos", BlockPosArgument.blockPos())
                                 .then(Commands.argument("name", StringArgumentType.greedyString()).executes(c -> renameStop(c, StringArgumentType.getString(c, "name"))))
@@ -124,6 +126,26 @@ public final class CaravanCommands {
         Component shown = s != null ? s.displayName() : inn.displayName();
         c.getSource().sendSuccess(() -> Component.translatable("msg.chroniclecaravans.renamed", shown).withStyle(ChatFormatting.GREEN), false);
         refreshAtlas(p);
+        return 1;
+    }
+
+    /** Sets the address of the loading dock the player has open ("-" makes it a receiving dock). */
+    private static int dockAddress(CommandContext<CommandSourceStack> c, String address) throws CommandSyntaxException {
+        ServerPlayer p = c.getSource().getPlayerOrException();
+        if (!(p.containerMenu instanceof com.chroniclecaravans.menu.DockMenu menu) || menu.dock() == null) {
+            c.getSource().sendFailure(Component.translatable("msg.chroniclecaravans.dock_not_open"));
+            return 0;
+        }
+        com.chroniclecaravans.block.DockBlockEntity dock = menu.dock();
+        if (dock.owner() != null && !dock.owner().equals(p.getUUID()) && !Compat.isOp(p)) {
+            c.getSource().sendFailure(Component.translatable("msg.chroniclecaravans.not_yours"));
+            return 0;
+        }
+        String a = address.strip();
+        dock.setAddress(a.equals("-") ? "" : clean(a));
+        menu.refreshNow();
+        c.getSource().sendSuccess(() -> Component.translatable(dock.outgoing() ? "msg.chroniclecaravans.dock_address" : "msg.chroniclecaravans.dock_cleared",
+                dock.address()).withStyle(ChatFormatting.GREEN), false);
         return 1;
     }
 

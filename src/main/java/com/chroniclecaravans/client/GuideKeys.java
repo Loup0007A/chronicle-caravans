@@ -11,6 +11,7 @@ import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -24,8 +25,8 @@ import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 
 /**
- * Opens the Caravan Guide like Create's Ponder: hold the guide key (W) while hovering the milestone in an
- * inventory. Also {@code /caravanguide [scene]}.
+ * Opens the Caravan Guide like Create's Ponder: hold the guide key (W) while hovering the milestone (or a loading
+ * dock, or a trading post: their own scene) in an inventory. Also {@code /caravanguide [scene]}.
  */
 @EventBusSubscriber(modid = ChronicleCaravans.MODID, value = Dist.CLIENT)
 public final class GuideKeys {
@@ -43,13 +44,25 @@ public final class GuideKeys {
     private static int lastTooltip = -100;
     private static int hold;
     private static int pendingScene = -1;
+    private static int tooltipScene;
 
     private GuideKeys() {}
 
     @SubscribeEvent
     public static void tooltip(ItemTooltipEvent e) {
-        if (e.getEntity() == null || !e.getItemStack().is(ChronicleCaravans.MILESTONE_ITEM.get())) return;
+        if (e.getEntity() == null) return;
+        ItemStack stack = e.getItemStack();
+        int scene;
+        if (stack.is(ChronicleCaravans.MILESTONE_ITEM.get())) scene = 0;
+        else if (stack.is(ChronicleCaravans.DOCK_ITEM.get())) scene = 9;
+        else if (stack.is(ChronicleCaravans.POST_ITEM.get())) scene = 10;
+        else return;
+        if (scene > 0) {
+            String key = stack.is(ChronicleCaravans.DOCK_ITEM.get()) ? "item.chroniclecaravans.loading_dock.tooltip" : "item.chroniclecaravans.trading_post.tooltip";
+            for (String line : Component.translatable(key).getString().split("\n")) e.getToolTip().add(Component.literal(line).withStyle(ChatFormatting.GRAY));
+        }
         lastTooltip = clientTicks;
+        tooltipScene = scene;
         String text = Component.translatable("guide.chroniclecaravans.hold", GUIDE.getTranslatedKeyMessage()).getString();
         int filled = Math.round(text.length() * Math.min(1F, hold / (float) HOLD_TICKS));
         MutableComponent line = Component.literal(text.substring(0, filled)).withStyle(ChatFormatting.GOLD)
@@ -89,7 +102,7 @@ public final class GuideKeys {
         if (down) {
             if (++hold >= HOLD_TICKS) {
                 hold = 0;
-                mc.setScreen(new GuideScreen(mc.screen, 0));
+                mc.setScreen(new GuideScreen(mc.screen, tooltipScene));
             }
         } else {
             hold = Math.max(0, hold - 2);
@@ -111,7 +124,7 @@ public final class GuideKeys {
                     pendingScene = 0;
                     return 1;
                 })
-                .then(Commands.argument("scene", IntegerArgumentType.integer(1, 8)).executes(c -> {
+                .then(Commands.argument("scene", IntegerArgumentType.integer(1, 11)).executes(c -> {
                     pendingScene = IntegerArgumentType.getInteger(c, "scene") - 1;
                     return 1;
                 })));

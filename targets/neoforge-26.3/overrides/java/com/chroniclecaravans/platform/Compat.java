@@ -52,7 +52,7 @@ public final class Compat {
     public static void speedBonus(LivingEntity e, double bonus) {
         AttributeInstance speed = e.getAttribute(Attributes.MOVEMENT_SPEED);
         if (speed == null) return;
-        if (bonus > 0) speed.addOrUpdateTransientModifier(new AttributeModifier(ROAD_SPEED, bonus, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+        if (Math.abs(bonus) > 1e-6) speed.addOrUpdateTransientModifier(new AttributeModifier(ROAD_SPEED, bonus, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
         else speed.removeModifier(ROAD_SPEED);
     }
 
@@ -118,5 +118,18 @@ public final class Compat {
     /** An operator (permission level 2). */
     public static boolean isOp(net.minecraft.server.level.ServerPlayer p) {
         return p.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER);
+    }
+
+    public static CompoundTag saveStack(Level level, ItemStack stack) {
+        if (stack.isEmpty()) return new CompoundTag();
+        net.minecraft.nbt.Tag t = ItemStack.OPTIONAL_CODEC.encodeStart(level.registryAccess().createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE), stack)
+                .result().orElse(null);
+        return t instanceof CompoundTag c ? c : new CompoundTag();
+    }
+
+    public static ItemStack loadStack(Level level, CompoundTag tag) {
+        if (tag.isEmpty()) return ItemStack.EMPTY;
+        return ItemStack.OPTIONAL_CODEC.parse(level.registryAccess().createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE), tag)
+                .result().orElse(ItemStack.EMPTY);
     }
 }

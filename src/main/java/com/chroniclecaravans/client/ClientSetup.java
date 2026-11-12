@@ -32,6 +32,9 @@ public final class ClientSetup {
     public static void screens(net.neoforged.neoforge.client.event.RegisterMenuScreensEvent e) {
         e.register(ChronicleCaravans.CARAVAN_MENU.get(), com.chroniclecaravans.client.screen.CaravanScreen::new);
         e.register(ChronicleCaravans.ATLAS_MENU.get(), com.chroniclecaravans.client.screen.AtlasScreen::new);
+        e.register(ChronicleCaravans.DOCK_MENU.get(), com.chroniclecaravans.client.screen.DockScreen::new);
+        e.register(ChronicleCaravans.POST_MENU.get(), com.chroniclecaravans.client.screen.TradingPostScreen::new);
+        e.register(ChronicleCaravans.PARCEL_MENU.get(), com.chroniclecaravans.client.screen.ParcelScreen::new);
     }
     //#else
     //$$ @SubscribeEvent
@@ -39,6 +42,9 @@ public final class ClientSetup {
     //$$     e.enqueueWork(() -> {
     //$$         net.minecraft.client.gui.screens.MenuScreens.register(ChronicleCaravans.CARAVAN_MENU.get(), com.chroniclecaravans.client.screen.CaravanScreen::new);
     //$$         net.minecraft.client.gui.screens.MenuScreens.register(ChronicleCaravans.ATLAS_MENU.get(), com.chroniclecaravans.client.screen.AtlasScreen::new);
+    //$$         net.minecraft.client.gui.screens.MenuScreens.register(ChronicleCaravans.DOCK_MENU.get(), com.chroniclecaravans.client.screen.DockScreen::new);
+    //$$         net.minecraft.client.gui.screens.MenuScreens.register(ChronicleCaravans.POST_MENU.get(), com.chroniclecaravans.client.screen.TradingPostScreen::new);
+    //$$         net.minecraft.client.gui.screens.MenuScreens.register(ChronicleCaravans.PARCEL_MENU.get(), com.chroniclecaravans.client.screen.ParcelScreen::new);
     //$$     });
     //$$ }
     //#endif

@@ -65,8 +65,42 @@ public final class CaravanSpawner {
     /** A caravan not seen for this long is forgotten for good. */
     private static final long LOST = 72000 * 3;
 
+    /** Last comparator signal of each milestone (the comparators are told when it changes). */
+    private static final java.util.Map<BlockPos, Integer> SIGNALS = new java.util.HashMap<>();
+
+    /** Comparator signal of a milestone: 15 a caravan halted here, 1 to 7 a caravan coming (closer = stronger), else 0. */
+    public static int signal(ServerLevel level, BlockPos stop) {
+        Integer v = SIGNALS.get(stop);
+        return v != null ? v : computeSignal(stop, caravans(level));
+    }
+
+    private static int computeSignal(BlockPos stop, List<CaravanMaster> all) {
+        int best = 0;
+        for (CaravanMaster m : all) {
+            if (stop.equals(m.currentStop())) return 15;
+            if (stop.equals(m.target()) && m.state() != CaravanMaster.State.LEAVING && !m.headingToInn()) {
+                double d = Math.sqrt(m.distanceToSqr(stop.getX() + 0.5, stop.getY(), stop.getZ() + 0.5));
+                best = Math.max(best, 1 + (int) Math.round(6 * Math.max(0, 1 - d / CCConfig.LINK_RANGE.get())));
+            }
+        }
+        return best;
+    }
+
+    private static void updateSignals(ServerLevel level) {
+        if (!CCConfig.REDSTONE.get()) return;
+        List<CaravanMaster> all = caravans(level);
+        for (CaravanData.Stop s : CaravanData.get(level).stops()) {
+            if (s.village || !level.isLoaded(s.pos)) continue;
+            int v = computeSignal(s.pos, all);
+            Integer old = SIGNALS.put(s.pos, v);
+            if (old == null || old != v) level.updateNeighbourForOutputSignal(s.pos, level.getBlockState(s.pos).getBlock());
+        }
+    }
+
     private static void tickLevel(Level world) {
         if (!(world instanceof ServerLevel level) || level.dimension() != Level.OVERWORLD) return;
+        if (level.getGameTime() % 20 == 0) updateSignals(level);
+        if (level.getGameTime() % 1200 == 0) Logistics.cleanDepots(level);
         if (level.getGameTime() % 100 != 0) return;
         CaravanData data = CaravanData.get(level);
         if (CCConfig.VILLAGE_STOPS.get() && level.getGameTime() % 600 == 0) {
@@ -119,7 +153,7 @@ public final class CaravanSpawner {
         int known = data.caravans().size();
         java.util.UUID sleeper = null;
         for (java.util.Map.Entry<java.util.UUID, CaravanData.Caravan> e : data.caravans().entrySet()) {
-            if (now - e.getValue().lastSeen > ASLEEP && level.getEntity(e.getKey()) == null) {
+            if (now - e.getValue().lastSeen > ASLEEP && !e.getValue().cargo && level.getEntity(e.getKey()) == null) {
                 sleeper = e.getKey();
                 break;
             }

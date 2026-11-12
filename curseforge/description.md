@@ -6,7 +6,7 @@ Chronicle Caravans
 
 ## Summary
 
-Living trade caravans travel between villages and the milestones you place, following your roads. Covered wagons, regional goods, reputation, bandit ambushes, and an animated guide.
+Living trade caravans travel between villages and the milestones you place, following your roads. Covered wagons, regional goods, freight, a living market, automation and an animated guide.
 
 ## Description (Markdown)
 
@@ -21,10 +21,10 @@ Place a second milestone, build a road between the two, and you have a **trade r
 - The canopy takes the **colour of the caravan's home region**: you can tell where it comes from before it arrives.
 - The whole train walks **in the master's footsteps**: it stays on your roads around corners and up slopes.
 - The wagon is **solid**, stays on the ground, and the train no longer jumps around when attacked.
-- Right-click the master or the wagon to open the **caravan interface**: Market (one click to buy, shift-click to buy all), Requests, Services and Guild.
+- Right-click the master or the wagon to open the **caravan interface**, a hand-drawn trader's ledger: Market (one click to buy, shift-click to buy all), Requests, Freight, Services and Guild.
 
 ### ✦ A guide in the style of Create's Ponder
-Hold **[W]** over the Caravan Milestone in your inventory: eight animated 3D scenes show how everything works, with text bubbles and a timeline. Turn the scene, zoom in, replay. Or type `/caravanguide`.
+Hold **[W]** over the Caravan Milestone, a Loading Dock or a Trading Post in your inventory: eleven animated 3D scenes show how everything works, with text bubbles and a timeline. Turn the scene, zoom in, replay. Or type `/caravanguide`.
 
 ### ✦ Villages come alive
 Every village bell is a caravan stop: caravans travel between villages **on their own**, with no milestone to build. Village paths are already roads, so they follow them from one village to the next. Your milestones join the same network.
@@ -42,6 +42,17 @@ Every village bell is a caravan stop: caravans travel between villages **on thei
 - **Escorts**: hire guards who walk with a caravan and fight off monsters and bandits.
 - **Inns**: put up an **Inn Sign** near a bed. At nightfall caravans sleep at your inn, safe from bandits, and pay you in the morning.
 
+### ✦ A living world
+- **Supply and demand**: sell a lot of one good and the caravans pay less for it, buy a lot and prices rise; the market calms down day after day. Every region has its **news of the day**: a shortage paid 50% more, a surplus sold 25% cheaper.
+- **Weather**: rain slows the caravans; in a thunderstorm, or at night far from any inn, they **make camp** beside the road around a campfire.
+- **Freight**: from the Freight tab of a halted caravan, send a **parcel** to any stop of the network. It travels from stop to stop, over several legs if needed, and lands in a chest or a dock at its destination.
+
+### ✦ Automation for the engineers
+- **Loading Dock**: name it after a stop with an anvil, fill it (hoppers welcome) with goods and a few emeralds: the next caravan ships it all there. An unnamed dock receives the deliveries, and a hopper below empties it. Build real supply chains between your bases!
+- **Trading Post**: a market stall that **trades on its own** with the caravans halting nearby: it sells them what they ask for from its stock, then buys what its orders show. Hoppers in and out, a comparator reads the takings, redstone pauses it.
+- **Redstone milestones**: a comparator next to a milestone reads **15** while a caravan halts there and **1 to 7** while one is coming. A redstone pulse **calls a caravan**, paid with an emerald block from the chest beside it.
+- Docks and trading posts work with the pipes and funnels of other mods.
+
 ### ✦ The Caravan Atlas
 A parchment map of the stops, inns and trade routes around you. **Rename** your milestones and your roads; cartographers also see the caravans on the move.
 
@@ -55,7 +66,7 @@ Trade with caravans, host them, protect them and build roads: you gain **guild l
 While you are near a caravan, bandits may attack it. Defeat them all and the caravan master leaves you emeralds and a gift from its region.
 
 ### ✦ Made for servers and modpacks
-- Every feature has its own switch or dial in `config/chroniclecaravans-common.toml`: time between visits, number of caravans and llamas, how often new caravans appear, road bonus, ambush chance, reputation, chat messages.
+- Every feature has its own switch or dial in `config/chroniclecaravans-common.toml`: time between visits, number of caravans and llamas, how often new caravans appear, road bonus, ambush chance, reputation, chat messages, weather, market, freight, trading posts, redstone.
 - Light on performance: a few caravans at a time, nothing runs when no milestone exists.
 - Commands for admins and creators: `/caravans summon [region]`, `/caravans ambush`, `/caravans atlas`, `/caravans reputation <player> <xp>`.
 - English and French.

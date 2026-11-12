@@ -279,6 +279,20 @@ public enum Region {
         return out;
     }
 
+    /** The goods this region's caravans ask for. */
+    public List<Item> wantedItems() {
+        List<Item> out = new ArrayList<>();
+        for (Good g : wants) out.add(g.costItem);
+        return out;
+    }
+
+    /** The ordinary goods this region sells (no barter, no treasure). */
+    public List<Item> soldItems() {
+        List<Item> out = new ArrayList<>();
+        for (Good g : goods) if (g.kind == KIND_BUY && g.emeralds == 0 && g.count > 0) out.add(g.item);
+        return out;
+    }
+
     /** A thank-you present from this region (after a rescue). */
     public ItemStack gift(RandomSource random) {
         List<Good> pool = new ArrayList<>();

@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:barrel",
+    "minecraft:hopper",
+    "minecraft:lead"
+  ],
+  "result": {
+    "id": "chroniclecaravans:loading_dock"
+  }
+}

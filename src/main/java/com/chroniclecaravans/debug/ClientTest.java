@@ -4,6 +4,8 @@ import com.chroniclecaravans.ChronicleCaravans;
 import com.chroniclecaravans.client.guide.GuideScreen;
 import com.chroniclecaravans.client.screen.AtlasScreen;
 import com.chroniclecaravans.client.screen.CaravanScreen;
+import com.chroniclecaravans.client.screen.DockScreen;
+import com.chroniclecaravans.client.screen.TradingPostScreen;
 import com.chroniclecaravans.menu.AtlasMenu;
 import com.chroniclecaravans.entity.CaravanMaster;
 import com.chroniclecaravans.entity.CaravanWagon;
@@ -30,13 +32,14 @@ public final class ClientTest {
     /** Guide: {client tick, scene, scene tick to jump to}; the screenshot is taken 14 ticks later. */
     private static final int[][] GUIDE = {
             {960, 0, 100}, {1000, 1, 236}, {1040, 2, 70}, {1080, 2, 280}, {1120, 3, 60}, {1160, 3, 200}, {1200, 4, 120}, {1240, 4, 300}, {1280, 5, 80},
-            {1320, 6, 150}, {1360, 6, 270}, {1400, 7, 120}, {1440, 7, 300}};
+            {1320, 6, 150}, {1360, 6, 270}, {1400, 7, 120}, {1440, 7, 300}, {1480, 8, 140}, {1520, 9, 70}, {1560, 9, 160},
+            {1600, 9, 360}, {1640, 10, 100}, {1680, 10, 200}, {1720, 10, 300}};
 
     private static int t;
     private static int total;
     private static boolean seenMaster, seenWagon, guideShown;
-    private static boolean seenGuard, caravanShown, atlasShown;
-    private static int caravanTicks, atlasTicks;
+    private static boolean seenGuard, caravanShown, atlasShown, dockShown, postShown;
+    private static int caravanTicks, atlasTicks, dockTicks, postTicks;
     private static String uiProblem;
     private static boolean done;
 
@@ -69,7 +72,8 @@ public final class ClientTest {
         Minecraft mc = Minecraft.getInstance();
         if (++total > 14000) finish(mc, "FAIL timeout (never got into the world)");
         if (mc.player == null || mc.level == null) return;
-        if (mc.screen != null && !(mc.screen instanceof GuideScreen) && !(mc.screen instanceof CaravanScreen) && !(mc.screen instanceof AtlasScreen)) return;
+        if (mc.screen != null && !(mc.screen instanceof GuideScreen) && !(mc.screen instanceof CaravanScreen) && !(mc.screen instanceof AtlasScreen)
+                && !(mc.screen instanceof DockScreen) && !(mc.screen instanceof TradingPostScreen)) return;
         t++;
         hideHud(mc, !(t > 420 && t < 700) && t < 950);
         if (t % 20 == 0 && t < 950) {
@@ -106,7 +110,7 @@ public final class ClientTest {
         // The server opens the caravan's interface, then the atlas: one screenshot per tab
         if (mc.screen instanceof CaravanScreen cs) {
             caravanTicks++;
-            int[] tabs = {20, 40, 60, 80};
+            int[] tabs = {20, 40, 60, 80, 100};
             for (int i = 0; i < tabs.length; i++) {
                 if (caravanTicks == tabs[i] - 12) cs.setTab(i);
                 if (caravanTicks == tabs[i]) {
@@ -119,7 +123,7 @@ public final class ClientTest {
                 ChronicleCaravans.LOG.info("[CLIENTTEST] caravan interface open: {} offers, level {}", offers, cs.getMenu().get(com.chroniclecaravans.menu.CaravanMenu.D_LEVEL));
                 if (offers < 10) uiProblem = "FAIL the caravan interface shows only " + offers + " offers";
             }
-            if (caravanTicks == 90) cs.onClose();
+            if (caravanTicks == 110) cs.onClose();
         }
         if (mc.screen instanceof AtlasScreen as) {
             atlasTicks++;
@@ -136,12 +140,32 @@ public final class ClientTest {
             }
             if (atlasTicks == 44) as.onClose();
         }
-        if ((atlasShown && mc.screen == null) || t > last + 1100) {
+        // Then the loading dock and the trading post
+        if (mc.screen instanceof DockScreen ds) {
+            dockTicks++;
+            if (dockTicks == 10) ChronicleCaravans.LOG.info("[CLIENTTEST] loading dock open: address '{}'", ds.getMenu().address());
+            if (dockTicks == 20) {
+                shot(mc, "dock_0");
+                dockShown = true;
+            }
+            if (dockTicks == 30) ds.onClose();
+        }
+        if (mc.screen instanceof TradingPostScreen ps) {
+            postTicks++;
+            if (postTicks == 20) {
+                shot(mc, "post_0");
+                postShown = true;
+            }
+            if (postTicks == 30) ps.onClose();
+        }
+        if ((postShown && mc.screen == null) || t > last + 1300) {
             String why = !seenMaster ? "FAIL the caravan master was never rendered"
                     : !seenWagon ? "FAIL the wagon was never rendered"
                     : !guideShown ? "FAIL the guide never opened"
                     : !caravanShown ? "FAIL the caravan interface never opened"
                     : !atlasShown ? "FAIL the atlas never opened"
+                    : !dockShown ? "FAIL the loading dock screen never opened"
+                    : !postShown ? "FAIL the trading post screen never opened"
                     : uiProblem != null ? uiProblem : "OK";
             finish(mc, why);
         }
