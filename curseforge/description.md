@@ -20,10 +20,11 @@ Place a second milestone, build a road between the two, and you have a **trade r
 - A **covered wagon** with spoked wheels that roll as it moves, cargo crates and barrels, and a lantern glowing at the front.
 - The canopy takes the **colour of the caravan's home region**: you can tell where it comes from before it arrives.
 - The whole train walks **in the master's footsteps**: it stays on your roads around corners and up slopes.
-- Right-click the master or the wagon to trade.
+- The wagon is **solid**, stays on the ground, and the train no longer jumps around when attacked.
+- Right-click the master or the wagon to open the **caravan interface**: Market (one click to buy, shift-click to buy all), Requests, Services and Guild.
 
 ### ✦ A guide in the style of Create's Ponder
-Hold **[W]** over the Caravan Milestone in your inventory: six animated 3D scenes show how everything works, with text bubbles and a timeline. Turn the scene, zoom in, replay. Or type `/caravanguide`.
+Hold **[W]** over the Caravan Milestone in your inventory: eight animated 3D scenes show how everything works, with text bubbles and a timeline. Turn the scene, zoom in, replay. Or type `/caravanguide`.
 
 ### ✦ Villages come alive
 Every village bell is a caravan stop: caravans travel between villages **on their own**, with no milestone to build. Village paths are already roads, so they follow them from one village to the next. Your milestones join the same network.
@@ -33,20 +34,30 @@ Every village bell is a caravan stop: caravans travel between villages **on thei
 - Two milestones within 320 blocks are linked: caravans travel from one to the other.
 - Caravans **prefer roads** (dirt path, cobblestone, stone bricks, planks, gravel and more) and walk **30% faster** on them. Any block can become a road with the `chroniclecaravans:roads` block tag.
 - In a hurry? Use an **Emerald Block** on a milestone to hire a caravan right away.
+- Broken, a milestone gives back its lantern; with **Silk Touch** you keep it, schedule included.
+- Caravans **travel** from stop to stop instead of popping up everywhere: a waiting stop gets a free caravan nearby before a new one is ever created.
+
+### ✦ Road crews, escorts and inns
+- **Road crews**: from a stop, pay builders who lay the road to the next stop for you — dirt path, plank bridges over rivers, trees cleared.
+- **Escorts**: hire guards who walk with a caravan and fight off monsters and bandits.
+- **Inns**: put up an **Inn Sign** near a bed. At nightfall caravans sleep at your inn, safe from bandits, and pay you in the morning.
+
+### ✦ The Caravan Atlas
+A parchment map of the stops, inns and trade routes around you. **Rename** your milestones and your roads; cartographers also see the caravans on the move.
 
 ### ✦ Goods from eight regions
-Dunes, Frostlands, Jungle, Highlands, Coast, Marshes, Woodlands, Steppe: every caravan carries the goods of its home region, and it never comes from the kind of place it is visiting. Living in a desert? Expect bamboo, ice, moss, spruce and prismarine to come to you.
+Dunes, Frostlands, Jungle, Highlands, Coast, Marshes, Woodlands, Steppe: every caravan carries a dozen specialities of its home region in real quantities, barters, **requests** (goods it pays emeralds for) and **treasures**: max-level enchanted books, tridents, totems, sniffer eggs... It never comes from the kind of place it is visiting.
 
-### ✦ Reputation with the caravan guilds
-Trade with caravans, host them at your milestone and protect them: your reputation grows through **five ranks**, from Stranger to Legend. Each rank unlocks rarer offers (armor trims, saddles, diamonds, a heart of the sea...) and the two highest ranks get a discount on everything. Attack a caravan and your reputation drops.
+### ✦ The caravan guilds and their skill tree
+Trade with caravans, host them, protect them and build roads: you gain **guild levels** that unlock rarer goods, and **skill points** to spend in three branches — **Trader**, **Protector** and **Builder** (12 skills). Your **title** tells what you do: *Peddler*, *Merchant Prince*, *Road Warden*, *Master Builder*... Attack a caravan and the guilds remember.
 
 ### ✦ Ambushes
 While you are near a caravan, bandits may attack it. Defeat them all and the caravan master leaves you emeralds and a gift from its region.
 
 ### ✦ Made for servers and modpacks
-- Every feature has its own switch or dial in `config/chroniclecaravans-common.toml`: time between visits, number of caravans and llamas, road bonus, ambush chance, reputation, chat messages.
+- Every feature has its own switch or dial in `config/chroniclecaravans-common.toml`: time between visits, number of caravans and llamas, how often new caravans appear, road bonus, ambush chance, reputation, chat messages.
 - Light on performance: a few caravans at a time, nothing runs when no milestone exists.
-- Commands for admins and creators: `/caravans summon [region]`, `/caravans ambush`, `/caravans reputation <player> <value>`.
+- Commands for admins and creators: `/caravans summon [region]`, `/caravans ambush`, `/caravans atlas`, `/caravans reputation <player> <xp>`.
 - English and French.
 
 **Forge 1.20.1 · Forge 1.21.1 · NeoForge 1.21.1 · NeoForge 26.3.** Install on both the client and the server.

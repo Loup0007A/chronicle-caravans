@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "chroniclecaravans:block/inn_sign"
+    },
+    "facing=east": {
+      "model": "chroniclecaravans:block/inn_sign",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "chroniclecaravans:block/inn_sign",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "chroniclecaravans:block/inn_sign",
+      "y": 270
+    }
+  }
+}

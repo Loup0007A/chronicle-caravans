@@ -199,15 +199,18 @@ public class CaravanWagon extends Entity {
         return false;
     }
 
+    /** A solid wagon: players and mobs walk around it (or climb on it), like a boat on land. */
     //#if mc26
     //$$ @Override
     //$$ public boolean canBeCollidedWith(Entity other) {
+    //$$     return isAlive() && !(other instanceof CaravanMaster) && !(other instanceof CaravanGuard);
+    //$$ }
     //#else
     @Override
     public boolean canBeCollidedWith() {
-    //#endif
-        return false;
+        return isAlive();
     }
+    //#endif
 
     @Override
     public ItemStack getPickResult() {
@@ -265,7 +268,7 @@ public class CaravanWagon extends Entity {
 
     public static EntityType.Builder<CaravanWagon> builder() {
         return EntityType.Builder.<CaravanWagon>of(CaravanWagon::new, net.minecraft.world.entity.MobCategory.MISC)
-                .sized(2.0F, 2.7F)
+                .sized(2.6F, 2.4F)
                 .clientTrackingRange(10)
                 .updateInterval(2)
                 .fireImmune();

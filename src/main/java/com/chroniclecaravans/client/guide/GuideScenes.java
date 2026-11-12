@@ -4,7 +4,7 @@ import java.util.List;
 
 import com.chroniclecaravans.ChronicleCaravans;
 import com.chroniclecaravans.Region;
-import com.chroniclecaravans.Tier;
+import com.chroniclecaravans.Guild;
 import com.chroniclecaravans.client.guide.GuideScene.Actor;
 import com.chroniclecaravans.entity.CaravanWagon;
 import com.chroniclecaravans.platform.Compat;
@@ -25,7 +25,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-/** The five scenes of the Caravan Guide. */
+/** The scenes of the Caravan Guide. */
 public final class GuideScenes {
     private GuideScenes() {}
 
@@ -33,7 +33,7 @@ public final class GuideScenes {
     private static final BlockState PATH = Blocks.DIRT_PATH.defaultBlockState();
 
     public static List<GuideScene> all() {
-        return List.of(milestone(), route(), caravan(), villages(), ambush(), hire());
+        return List.of(milestone(), route(), caravan(), villages(), ambush(), hire(), inn(), services());
     }
 
     private static BlockState milestoneBlock() {
@@ -197,10 +197,10 @@ public final class GuideScenes {
         s.item(new ItemStack(Items.BLUE_ICE), 175, 190, 390, from, new Vec3(10.0, 1.15, 1.7));
         s.text(172, 258, "reward", GuideScene.at(10.6, 1.5, 2.1)).icons(new ItemStack(Items.EMERALD, 5), new ItemStack(Items.BLUE_ICE, 2));
         MutableComponent ranks = Component.translatable("guide.chroniclecaravans.ambush.reputation").append("\n");
-        Tier[] tiers = Tier.values();
-        for (int i = 0; i < tiers.length; i++) {
-            ranks.append(tiers[i].label());
-            if (i < tiers.length - 1) ranks.append(Component.literal(" › ").withStyle(ChatFormatting.DARK_GRAY));
+        Guild.Branch[] branches = Guild.Branch.values();
+        for (int i = 0; i < branches.length; i++) {
+            ranks.append(branches[i].label());
+            if (i < branches.length - 1) ranks.append(Component.literal(" · ").withStyle(ChatFormatting.DARK_GRAY));
         }
         s.text(264, 386, ranks, GuideScene.above(master, 2.1));
         return s;
@@ -216,6 +216,62 @@ public final class GuideScenes {
         s.text(14, 125, "use", GuideScene.at(3.5, 2.0, 3.5)).icons(new ItemStack(Items.EMERALD_BLOCK), GuideScene.ARROW, milestoneItem()).highlight(3, 1, 3);
         s.actor(GuideScenes::master).appear(70).key(70, 1.6, 1, 6.2).key(110, 2.6, 1, 4.4).facing(-135F);
         s.text(132, 265, "config", GuideScene.at(3.5, 1.95, 3.5));
+        return s;
+    }
+
+    // ---------------------------------------------------------------- 7. inns
+
+    static GuideScene inn() {
+        GuideScene s = new GuideScene("inn", 330, 15, 8, new ItemStack(ChronicleCaravans.INN_SIGN_ITEM.get()));
+        s.plate(GRASS);
+        for (int x = 0; x < 15; x++) s.ground(x, 5, PATH);
+        BlockState bed = Blocks.RED_BED.defaultBlockState();
+        s.block(11, 1, 4, ChronicleCaravans.INN_SIGN.get().defaultBlockState(), 14)
+                .block(12, 1, 2, bed, 18)
+                .block(12, 1, 1, bed.setValue(net.minecraft.world.level.block.BedBlock.PART, net.minecraft.world.level.block.state.properties.BedPart.HEAD), 18)
+                .block(10, 1, 4, Blocks.BARREL.defaultBlockState(), 22)
+                .block(14, 1, 1, Blocks.OAK_FENCE.defaultBlockState(), 24).block(14, 2, 1, Blocks.LANTERN.defaultBlockState(), 26);
+        Actor[] t = train(s, 5.5, Region.STEPPE, 1, 0, -1.0, 120, 9.6);
+        s.text(20, 112, "sign", GuideScene.at(11.5, 2.0, 4.5)).icons(new ItemStack(ChronicleCaravans.INN_SIGN_ITEM.get()), new ItemStack(Items.RED_BED)).highlight(11, 1, 4);
+        s.text(118, 222, "night", GuideScene.above(t[0], 2.1));
+        s.item(new ItemStack(Items.EMERALD, 3), 236, 256, 330, t[0].pos(200).add(0, 1.4, 0), new Vec3(10.5, 2.05, 4.5));
+        s.text(228, 326, "morning", GuideScene.at(10.5, 2.0, 4.5)).icons(new ItemStack(Items.EMERALD, 3), GuideScene.ARROW, new ItemStack(Items.BARREL));
+        return s;
+    }
+
+    // ---------------------------------------------------------------- 8. services: road crews and escorts
+
+    static Entity builder(Level level) {
+        Entity e = Compat.create(ChronicleCaravans.BUILDER.get(), level);
+        if (e instanceof net.minecraft.world.entity.Mob m) m.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SHOVEL));
+        return e;
+    }
+
+    static Entity guard(Level level) {
+        Entity e = Compat.create(ChronicleCaravans.GUARD.get(), level);
+        if (e instanceof net.minecraft.world.entity.Mob m) {
+            m.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+            m.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
+            m.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.IRON_HELMET));
+            m.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.CHAINMAIL_CHESTPLATE));
+        }
+        return e;
+    }
+
+    static GuideScene services() {
+        GuideScene s = new GuideScene("services", 380, 17, 8, new ItemStack(Items.IRON_SHOVEL));
+        s.plate(GRASS);
+        s.block(1, 1, 4, milestoneBlock(), 0).block(16, 1, 4, milestoneBlock(), 0);
+        for (int x = 2; x <= 15; x++) {
+            int tick = 40 + (x - 2) * 11;
+            for (int z = 3; z <= 5; z++) s.block(x, 0, z, PATH, tick);
+        }
+        s.actor(GuideScenes::builder).appear(30).key(30, 2.5, 1, 4.5).key(185, 15.5, 1, 4.5).vanish(200).facing(-90F);
+        s.text(34, 196, "crew", GuideScene.at(8.5, 2.6, 4.5)).icons(new ItemStack(Items.EMERALD, 12), GuideScene.ARROW, new ItemStack(Items.DIRT_PATH));
+        s.actor(GuideScenes::master).appear(205).key(205, 7.5, 1, 1.6).facing(0F);
+        s.actor(GuideScenes::guard).appear(222).key(222, 5.6, 1, 2.4).facing(20F);
+        s.actor(GuideScenes::guard).appear(230).key(230, 9.4, 1, 2.4).facing(-20F);
+        s.text(236, 376, "escort", GuideScene.at(7.5, 3.3, 1.6)).icons(new ItemStack(Items.EMERALD, 14), GuideScene.ARROW, new ItemStack(Items.IRON_SWORD));
         return s;
     }
 }

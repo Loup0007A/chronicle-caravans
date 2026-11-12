@@ -23,6 +23,10 @@ public final class Nbt {
         return t.getLong(k);
     }
 
+    public static double getDouble(CompoundTag t, String k) {
+        return t.getDouble(k);
+    }
+
     public static String getString(CompoundTag t, String k) {
         return t.getString(k);
     }

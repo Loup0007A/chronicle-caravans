@@ -17,12 +17,31 @@ public final class ClientSetup {
     public static void renderers(EntityRenderersEvent.RegisterRenderers e) {
         e.registerEntityRenderer(ChronicleCaravans.CARAVAN_MASTER.get(), WanderingTraderRenderer::new);
         e.registerEntityRenderer(ChronicleCaravans.WAGON.get(), WagonRenderer::new);
+        e.registerEntityRenderer(ChronicleCaravans.GUARD.get(), ctx -> new HelperRenderer<>(ctx, "caravan_guard"));
+        e.registerEntityRenderer(ChronicleCaravans.BUILDER.get(), ctx -> new HelperRenderer<>(ctx, "road_builder"));
     }
 
     @SubscribeEvent
     public static void layers(EntityRenderersEvent.RegisterLayerDefinitions e) {
         e.registerLayerDefinition(WagonModel.LAYER, WagonModel::createLayer);
+        e.registerLayerDefinition(HelperRenderer.LAYER, HelperRenderer::createLayer);
     }
+
+    //#if neoforge
+    @SubscribeEvent
+    public static void screens(net.neoforged.neoforge.client.event.RegisterMenuScreensEvent e) {
+        e.register(ChronicleCaravans.CARAVAN_MENU.get(), com.chroniclecaravans.client.screen.CaravanScreen::new);
+        e.register(ChronicleCaravans.ATLAS_MENU.get(), com.chroniclecaravans.client.screen.AtlasScreen::new);
+    }
+    //#else
+    //$$ @SubscribeEvent
+    //$$ public static void screens(net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent e) {
+    //$$     e.enqueueWork(() -> {
+    //$$         net.minecraft.client.gui.screens.MenuScreens.register(ChronicleCaravans.CARAVAN_MENU.get(), com.chroniclecaravans.client.screen.CaravanScreen::new);
+    //$$         net.minecraft.client.gui.screens.MenuScreens.register(ChronicleCaravans.ATLAS_MENU.get(), com.chroniclecaravans.client.screen.AtlasScreen::new);
+    //$$     });
+    //$$ }
+    //#endif
 
     //#if mc26
     //$$ @SubscribeEvent

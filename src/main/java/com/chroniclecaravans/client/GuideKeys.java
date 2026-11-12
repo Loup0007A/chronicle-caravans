@@ -111,7 +111,7 @@ public final class GuideKeys {
                     pendingScene = 0;
                     return 1;
                 })
-                .then(Commands.argument("scene", IntegerArgumentType.integer(1, 6)).executes(c -> {
+                .then(Commands.argument("scene", IntegerArgumentType.integer(1, 8)).executes(c -> {
                     pendingScene = IntegerArgumentType.getInteger(c, "scene") - 1;
                     return 1;
                 })));

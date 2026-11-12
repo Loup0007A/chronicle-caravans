@@ -16,8 +16,12 @@ public final class CCConfig {
             .comment("How long a caravan stays at a milestone before moving on, in seconds.")
             .defineInRange("haltSeconds", 180, 20, 3600);
     public static final ModConfigSpec.IntValue MAX_CARAVANS = B
-            .comment("Maximum number of caravans loaded at the same time in a dimension.")
+            .comment("Maximum number of caravans on the roads of the world (loaded or not). Caravans travel from stop to stop:",
+                    "a stop that waits gets a caravan that is free nearby before a new one is ever created.")
             .defineInRange("maxActiveCaravans", 3, 1, 32);
+    public static final ModConfigSpec.IntValue NEW_CARAVAN_COOLDOWN = B
+            .comment("Shortest time between the arrivals of two brand new caravans in the world, in seconds.")
+            .defineInRange("newCaravanCooldownSeconds", 600, 0, 86400);
     public static final ModConfigSpec.BooleanValue WAGON_ENABLED = B
             .comment("Caravans travel with a covered wagon pulled by a draft llama.")
             .define("wagonEnabled", true);
@@ -56,7 +60,7 @@ public final class CCConfig {
             .defineInRange("ambushChance", 0.015, 0.0, 1.0);
 
     public static final ModConfigSpec.BooleanValue REPUTATION_ENABLED = B
-            .comment("If false, every player sees the full stock of every caravan and reputation is not tracked.")
+            .comment("If false, every player sees the full stock of every caravan and guild experience is not tracked.")
             .define("reputationEnabled", true);
     public static final ModConfigSpec.BooleanValue ANNOUNCEMENTS = B
             .comment("Chat messages when a caravan arrives, leaves or is attacked.")

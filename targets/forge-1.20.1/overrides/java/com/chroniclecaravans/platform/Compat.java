@@ -1,6 +1,11 @@
 package com.chroniclecaravans.platform;
 
 import java.util.UUID;
+import java.util.List;
+import java.util.Optional;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.EnchantmentInstance;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -58,5 +63,51 @@ public final class Compat {
 
     public static SoundEvent raidHorn() {
         return SoundEvents.RAID_HORN.value();
+    }
+
+    public static MerchantOffer offer2(ItemStack a, ItemStack b, ItemStack result, int maxUses, int xp) {
+        return new MerchantOffer(a.copy(), b.copy(), result, maxUses, xp, 0.05F);
+    }
+
+    public static ItemStack enchantedBook(ServerLevel level, String id, int lvl) {
+        Enchantment e = net.minecraft.core.registries.BuiltInRegistries.ENCHANTMENT.get(new net.minecraft.resources.ResourceLocation(id));
+        return e == null ? ItemStack.EMPTY : net.minecraft.world.item.EnchantedBookItem.createForEnchantment(new EnchantmentInstance(e, lvl));
+    }
+
+    public static int enchantmentLevel(ServerLevel level, String id, ItemStack stack) {
+        Enchantment e = net.minecraft.core.registries.BuiltInRegistries.ENCHANTMENT.get(new net.minecraft.resources.ResourceLocation(id));
+        return e == null ? 0 : net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(e, stack);
+    }
+
+    public static CompoundTag data(ItemStack stack) {
+        CompoundTag t = stack.getTag();
+        return t == null || !t.contains("ChronicleCaravans") ? null : t.getCompound("ChronicleCaravans").copy();
+    }
+
+    public static void setData(ItemStack stack, CompoundTag tag) {
+        stack.getOrCreateTag().put("ChronicleCaravans", tag);
+    }
+
+    public static void setLore(ItemStack stack, List<Component> lines) {
+        net.minecraft.nbt.ListTag list = new net.minecraft.nbt.ListTag();
+        for (Component c : lines) list.add(net.minecraft.nbt.StringTag.valueOf(Component.Serializer.toJson(c)));
+        stack.getOrCreateTagElement("display").put("Lore", list);
+    }
+
+    public static void setName(ItemStack stack, Component name) {
+        stack.setHoverName(name);
+    }
+
+    public static boolean sameItem(ItemStack a, ItemStack b) {
+        return ItemStack.isSameItemSameTags(a, b);
+    }
+
+    public static boolean isNight(Level level) {
+        return level.isNight();
+    }
+
+    /** An operator (permission level 2). */
+    public static boolean isOp(net.minecraft.server.level.ServerPlayer p) {
+        return p.hasPermissions(2);
     }
 }

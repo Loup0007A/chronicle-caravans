@@ -20,6 +20,10 @@ public final class Nbt {
         return t.getLongOr(k, 0L);
     }
 
+    public static double getDouble(CompoundTag t, String k) {
+        return t.getDoubleOr(k, 0.0);
+    }
+
     public static String getString(CompoundTag t, String k) {
         return t.getStringOr(k, "");
     }

@@ -5,7 +5,11 @@ import java.util.List;
 import com.chroniclecaravans.CCConfig;
 import com.chroniclecaravans.ChronicleCaravans;
 import com.chroniclecaravans.Region;
-import com.chroniclecaravans.Tier;
+import com.chroniclecaravans.Guild;
+import com.chroniclecaravans.item.AtlasItem;
+import com.chroniclecaravans.menu.AtlasMenu;
+import com.chroniclecaravans.platform.Compat;
+import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import com.chroniclecaravans.entity.CaravanMaster;
 import com.chroniclecaravans.world.CaravanData;
 import com.chroniclecaravans.world.CaravanSpawner;
@@ -27,8 +31,9 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 /**
- * /caravans — your reputation · /caravans stops — the milestones ·
- * (operators) /caravans summon [region] · /caravans ambush · /caravans reputation &lt;player&gt; &lt;value&gt;
+ * /caravans — your standing · /caravans stops — the stops · /caravans atlas (operators) ·
+ * /caravans rename stop|route … &lt;name&gt; (used by the atlas) ·
+ * (operators) /caravans summon [region] · /caravans ambush · /caravans reputation &lt;player&gt; &lt;xp&gt;
  */
 @EventBusSubscriber(modid = ChronicleCaravans.MODID)
 public final class CaravanCommands {
@@ -51,28 +56,97 @@ public final class CaravanCommands {
                                 .suggests((c, b) -> SharedSuggestionProvider.suggest(java.util.Arrays.stream(Region.values()).map(Region::key), b))
                                 .executes(c -> summon(c, Region.byName(StringArgumentType.getString(c, "region"))))))
                 .then(Commands.literal("ambush").requires(OPS).executes(CaravanCommands::ambush))
+                .then(Commands.literal("atlas").requires(OPS).executes(c -> {
+                    AtlasItem.open(c.getSource().getPlayerOrException());
+                    return 1;
+                }))
+                .then(Commands.literal("rename")
+                        .then(Commands.literal("stop").then(Commands.argument("pos", BlockPosArgument.blockPos())
+                                .then(Commands.argument("name", StringArgumentType.greedyString()).executes(c -> renameStop(c, StringArgumentType.getString(c, "name"))))
+                                .then(Commands.literal("-").executes(c -> renameStop(c, "")))))
+                        .then(Commands.literal("route").then(Commands.argument("a", BlockPosArgument.blockPos()).then(Commands.argument("b", BlockPosArgument.blockPos())
+                                .then(Commands.argument("name", StringArgumentType.greedyString()).executes(c -> renameRoute(c, StringArgumentType.getString(c, "name"))))
+                                .then(Commands.literal("-").executes(c -> renameRoute(c, "")))))))
                 .then(Commands.literal("reputation").requires(OPS)
                         .then(Commands.argument("player", EntityArgument.player())
-                                .then(Commands.argument("value", IntegerArgumentType.integer(-100, 100000))
+                                .then(Commands.argument("value", IntegerArgumentType.integer(-200, 100000))
                                         .executes(CaravanCommands::setReputation)))));
     }
 
     private static int status(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
         ServerPlayer p = c.getSource().getPlayerOrException();
         CaravanData data = CaravanData.get(p.serverLevel());
-        int rep = data.reputation(p.getUUID());
-        Tier tier = Tier.of(rep);
-        Tier next = tier.next();
+        int xp = data.xp(p.getUUID());
+        int skills = data.skills(p.getUUID());
         if (!CCConfig.REPUTATION_ENABLED.get()) {
             p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.rep_disabled").withStyle(ChatFormatting.GRAY));
-        } else if (next == null) {
-            p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.rep_max", rep, tier.label()));
         } else {
-            p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.rep", rep, tier.label(), next.threshold - rep, next.label()));
+            int lvl = Guild.levelOf(xp);
+            p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.rep", Guild.describe(xp, skills), Guild.progress(xp), Guild.needed(lvl)));
+            int points = Guild.points(xp, skills);
+            if (points > 0) p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.points", points).withStyle(ChatFormatting.GOLD));
         }
         p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.own_stops", data.stopsOf(p.getUUID()).size(),
-                CaravanSpawner.caravans(p.serverLevel()).size()).withStyle(ChatFormatting.GRAY));
-        return rep;
+                data.caravans().size()).withStyle(ChatFormatting.GRAY));
+        return xp;
+    }
+
+    private static boolean canRename(ServerPlayer p, java.util.UUID owner, boolean village) {
+        return village || Compat.isOp(p) || p.getUUID().equals(owner);
+    }
+
+    private static String clean(String name) {
+        name = name.strip();
+        return name.length() > 32 ? name.substring(0, 32) : name;
+    }
+
+    private static void refreshAtlas(ServerPlayer p) {
+        if (p.containerMenu instanceof AtlasMenu m) m.refresh(p);
+    }
+
+    private static int renameStop(CommandContext<CommandSourceStack> c, String name) throws CommandSyntaxException {
+        ServerPlayer p = c.getSource().getPlayerOrException();
+        BlockPos pos = BlockPosArgument.getBlockPos(c, "pos");
+        CaravanData data = CaravanData.get(p.serverLevel());
+        CaravanData.Stop s = data.stop(pos);
+        CaravanData.Inn inn = data.inn(pos);
+        if (s == null && inn == null) {
+            c.getSource().sendFailure(Component.translatable("msg.chroniclecaravans.no_stop"));
+            return 0;
+        }
+        if (s != null ? !canRename(p, s.owner, s.village) : !canRename(p, inn.owner, false)) {
+            c.getSource().sendFailure(Component.translatable("msg.chroniclecaravans.not_yours"));
+            return 0;
+        }
+        if (s != null) s.name = clean(name);
+        else inn.name = clean(name);
+        data.setDirty();
+        Component shown = s != null ? s.displayName() : inn.displayName();
+        c.getSource().sendSuccess(() -> Component.translatable("msg.chroniclecaravans.renamed", shown).withStyle(ChatFormatting.GREEN), false);
+        refreshAtlas(p);
+        return 1;
+    }
+
+    private static int renameRoute(CommandContext<CommandSourceStack> c, String name) throws CommandSyntaxException {
+        ServerPlayer p = c.getSource().getPlayerOrException();
+        CaravanData data = CaravanData.get(p.serverLevel());
+        CaravanData.Stop a = data.stop(BlockPosArgument.getBlockPos(c, "a")), b = data.stop(BlockPosArgument.getBlockPos(c, "b"));
+        if (a == null || b == null) {
+            c.getSource().sendFailure(Component.translatable("msg.chroniclecaravans.no_stop"));
+            return 0;
+        }
+        boolean may = Compat.isOp(p) || p.getUUID().equals(a.owner) || p.getUUID().equals(b.owner) || (a.village && b.village);
+        if (!may) {
+            c.getSource().sendFailure(Component.translatable("msg.chroniclecaravans.not_yours"));
+            return 0;
+        }
+        String n = clean(name);
+        data.routeOrCreate(a.pos, b.pos).name = n;
+        data.setDirty();
+        c.getSource().sendSuccess(() -> Component.translatable("msg.chroniclecaravans.route_renamed", a.displayName(), b.displayName(),
+                n.isEmpty() ? "-" : n).withStyle(ChatFormatting.GREEN), false);
+        refreshAtlas(p);
+        return 1;
     }
 
     private static int stops(CommandContext<CommandSourceStack> c) {
@@ -129,8 +203,10 @@ public final class CaravanCommands {
     private static int setReputation(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
         ServerPlayer target = EntityArgument.getPlayer(c, "player");
         int value = IntegerArgumentType.getInteger(c, "value");
-        CaravanData.get(target.serverLevel()).setReputation(target.getUUID(), value);
-        c.getSource().sendSuccess(() -> Component.translatable("msg.chroniclecaravans.rep_set", target.getDisplayName(), value, Tier.of(value).label()), true);
+        CaravanData data = CaravanData.get(target.serverLevel());
+        data.setXp(target.getUUID(), value);
+        c.getSource().sendSuccess(() -> Component.translatable("msg.chroniclecaravans.rep_set", target.getDisplayName(), value,
+                Guild.describe(value, data.skills(target.getUUID()))), true);
         return value;
     }
 }

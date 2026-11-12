@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:oak_sign",
+    "#minecraft:beds",
+    "minecraft:emerald"
+  ],
+  "result": {
+    "id": "chroniclecaravans:inn_sign"
+  }
+}

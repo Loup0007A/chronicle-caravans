@@ -129,6 +129,22 @@
     [
       "LightTexture.FULL_BRIGHT",
       "LightCoordsUtil.FULL_BRIGHT"
+    ],
+    [
+      "Items.ORANGE_TERRACOTTA",
+      "Items.DYED_TERRACOTTA.orange()"
+    ],
+    [
+      "Items.WHITE_WOOL",
+      "Items.WOOL.white()"
+    ],
+    [
+      "Items.RED_BED",
+      "Items.BED.red()"
+    ],
+    [
+      "Blocks.RED_BED",
+      "Blocks.BED.red()"
     ]
   ]
 }

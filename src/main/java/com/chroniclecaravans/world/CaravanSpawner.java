@@ -6,6 +6,8 @@ import java.util.List;
 import com.chroniclecaravans.CCConfig;
 import com.chroniclecaravans.ChronicleCaravans;
 import com.chroniclecaravans.Region;
+import com.chroniclecaravans.Guild;
+import com.chroniclecaravans.entity.CaravanGuard;
 import com.chroniclecaravans.entity.CaravanMaster;
 import com.chroniclecaravans.entity.CaravanWagon;
 import com.chroniclecaravans.platform.Compat;
@@ -58,6 +60,11 @@ public final class CaravanSpawner {
     //$$ }
     //#endif
 
+    /** A caravan not seen for this long is asleep in unloaded land: it may be moved where it is needed. */
+    private static final long ASLEEP = 2400;
+    /** A caravan not seen for this long is forgotten for good. */
+    private static final long LOST = 72000 * 3;
+
     private static void tickLevel(Level world) {
         if (!(world instanceof ServerLevel level) || level.dimension() != Level.OVERWORLD) return;
         if (level.getGameTime() % 100 != 0) return;
@@ -65,8 +72,9 @@ public final class CaravanSpawner {
         if (CCConfig.VILLAGE_STOPS.get() && level.getGameTime() % 600 == 0) {
             for (ServerPlayer p : level.players()) scanVillages(level, p.blockPosition());
         }
-        if (data.stops().isEmpty()) return;
         long now = level.getGameTime();
+        data.caravans().values().removeIf(c -> now - c.lastSeen > LOST || c.lastSeen > now + 1000);
+        if (data.stops().isEmpty()) return;
         List<CaravanMaster> active = caravans(level);
         List<BlockPos> stale = new ArrayList<>();
         for (CaravanData.Stop stop : data.stops()) {
@@ -78,19 +86,69 @@ public final class CaravanSpawner {
                 continue;
             }
             if (level.getNearestPlayer(stop.pos.getX(), stop.pos.getY(), stop.pos.getZ(), 128, false) == null) continue;
-            if (active.size() >= CCConfig.MAX_CARAVANS.get()) break;
-            if (headingTo(active, stop.pos) != null) {
-                stop.nextVisit = now + 1200;
-                continue;
-            }
-            CaravanMaster master = spawnCaravan(level, stop, null);
-            long interval = CCConfig.VISIT_INTERVAL.get() * 20L;
-            // No free spot around the milestone: try again in a minute
-            stop.nextVisit = now + (master == null ? 1200 : (long) (interval * (0.75 + level.getRandom().nextDouble() * 0.5)));
-            data.setDirty();
-            if (master != null) active.add(master);
+            if (dispatch(level, data, stop, active) != null) data.setDirty();
         }
-        for (BlockPos p : stale) data.removeStop(p);
+        for (BlockPos p : stale) data.removeStopAndRoutes(p);
+    }
+
+    /**
+     * A stop wants a caravan. In order: one already heading there; a free caravan close by, sent over;
+     * a caravan asleep in faraway land, moved here; a brand new one (rarely: at most one every few minutes,
+     * and never more than the configured number). Returns the caravan that comes, or null (try again later).
+     */
+    public static CaravanMaster dispatch(ServerLevel level, CaravanData data, CaravanData.Stop stop, List<CaravanMaster> active) {
+        long now = level.getGameTime();
+        CaravanMaster coming = headingTo(active, stop.pos);
+        if (coming != null) {
+            stop.nextVisit = now + 1200;
+            return coming;
+        }
+        // 1. A loaded caravan with nothing better to do
+        double reach = CCConfig.LINK_RANGE.get() * (stop.hired ? 2.0 : 1.25);
+        CaravanMaster best = null;
+        for (CaravanMaster m : active) {
+            if (!m.available() || m.distanceToSqr(stop.pos.getX(), stop.pos.getY(), stop.pos.getZ()) > reach * reach) continue;
+            if (best == null || m.distanceToSqr(stop.pos.getX(), stop.pos.getY(), stop.pos.getZ()) < best.distanceToSqr(stop.pos.getX(), stop.pos.getY(), stop.pos.getZ())) best = m;
+        }
+        if (best != null) {
+            best.redirect(level, stop.pos);
+            stop.nextVisit = now + 1200;
+            return best;
+        }
+        // 2. A caravan asleep far away is moved here (the old one vanishes when its land wakes up)
+        int known = data.caravans().size();
+        java.util.UUID sleeper = null;
+        for (java.util.Map.Entry<java.util.UUID, CaravanData.Caravan> e : data.caravans().entrySet()) {
+            if (now - e.getValue().lastSeen > ASLEEP && level.getEntity(e.getKey()) == null) {
+                sleeper = e.getKey();
+                break;
+            }
+        }
+        Region region = null;
+        boolean fresh;
+        if (sleeper != null) {
+            region = data.caravans().get(sleeper).region;
+            fresh = false;
+        } else {
+            // 3. A new caravan, now and then
+            int max = CCConfig.MAX_CARAVANS.get() + (stop.hired ? 1 : 0);
+            if (known >= max || (now < data.nextSpawn && !stop.hired)) {
+                stop.nextVisit = now + 1200;
+                return null;
+            }
+            fresh = true;
+        }
+        CaravanMaster master = spawnCaravan(level, stop, region);
+        if (master == null) {
+            stop.nextVisit = now + 1200;
+            return null;
+        }
+        if (sleeper != null) data.forget(sleeper);
+        if (fresh) data.nextSpawn = now + CCConfig.NEW_CARAVAN_COOLDOWN.get() * 20L;
+        data.seen(master.getUUID(), now, master.blockPosition(), master.region(), stop.pos);
+        stop.nextVisit = now + 1200;
+        active.add(master);
+        return master;
     }
 
     /**
@@ -115,9 +173,15 @@ public final class CaravanSpawner {
     public static void onDeath(LivingDeathEvent e) {
         if (!(e.getEntity().level() instanceof ServerLevel level)) return;
         if (!Nbt.hasUUID(e.getEntity().getPersistentData(), CaravanMaster.AMBUSH_TAG)) return;
-        if (!(e.getSource().getEntity() instanceof ServerPlayer player)) return;
+        java.util.UUID killer = e.getSource().getEntity() instanceof ServerPlayer player ? player.getUUID()
+                : e.getSource().getEntity() instanceof CaravanGuard g ? g.buyer() : null;
+        if (killer == null) return;
         if (level.getEntity(Nbt.getUUID(e.getEntity().getPersistentData(), CaravanMaster.AMBUSH_TAG)) instanceof CaravanMaster master) {
-            master.onBanditKilled(player);
+            master.onBanditKilled(level, killer);
+            // Bounty Hunter: every bandit is worth a few emeralds
+            if (Guild.has(CaravanData.get(level).skills(killer), Guild.Skill.BOUNTY_HUNTER)) {
+                net.minecraft.world.level.block.Block.popResource(level, e.getEntity().blockPosition(), new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.EMERALD, 2));
+            }
         }
     }
 
@@ -142,7 +206,7 @@ public final class CaravanSpawner {
         for (CaravanMaster master : caravans(level)) {
             if (master.llamaIds().contains(llama.getUUID())) {
                 llama.getPersistentData().putLong("ChronicleCaravansScold", now);
-                CaravanData.get(level).addReputation(player, -3, "reason.chroniclecaravans.attack");
+                CaravanData.get(level).addXp(player, -3, "reason.chroniclecaravans.attack");
                 return;
             }
         }
@@ -164,9 +228,14 @@ public final class CaravanSpawner {
         return null;
     }
 
-    /** A new caravan appears 30 to 44 blocks from the milestone and walks to it. */
+    /** A caravan comes into view: it appears 48 to 80 blocks from the stop, out of sight of players, and walks to it. */
     public static CaravanMaster spawnCaravan(ServerLevel level, CaravanData.Stop stop, Region region) {
-        BlockPos at = findGround(level, stop.pos, 30, 44, level.getRandom());
+        BlockPos at = null;
+        for (int i = 0; i < 6 && at == null; i++) {
+            BlockPos p = findGround(level, stop.pos, 48, 80, level.getRandom());
+            if (p != null && level.isPositionEntityTicking(p) && level.getNearestPlayer(p.getX(), p.getY(), p.getZ(), 40, false) == null) at = p;
+        }
+        if (at == null) at = findGround(level, stop.pos, 30, 44, level.getRandom());
         if (at == null) at = findGround(level, stop.pos, 12, 30, level.getRandom());
         if (at == null) return null;
         if (region == null) region = Region.foreignTo(Region.at(level, stop.pos), level.getRandom());
@@ -183,6 +252,7 @@ public final class CaravanSpawner {
         master.setup(region, target);
         Compat.finalizeSpawn(master, level, at);
         level.addFreshEntity(master);
+        CaravanData.get(level).seen(master.getUUID(), level.getGameTime(), at, region, target);
 
         // The train: draft llama, covered wagon, then the pack llamas; the master lays it out on his trail
         master.seedTrail(level);

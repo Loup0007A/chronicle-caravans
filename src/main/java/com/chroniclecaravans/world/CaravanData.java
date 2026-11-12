@@ -9,7 +9,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.chroniclecaravans.CCConfig;
-import com.chroniclecaravans.Tier;
+import com.chroniclecaravans.Guild;
+import com.chroniclecaravans.Region;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 //#if mc121
@@ -17,7 +18,6 @@ import net.minecraft.core.HolderLookup;
 //#endif
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -27,7 +27,10 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.saveddata.SavedData;
 import com.chroniclecaravans.platform.Nbt;
 
-/** World data: the milestones (caravan stops) and each player's reputation. Stored with the Overworld. */
+/**
+ * World data, stored with the Overworld: the stops (milestones and village bells), the inns, the named and
+ * built routes, the caravans on the roads, and each player's standing with the guilds.
+ */
 public class CaravanData extends SavedData {
     private static final String NAME = "chroniclecaravans";
     //#if mc26
@@ -38,19 +41,23 @@ public class CaravanData extends SavedData {
     private static final Factory<CaravanData> FACTORY = new Factory<>(CaravanData::new, CaravanData::load, null);
     //#endif
 
-    /** A milestone: a place caravans visit. */
+    /** A milestone or a village bell: a place caravans visit. */
     public static final class Stop {
         public final BlockPos pos;
         public UUID owner;
         public String ownerName = "";
-        /** Custom name (milestone renamed in an anvil), or empty. */
+        /** Custom name (renamed in an anvil or on the atlas), or empty. */
         public String name = "";
-        /** Game time of the next scheduled visit. */
+        /** Game time from which the stop wants a caravan again. */
         public long nextVisit;
         /** A village bell rather than a milestone. */
         public boolean village;
         /** Game time of the last hired caravan. */
         public long lastCall = Long.MIN_VALUE / 2;
+        /** Game time of the last caravan that halted here. */
+        public long lastServed;
+        /** Someone paid for a caravan: the first free one comes. */
+        public boolean hired;
 
         Stop(BlockPos pos) {
             this.pos = pos;
@@ -63,8 +70,58 @@ public class CaravanData extends SavedData {
         }
     }
 
+    /** An inn sign: caravans nearby spend the night there. */
+    public static final class Inn {
+        public final BlockPos pos;
+        public UUID owner;
+        public String ownerName = "";
+        public String name = "";
+
+        Inn(BlockPos pos) {
+            this.pos = pos;
+        }
+
+        public Component displayName() {
+            if (!name.isEmpty()) return Component.literal(name).withStyle(ChatFormatting.GOLD);
+            return Component.translatable("inn.chroniclecaravans.default", ownerName.isEmpty() ? "?" : ownerName).withStyle(ChatFormatting.GOLD);
+        }
+    }
+
+    /** A road between two stops: named on the atlas, or built by a road crew. */
+    public static final class Route {
+        public final BlockPos a, b;
+        public String name = "";
+        public boolean built;
+
+        Route(BlockPos a, BlockPos b) {
+            this.a = a;
+            this.b = b;
+        }
+    }
+
+    /** A player's standing with the guilds. */
+    public static final class Profile {
+        public int xp;
+        public int skills;
+        /** Emeralds traded since the last experience point. */
+        public int traded;
+    }
+
+    /** What the world knows of a caravan, loaded or not. */
+    public static final class Caravan {
+        public long lastSeen;
+        public BlockPos pos = BlockPos.ZERO;
+        public Region region = Region.STEPPE;
+        public BlockPos target;
+    }
+
     private final Map<BlockPos, Stop> stops = new LinkedHashMap<>();
-    private final Map<UUID, Integer> reputation = new HashMap<>();
+    private final Map<BlockPos, Inn> inns = new LinkedHashMap<>();
+    private final Map<String, Route> routes = new LinkedHashMap<>();
+    private final Map<UUID, Profile> profiles = new HashMap<>();
+    private final Map<UUID, Caravan> caravans = new LinkedHashMap<>();
+    /** Game time before which no new caravan appears. */
+    public long nextSpawn;
 
     public static CaravanData get(MinecraftServer server) {
         //#if mc120
@@ -108,12 +165,6 @@ public class CaravanData extends SavedData {
         return s;
     }
 
-    public int villageCount() {
-        int n = 0;
-        for (Stop s : stops.values()) if (s.village) n++;
-        return n;
-    }
-
     public void removeStop(BlockPos pos) {
         if (stops.remove(pos) != null) setDirty();
     }
@@ -124,6 +175,7 @@ public class CaravanData extends SavedData {
         double bestD = range * range;
         for (Stop s : stops.values()) {
             if (visited != null && visited.contains(s.pos)) continue;
+            if (s.village && !CCConfig.VILLAGE_STOPS.get()) continue;
             double d = s.pos.distSqr(from);
             if (d <= bestD) {
                 bestD = d;
@@ -133,45 +185,188 @@ public class CaravanData extends SavedData {
         return best;
     }
 
+    /** The stops linked to {@code from} (within the link range), closest first. */
+    public List<Stop> linked(BlockPos from) {
+        double r = CCConfig.LINK_RANGE.get();
+        List<Stop> out = new ArrayList<>();
+        for (Stop s : stops.values()) {
+            if (s.pos.equals(from) || (s.village && !CCConfig.VILLAGE_STOPS.get())) continue;
+            if (s.pos.distSqr(from) <= r * r) out.add(s);
+        }
+        out.sort((x, y) -> Double.compare(x.pos.distSqr(from), y.pos.distSqr(from)));
+        return out;
+    }
+
     public List<Stop> stopsOf(UUID owner) {
         List<Stop> out = new ArrayList<>();
         for (Stop s : stops.values()) if (owner.equals(s.owner)) out.add(s);
         return out;
     }
 
-    // ---------------------------------------------------------------- reputation
+    // ---------------------------------------------------------------- inns
 
-    public int reputation(UUID player) {
-        return reputation.getOrDefault(player, 0);
+    public Collection<Inn> inns() {
+        return inns.values();
     }
 
-    public Tier tier(UUID player) {
-        if (!CCConfig.REPUTATION_ENABLED.get()) return Tier.LEGEND;
-        return Tier.of(reputation(player));
+    public Inn inn(BlockPos pos) {
+        return inns.get(pos);
     }
 
-    public void setReputation(UUID player, int value) {
-        reputation.put(player, Math.max(-100, Math.min(100000, value)));
+    public Inn addInn(BlockPos pos, UUID owner, String ownerName) {
+        Inn inn = new Inn(pos.immutable());
+        inn.owner = owner;
+        inn.ownerName = ownerName == null ? "" : ownerName;
+        inns.put(inn.pos, inn);
+        setDirty();
+        return inn;
+    }
+
+    public void removeInn(BlockPos pos) {
+        if (inns.remove(pos) != null) setDirty();
+    }
+
+    public Inn nearestInn(BlockPos from, double range) {
+        Inn best = null;
+        double bestD = range * range;
+        for (Inn i : inns.values()) {
+            double d = i.pos.distSqr(from);
+            if (d <= bestD) {
+                bestD = d;
+                best = i;
+            }
+        }
+        return best;
+    }
+
+    // ---------------------------------------------------------------- routes
+
+    private static String key(BlockPos a, BlockPos b) {
+        long x = a.asLong(), y = b.asLong();
+        return x < y ? x + ":" + y : y + ":" + x;
+    }
+
+    public Collection<Route> routes() {
+        return routes.values();
+    }
+
+    /** The record of the road between two stops, or null (an unnamed, unbuilt link). */
+    public Route route(BlockPos a, BlockPos b) {
+        return routes.get(key(a, b));
+    }
+
+    public Route routeOrCreate(BlockPos a, BlockPos b) {
+        return routes.computeIfAbsent(key(a, b), k -> {
+            setDirty();
+            return a.asLong() < b.asLong() ? new Route(a.immutable(), b.immutable()) : new Route(b.immutable(), a.immutable());
+        });
+    }
+
+    public String routeName(BlockPos a, BlockPos b) {
+        Route r = route(a, b);
+        return r == null ? "" : r.name;
+    }
+
+    /** Forgets the routes of a stop that no longer exists. */
+    private void dropRoutesOf(BlockPos pos) {
+        routes.values().removeIf(r -> (r.a.equals(pos) || r.b.equals(pos)) && !r.built);
+    }
+
+    // ---------------------------------------------------------------- caravans
+
+    public Map<UUID, Caravan> caravans() {
+        return caravans;
+    }
+
+    /** Called by every caravan now and then: it is still on the roads. */
+    public void seen(UUID id, long now, BlockPos pos, Region region, BlockPos target) {
+        Caravan c = caravans.computeIfAbsent(id, k -> new Caravan());
+        c.lastSeen = now;
+        c.pos = pos.immutable();
+        c.region = region;
+        c.target = target;
         setDirty();
     }
 
-    /** Changes a player's reputation and tells them, with a fanfare on a new rank. */
-    public void addReputation(ServerPlayer player, int delta, String reasonKey) {
+    public boolean knows(UUID id) {
+        return caravans.containsKey(id);
+    }
+
+    public void forget(UUID id) {
+        if (caravans.remove(id) != null) setDirty();
+    }
+
+    // ---------------------------------------------------------------- guild
+
+    public Profile profile(UUID player) {
+        return profiles.computeIfAbsent(player, k -> new Profile());
+    }
+
+    public int xp(UUID player) {
+        Profile p = profiles.get(player);
+        return p == null ? 0 : p.xp;
+    }
+
+    public int skills(UUID player) {
+        Profile p = profiles.get(player);
+        return p == null ? 0 : p.skills;
+    }
+
+    /** The level that unlocks offers (everything when reputation is switched off). */
+    public int level(UUID player) {
+        return CCConfig.REPUTATION_ENABLED.get() ? Guild.levelOf(xp(player)) : Guild.MAX_LEVEL;
+    }
+
+    public void setXp(UUID player, int value) {
+        profile(player).xp = Math.max(-200, Math.min(1_000_000, value));
+        setDirty();
+    }
+
+    /** Learns a skill if the player can. Returns true on success. */
+    public boolean learn(UUID player, Guild.Skill skill) {
+        Profile p = profile(player);
+        if (Guild.blocker(p.xp, p.skills, skill) != null) return false;
+        p.skills |= skill.bit();
+        setDirty();
+        return true;
+    }
+
+    /** Emeralds traded with a caravan: one experience point every ten. */
+    public void traded(ServerPlayer player, int emeralds) {
+        if (emeralds <= 0) return;
+        Profile p = profile(player.getUUID());
+        p.traded += emeralds;
+        int points = p.traded / 10;
+        p.traded %= 10;
+        setDirty();
+        if (points > 0) addXp(player, points, "reason.chroniclecaravans.trade");
+    }
+
+    /** Changes a player's standing and tells them, with a fanfare on a new level. */
+    public void addXp(ServerPlayer player, int delta, String reasonKey) {
         if (!CCConfig.REPUTATION_ENABLED.get() || delta == 0) return;
-        int before = reputation(player.getUUID());
-        Tier was = Tier.of(before);
-        setReputation(player.getUUID(), before + delta);
-        int now = reputation(player.getUUID());
-        Tier is = Tier.of(now);
+        Profile p = profile(player.getUUID());
+        int before = Guild.levelOf(p.xp);
+        setXp(player.getUUID(), p.xp + delta);
+        int now = Guild.levelOf(p.xp);
         ChatFormatting c = delta > 0 ? ChatFormatting.GREEN : ChatFormatting.RED;
-        Component line = Component.translatable("msg.chroniclecaravans.reputation", (delta > 0 ? "+" : "") + delta, Component.translatable(reasonKey), now).withStyle(c);
+        Component line = Component.translatable("msg.chroniclecaravans.reputation", (delta > 0 ? "+" : "") + delta, Component.translatable(reasonKey),
+                Guild.progress(p.xp), Guild.needed(now)).withStyle(c);
         player.displayClientMessage(line, true);
-        if (is.ordinal() > was.ordinal()) {
-            player.sendSystemMessage(Component.translatable("msg.chroniclecaravans.rank_up", is.label()).withStyle(ChatFormatting.GOLD));
+        if (now > before) {
+            player.sendSystemMessage(Component.translatable("msg.chroniclecaravans.level_up", now, Guild.title(p.xp, p.skills)).withStyle(ChatFormatting.GOLD));
             player.serverLevel().playSound(null, player.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8F, 1.2F);
-        } else if (is.ordinal() < was.ordinal()) {
-            player.sendSystemMessage(Component.translatable("msg.chroniclecaravans.rank_down", is.label()).withStyle(ChatFormatting.RED));
+        } else if (now < before) {
+            player.sendSystemMessage(Component.translatable("msg.chroniclecaravans.level_down", now).withStyle(ChatFormatting.RED));
         }
+    }
+
+    /** Same, for a player who may be offline. */
+    public void addXp(MinecraftServer server, UUID player, int delta, String reasonKey) {
+        if (player == null) return;
+        ServerPlayer online = server.getPlayerList().getPlayer(player);
+        if (online != null) addXp(online, delta, reasonKey);
+        else if (CCConfig.REPUTATION_ENABLED.get()) setXp(player, xp(player) + delta);
     }
 
     // ---------------------------------------------------------------- storage
@@ -185,23 +380,80 @@ public class CaravanData extends SavedData {
         ListTag list = Nbt.getList(tag, "Stops");
         for (int i = 0; i < list.size(); i++) {
             CompoundTag t = Nbt.at(list, i);
-            Stop s = new Stop(new BlockPos(Nbt.getInt(t, "X"), Nbt.getInt(t, "Y"), Nbt.getInt(t, "Z")));
+            Stop s = new Stop(pos(t));
             if (Nbt.hasUUID(t, "Owner")) s.owner = Nbt.getUUID(t, "Owner");
             s.ownerName = Nbt.getString(t, "OwnerName");
             s.name = Nbt.getString(t, "Name");
             s.nextVisit = Nbt.getLong(t, "NextVisit");
             if (t.contains("LastCall")) s.lastCall = Nbt.getLong(t, "LastCall");
+            s.lastServed = Nbt.getLong(t, "LastServed");
             s.village = Nbt.getBoolean(t, "Village");
+            s.hired = Nbt.getBoolean(t, "Hired");
             d.stops.put(s.pos, s);
         }
-        CompoundTag rep = Nbt.getCompound(tag, "Reputation");
-        for (String k : Nbt.keys(rep)) {
+        list = Nbt.getList(tag, "Inns");
+        for (int i = 0; i < list.size(); i++) {
+            CompoundTag t = Nbt.at(list, i);
+            Inn inn = new Inn(pos(t));
+            if (Nbt.hasUUID(t, "Owner")) inn.owner = Nbt.getUUID(t, "Owner");
+            inn.ownerName = Nbt.getString(t, "OwnerName");
+            inn.name = Nbt.getString(t, "Name");
+            d.inns.put(inn.pos, inn);
+        }
+        list = Nbt.getList(tag, "Routes");
+        for (int i = 0; i < list.size(); i++) {
+            CompoundTag t = Nbt.at(list, i);
+            Route r = new Route(BlockPos.of(Nbt.getLong(t, "A")), BlockPos.of(Nbt.getLong(t, "B")));
+            r.name = Nbt.getString(t, "Name");
+            r.built = Nbt.getBoolean(t, "Built");
+            d.routes.put(key(r.a, r.b), r);
+        }
+        list = Nbt.getList(tag, "Caravans");
+        for (int i = 0; i < list.size(); i++) {
+            CompoundTag t = Nbt.at(list, i);
+            if (!Nbt.hasUUID(t, "Id")) continue;
+            Caravan c = new Caravan();
+            c.lastSeen = Nbt.getLong(t, "LastSeen");
+            c.pos = BlockPos.of(Nbt.getLong(t, "Pos"));
+            c.region = Region.byName(Nbt.getString(t, "Region"));
+            if (t.contains("Target")) c.target = BlockPos.of(Nbt.getLong(t, "Target"));
+            d.caravans.put(Nbt.getUUID(t, "Id"), c);
+        }
+        CompoundTag prof = Nbt.getCompound(tag, "Guild");
+        for (String k : Nbt.keys(prof)) {
             try {
-                d.reputation.put(UUID.fromString(k), Nbt.getInt(rep, k));
+                CompoundTag t = Nbt.getCompound(prof, k);
+                Profile p = new Profile();
+                p.xp = Nbt.getInt(t, "Xp");
+                p.skills = Nbt.getInt(t, "Skills");
+                p.traded = Nbt.getInt(t, "Traded");
+                d.profiles.put(UUID.fromString(k), p);
             } catch (IllegalArgumentException ignored) {
             }
         }
+        // 1.0: plain reputation points become guild experience
+        CompoundTag rep = Nbt.getCompound(tag, "Reputation");
+        for (String k : Nbt.keys(rep)) {
+            try {
+                UUID id = UUID.fromString(k);
+                if (!d.profiles.containsKey(id)) d.profile(id).xp = Nbt.getInt(rep, k);
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        d.nextSpawn = Nbt.getLong(tag, "NextSpawn");
         return d;
+    }
+
+    private static BlockPos pos(CompoundTag t) {
+        return new BlockPos(Nbt.getInt(t, "X"), Nbt.getInt(t, "Y"), Nbt.getInt(t, "Z"));
+    }
+
+    private static CompoundTag posTag(BlockPos p) {
+        CompoundTag t = new CompoundTag();
+        t.putInt("X", p.getX());
+        t.putInt("Y", p.getY());
+        t.putInt("Z", p.getZ());
+        return t;
     }
 
     //#if mc120
@@ -215,22 +467,66 @@ public class CaravanData extends SavedData {
     //#endif
         ListTag list = new ListTag();
         for (Stop s : stops.values()) {
-            CompoundTag t = new CompoundTag();
-            t.putInt("X", s.pos.getX());
-            t.putInt("Y", s.pos.getY());
-            t.putInt("Z", s.pos.getZ());
+            CompoundTag t = posTag(s.pos);
             if (s.owner != null) Nbt.putUUID(t, "Owner", s.owner);
             t.putString("OwnerName", s.ownerName);
             t.putString("Name", s.name);
             t.putLong("NextVisit", s.nextVisit);
             t.putLong("LastCall", s.lastCall);
+            t.putLong("LastServed", s.lastServed);
             if (s.village) t.putBoolean("Village", true);
+            if (s.hired) t.putBoolean("Hired", true);
             list.add(t);
         }
         tag.put("Stops", list);
-        CompoundTag rep = new CompoundTag();
-        reputation.forEach((k, v) -> rep.putInt(k.toString(), v));
-        tag.put("Reputation", rep);
+        list = new ListTag();
+        for (Inn inn : inns.values()) {
+            CompoundTag t = posTag(inn.pos);
+            if (inn.owner != null) Nbt.putUUID(t, "Owner", inn.owner);
+            t.putString("OwnerName", inn.ownerName);
+            t.putString("Name", inn.name);
+            list.add(t);
+        }
+        tag.put("Inns", list);
+        list = new ListTag();
+        for (Route r : routes.values()) {
+            if (r.name.isEmpty() && !r.built) continue;
+            CompoundTag t = new CompoundTag();
+            t.putLong("A", r.a.asLong());
+            t.putLong("B", r.b.asLong());
+            t.putString("Name", r.name);
+            if (r.built) t.putBoolean("Built", true);
+            list.add(t);
+        }
+        tag.put("Routes", list);
+        list = new ListTag();
+        for (Map.Entry<UUID, Caravan> e : caravans.entrySet()) {
+            CompoundTag t = new CompoundTag();
+            Nbt.putUUID(t, "Id", e.getKey());
+            Caravan c = e.getValue();
+            t.putLong("LastSeen", c.lastSeen);
+            t.putLong("Pos", c.pos.asLong());
+            t.putString("Region", c.region.name());
+            if (c.target != null) t.putLong("Target", c.target.asLong());
+            list.add(t);
+        }
+        tag.put("Caravans", list);
+        CompoundTag prof = new CompoundTag();
+        profiles.forEach((k, p) -> {
+            CompoundTag t = new CompoundTag();
+            t.putInt("Xp", p.xp);
+            t.putInt("Skills", p.skills);
+            t.putInt("Traded", p.traded);
+            prof.put(k.toString(), t);
+        });
+        tag.put("Guild", prof);
+        tag.putLong("NextSpawn", nextSpawn);
         return tag;
+    }
+
+    /** Forgets a stop and its unbuilt routes. */
+    public void removeStopAndRoutes(BlockPos pos) {
+        removeStop(pos);
+        dropRoutesOf(pos);
     }
 }

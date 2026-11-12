@@ -8,7 +8,7 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "chroniclecaravans:milestone"
+          "name": "minecraft:lantern"
         }
       ],
       "rolls": 1
