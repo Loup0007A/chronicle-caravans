@@ -1,0 +1,48 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+
+// La version du mod est commune à toutes les cibles (gradle.properties à la racine)
+def common = new Properties()
+file('../../gradle.properties').withInputStream { common.load(it) }
+version = common.mod_version
+group = 'com.chroniclecaravans'
+base { archivesName = 'chroniclecaravans' }
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+// Sources produites par « python3 tools/port.py neoforge-26.3 »
+sourceSets.main.java.srcDirs = ['build/ported/java']
+sourceSets.main.resources.srcDirs = ['build/ported/resources']
+
+neoForge {
+    version = project.neo_version
+    runs {
+        client { client() }
+        server { server(); programArgument '--nogui' }
+    }
+    mods {
+        chroniclecaravans { sourceSet(sourceSets.main) }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-Xmaxerrs' << '1000'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/neoforge.mods.toml') { expand 'version': project.version }
+}
+
+jar { archiveClassifier = project.target_name }
+
+// Copie le classpath de compilation (pour compiler localement sans accès aux dépôts Maven)
+tasks.register('exportLibs', Copy) {
+    from configurations.compileClasspath
+    from(layout.buildDirectory.dir('moddev/artifacts'))
+    into layout.buildDirectory.dir('export')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

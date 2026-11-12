@@ -168,7 +168,7 @@ public class MilestoneBlock extends Block {
             } else {
                 if (!p.getAbilities().instabuild) stack.shrink(1);
                 stop.lastCall = now;
-                stop.nextVisit = now + 200 + server.random.nextInt(300);
+                stop.nextVisit = now + 200 + server.getRandom().nextInt(300);
                 data.setDirty();
                 server.playSound(null, pos, SoundEvents.BELL_BLOCK, SoundSource.BLOCKS, 2.0F, 0.8F);
                 p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.hired", stop.displayName()).withStyle(ChatFormatting.GREEN));

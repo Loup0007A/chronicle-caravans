@@ -43,21 +43,29 @@ public class ChronicleCaravans {
     public static final String MODID = "chroniclecaravans";
     public static final Logger LOG = LoggerFactory.getLogger("ChronicleCaravans");
 
-    private static final BlockBehaviour.Properties MILESTONE_PROPS = BlockBehaviour.Properties.of()
-            .mapColor(MapColor.STONE)
-            .strength(2.0F, 6.0F)
-            .requiresCorrectToolForDrops()
-            .sound(SoundType.STONE)
-            .lightLevel(s -> 12)
-            .pushReaction(PushReaction.BLOCK)
-            .noOcclusion();
+    private static BlockBehaviour.Properties milestoneProps() {
+        return BlockBehaviour.Properties.of()
+                .mapColor(MapColor.STONE)
+                .strength(2.0F, 6.0F)
+                .requiresCorrectToolForDrops()
+                .sound(SoundType.STONE)
+                .lightLevel(s -> 12)
+                .pushReaction(PushReaction.BLOCK)
+                .noOcclusion();
+    }
+
+    //#if mc26
+    //$$ private static final java.util.function.Supplier<BlockBehaviour.Properties> PROPS = ChronicleCaravans::milestoneProps;
+    //#else
+    private static final BlockBehaviour.Properties PROPS = milestoneProps();
+    //#endif
 
     //#if neoforge
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(MODID);
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MODID);
     public static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(Registries.ENTITY_TYPE, MODID);
 
-    public static final DeferredBlock<MilestoneBlock> MILESTONE = BLOCKS.registerBlock("milestone", MilestoneBlock::new, MILESTONE_PROPS);
+    public static final DeferredBlock<MilestoneBlock> MILESTONE = BLOCKS.registerBlock("milestone", MilestoneBlock::new, PROPS);
     public static final DeferredItem<BlockItem> MILESTONE_ITEM = ITEMS.registerSimpleBlockItem("milestone", MILESTONE);
     public static final DeferredHolder<EntityType<?>, EntityType<CaravanMaster>> CARAVAN_MASTER = ENTITIES.register("caravan_master",
             () -> masterType().build(entityKey("caravan_master")));
@@ -68,7 +76,7 @@ public class ChronicleCaravans {
     //$$ public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MODID);
     //$$ public static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, MODID);
     //$$
-    //$$ public static final RegistryObject<MilestoneBlock> MILESTONE = BLOCKS.register("milestone", () -> new MilestoneBlock(MILESTONE_PROPS));
+    //$$ public static final RegistryObject<MilestoneBlock> MILESTONE = BLOCKS.register("milestone", () -> new MilestoneBlock(milestoneProps()));
     //$$ public static final RegistryObject<BlockItem> MILESTONE_ITEM = ITEMS.register("milestone", () -> new BlockItem(MILESTONE.get(), new Item.Properties()));
     //$$ public static final RegistryObject<EntityType<CaravanMaster>> CARAVAN_MASTER = ENTITIES.register("caravan_master",
     //$$         () -> masterType().build(entityKey("caravan_master")));
@@ -102,7 +110,7 @@ public class ChronicleCaravans {
 
     //#if neoforge
     public ChronicleCaravans(IEventBus modBus, ModContainer container) {
-        container.registerConfig(ModConfig.Type.COMMON, CCConfig.SPEC);
+        container.registerConfig(ModConfig.Type.COMMON, CCConfig.SPEC, MODID + "-common.toml");
         init(modBus);
     }
     //#else

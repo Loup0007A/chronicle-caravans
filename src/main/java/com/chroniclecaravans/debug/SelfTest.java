@@ -8,6 +8,7 @@ import com.chroniclecaravans.Region;
 import com.chroniclecaravans.entity.CaravanMaster;
 import com.chroniclecaravans.entity.CaravanWagon;
 import com.chroniclecaravans.world.CaravanData;
+import com.chroniclecaravans.platform.Nbt;
 import com.chroniclecaravans.world.CaravanSpawner;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -164,7 +165,7 @@ public final class SelfTest {
         log("village scan added " + added + " at " + bell);
         check(v != null && v.village, "village bell registered as a stop");
         check(CaravanSpawner.scanVillages(level, bell) == 0, "village not registered twice");
-        BlockPos road = CaravanSpawner.findGround(level, stop.offset(ROAD / 2, 0, 0), 0, 3, level.random);
+        BlockPos road = CaravanSpawner.findGround(level, stop.offset(ROAD / 2, 0, 0), 0, 3, level.getRandom());
         check(road != null && level.getBlockState(road.below()).is(Blocks.DIRT_PATH), "arrival point prefers the road");
         data.removeStop(bell);
         level.setBlockAndUpdate(bell, Blocks.AIR.defaultBlockState());
@@ -213,7 +214,7 @@ public final class SelfTest {
     private static void clearBandits(ServerLevel level) {
         int n = 0;
         for (Entity en : level.getAllEntities()) {
-            if (en.getPersistentData().hasUUID(CaravanMaster.AMBUSH_TAG)) {
+            if (Nbt.hasUUID(en.getPersistentData(), CaravanMaster.AMBUSH_TAG)) {
                 en.discard();
                 n++;
             }

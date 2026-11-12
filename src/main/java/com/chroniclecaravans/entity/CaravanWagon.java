@@ -3,6 +3,7 @@ package com.chroniclecaravans.entity;
 import java.util.UUID;
 
 import com.chroniclecaravans.Region;
+import com.chroniclecaravans.platform.Nbt;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -92,6 +93,7 @@ public class CaravanWagon extends Entity {
     public void tick() {
         super.tick();
         if (level().isClientSide) {
+            //#if !mc26
             if (lerpSteps > 0) {
                 double k = 1.0 / lerpSteps;
                 setPos(getX() + (lerpX - getX()) * k, getY() + (lerpY - getY()) * k, getZ() + (lerpZ - getZ()) * k);
@@ -99,6 +101,7 @@ public class CaravanWagon extends Entity {
                 setXRot(getXRot() + (lerpXRot - getXRot()) * (float) k);
                 lerpSteps--;
             }
+            //#endif
             rollO = roll;
             double dx = getX() - xo, dz = getZ() - zo;
             float yaw = getYRot() * Mth.DEG_TO_RAD;
@@ -110,7 +113,14 @@ public class CaravanWagon extends Entity {
         }
     }
 
-    //#if mc120
+    //#if mc26
+    //$$ @Override
+    //$$ protected net.minecraft.world.entity.InterpolationHandler createInterpolationHandler() {
+    //$$     return net.minecraft.world.entity.LinearInterpolationHandler.create(this, 3);
+    //$$ }
+    //$$
+    //$$ public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
+    //#elif mc120
     //$$ @Override
     //$$ public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps, boolean teleport) {
     //#else
@@ -125,7 +135,7 @@ public class CaravanWagon extends Entity {
         this.lerpSteps = Math.max(1, steps);
     }
 
-    //#if !mc120
+    //#if mc121
     @Override
     public double lerpTargetX() {
         return lerpSteps > 0 ? lerpX : getX();
@@ -153,8 +163,13 @@ public class CaravanWagon extends Entity {
 
     //#endif
 
+    //#if mc26
+    //$$ @Override
+    //$$ public InteractionResult interact(Player player, InteractionHand hand, Vec3 location) {
+    //#else
     @Override
     public InteractionResult interact(Player player, InteractionHand hand) {
+    //#endif
         if (level().isClientSide) return InteractionResult.SUCCESS;
         if (masterId != null && ((ServerLevel) level()).getEntity(masterId) instanceof CaravanMaster master && master.isAlive()) {
             return master.mobInteract(player, hand);
@@ -162,10 +177,17 @@ public class CaravanWagon extends Entity {
         return InteractionResult.PASS;
     }
 
+    //#if mc26
+    //$$ @Override
+    //$$ public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
+    //$$     return false;
+    //$$ }
+    //#else
     @Override
     public boolean hurt(DamageSource source, float amount) {
         return false;
     }
+    //#endif
 
     @Override
     public boolean isPickable() {
@@ -177,8 +199,13 @@ public class CaravanWagon extends Entity {
         return false;
     }
 
+    //#if mc26
+    //$$ @Override
+    //$$ public boolean canBeCollidedWith(Entity other) {
+    //#else
     @Override
     public boolean canBeCollidedWith() {
+    //#endif
         return false;
     }
 
@@ -187,10 +214,12 @@ public class CaravanWagon extends Entity {
         return ItemStack.EMPTY;
     }
 
+    //#if !mc26
     @Override
     public AABB getBoundingBoxForCulling() {
         return getBoundingBox().inflate(2.0, 0.5, 2.0);
     }
+    //#endif
 
     /** The leash of the first pack llama is tied to the back of the wagon. */
     @Override
@@ -200,15 +229,37 @@ public class CaravanWagon extends Entity {
         return getPosition(partialTick).add(back).add(0, 0.8, 0);
     }
 
+    //#if mc26
+    //$$ @Override
+    //$$ protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput in) {
+    //$$     in.read("Wagon", CompoundTag.CODEC).ifPresent(this::readWagon);
+    //$$ }
+    //$$
+    //$$ @Override
+    //$$ protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput out) {
+    //$$     CompoundTag tag = new CompoundTag();
+    //$$     writeWagon(tag);
+    //$$     out.store("Wagon", CompoundTag.CODEC, tag);
+    //$$ }
+    //#else
     @Override
     protected void readAdditionalSaveData(CompoundTag tag) {
-        if (tag.hasUUID("Master")) masterId = tag.getUUID("Master");
-        setRegion(Region.byName(tag.getString("Region")));
+        readWagon(tag);
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
-        if (masterId != null) tag.putUUID("Master", masterId);
+        writeWagon(tag);
+    }
+    //#endif
+
+    private void readWagon(CompoundTag tag) {
+        if (Nbt.hasUUID(tag, "Master")) masterId = Nbt.getUUID(tag, "Master");
+        setRegion(Region.byName(Nbt.getString(tag, "Region")));
+    }
+
+    private void writeWagon(CompoundTag tag) {
+        if (masterId != null) Nbt.putUUID(tag, "Master", masterId);
         tag.putString("Region", region().name());
     }
 

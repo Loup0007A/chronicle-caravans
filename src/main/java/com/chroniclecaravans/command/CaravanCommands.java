@@ -34,18 +34,24 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 public final class CaravanCommands {
     private CaravanCommands() {}
 
+    //#if mc26
+    //$$ private static final java.util.function.Predicate<CommandSourceStack> OPS = Commands.hasPermission(Commands.LEVEL_GAMEMASTERS);
+    //#else
+    private static final java.util.function.Predicate<CommandSourceStack> OPS = s -> s.hasPermission(2);
+    //#endif
+
     @SubscribeEvent
     public static void register(RegisterCommandsEvent e) {
         e.getDispatcher().register(Commands.literal("caravans")
                 .executes(CaravanCommands::status)
                 .then(Commands.literal("stops").executes(CaravanCommands::stops))
-                .then(Commands.literal("summon").requires(s -> s.hasPermission(2))
+                .then(Commands.literal("summon").requires(OPS)
                         .executes(c -> summon(c, null))
                         .then(Commands.argument("region", StringArgumentType.word())
                                 .suggests((c, b) -> SharedSuggestionProvider.suggest(java.util.Arrays.stream(Region.values()).map(Region::key), b))
                                 .executes(c -> summon(c, Region.byName(StringArgumentType.getString(c, "region"))))))
-                .then(Commands.literal("ambush").requires(s -> s.hasPermission(2)).executes(CaravanCommands::ambush))
-                .then(Commands.literal("reputation").requires(s -> s.hasPermission(2))
+                .then(Commands.literal("ambush").requires(OPS).executes(CaravanCommands::ambush))
+                .then(Commands.literal("reputation").requires(OPS)
                         .then(Commands.argument("player", EntityArgument.player())
                                 .then(Commands.argument("value", IntegerArgumentType.integer(-100, 100000))
                                         .executes(CaravanCommands::setReputation)))));
@@ -93,8 +99,8 @@ public final class CaravanCommands {
         if (stop != null) {
             master = CaravanSpawner.spawnCaravan(level, stop, region);
         } else {
-            BlockPos at = CaravanSpawner.findGround(level, p.blockPosition(), 4, 10, level.random);
-            if (region == null) region = Region.foreignTo(Region.at(level, p.blockPosition()), level.random);
+            BlockPos at = CaravanSpawner.findGround(level, p.blockPosition(), 4, 10, level.getRandom());
+            if (region == null) region = Region.foreignTo(Region.at(level, p.blockPosition()), level.getRandom());
             master = at == null ? null : CaravanSpawner.spawnCaravanAt(level, at, null, region);
         }
         if (master == null) {

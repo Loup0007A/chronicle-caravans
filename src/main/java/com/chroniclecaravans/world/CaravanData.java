@@ -12,7 +12,9 @@ import com.chroniclecaravans.CCConfig;
 import com.chroniclecaravans.Tier;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+//#if mc121
 import net.minecraft.core.HolderLookup;
+//#endif
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -23,12 +25,17 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.saveddata.SavedData;
+import com.chroniclecaravans.platform.Nbt;
 
 /** World data: the milestones (caravan stops) and each player's reputation. Stored with the Overworld. */
 public class CaravanData extends SavedData {
     private static final String NAME = "chroniclecaravans";
-    //#if mc121
-    private static final Factory<CaravanData> FACTORY = new Factory<>(CaravanData::new, CaravanData::load);
+    //#if mc26
+    //$$ private static final net.minecraft.world.level.saveddata.SavedDataType<CaravanData> TYPE = new net.minecraft.world.level.saveddata.SavedDataType<>(
+    //$$         com.chroniclecaravans.ChronicleCaravans.id(NAME), CaravanData::new,
+    //$$         CompoundTag.CODEC.xmap(CaravanData::load, d -> d.save(new CompoundTag())));
+    //#elif mc121
+    private static final Factory<CaravanData> FACTORY = new Factory<>(CaravanData::new, CaravanData::load, null);
     //#endif
 
     /** A milestone: a place caravans visit. */
@@ -62,6 +69,8 @@ public class CaravanData extends SavedData {
     public static CaravanData get(MinecraftServer server) {
         //#if mc120
         //$$ return server.overworld().getDataStorage().computeIfAbsent(CaravanData::load, CaravanData::new, NAME);
+        //#elif mc26
+        //$$ return server.overworld().getDataStorage().computeIfAbsent(TYPE);
         //#else
         return server.overworld().getDataStorage().computeIfAbsent(FACTORY, NAME);
         //#endif
@@ -155,8 +164,8 @@ public class CaravanData extends SavedData {
         int now = reputation(player.getUUID());
         Tier is = Tier.of(now);
         ChatFormatting c = delta > 0 ? ChatFormatting.GREEN : ChatFormatting.RED;
-        player.displayClientMessage(Component.translatable("msg.chroniclecaravans.reputation",
-                (delta > 0 ? "+" : "") + delta, Component.translatable(reasonKey), now).withStyle(c), true);
+        Component line = Component.translatable("msg.chroniclecaravans.reputation", (delta > 0 ? "+" : "") + delta, Component.translatable(reasonKey), now).withStyle(c);
+        player.displayClientMessage(line, true);
         if (is.ordinal() > was.ordinal()) {
             player.sendSystemMessage(Component.translatable("msg.chroniclecaravans.rank_up", is.label()).withStyle(ChatFormatting.GOLD));
             player.serverLevel().playSound(null, player.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.8F, 1.2F);
@@ -167,28 +176,28 @@ public class CaravanData extends SavedData {
 
     // ---------------------------------------------------------------- storage
 
-    //#if mc120
+    //#if mc120 || mc26
     //$$ private static CaravanData load(CompoundTag tag) {
     //#else
     private static CaravanData load(CompoundTag tag, HolderLookup.Provider registries) {
     //#endif
         CaravanData d = new CaravanData();
-        ListTag list = tag.getList("Stops", Tag.TAG_COMPOUND);
+        ListTag list = Nbt.getList(tag, "Stops");
         for (int i = 0; i < list.size(); i++) {
-            CompoundTag t = list.getCompound(i);
-            Stop s = new Stop(new BlockPos(t.getInt("X"), t.getInt("Y"), t.getInt("Z")));
-            if (t.hasUUID("Owner")) s.owner = t.getUUID("Owner");
-            s.ownerName = t.getString("OwnerName");
-            s.name = t.getString("Name");
-            s.nextVisit = t.getLong("NextVisit");
-            if (t.contains("LastCall")) s.lastCall = t.getLong("LastCall");
-            s.village = t.getBoolean("Village");
+            CompoundTag t = Nbt.at(list, i);
+            Stop s = new Stop(new BlockPos(Nbt.getInt(t, "X"), Nbt.getInt(t, "Y"), Nbt.getInt(t, "Z")));
+            if (Nbt.hasUUID(t, "Owner")) s.owner = Nbt.getUUID(t, "Owner");
+            s.ownerName = Nbt.getString(t, "OwnerName");
+            s.name = Nbt.getString(t, "Name");
+            s.nextVisit = Nbt.getLong(t, "NextVisit");
+            if (t.contains("LastCall")) s.lastCall = Nbt.getLong(t, "LastCall");
+            s.village = Nbt.getBoolean(t, "Village");
             d.stops.put(s.pos, s);
         }
-        CompoundTag rep = tag.getCompound("Reputation");
-        for (String k : rep.getAllKeys()) {
+        CompoundTag rep = Nbt.getCompound(tag, "Reputation");
+        for (String k : Nbt.keys(rep)) {
             try {
-                d.reputation.put(UUID.fromString(k), rep.getInt(k));
+                d.reputation.put(UUID.fromString(k), Nbt.getInt(rep, k));
             } catch (IllegalArgumentException ignored) {
             }
         }
@@ -197,6 +206,8 @@ public class CaravanData extends SavedData {
 
     //#if mc120
     //$$ @Override
+    //$$ public CompoundTag save(CompoundTag tag) {
+    //#elif mc26
     //$$ public CompoundTag save(CompoundTag tag) {
     //#else
     @Override
@@ -208,7 +219,7 @@ public class CaravanData extends SavedData {
             t.putInt("X", s.pos.getX());
             t.putInt("Y", s.pos.getY());
             t.putInt("Z", s.pos.getZ());
-            if (s.owner != null) t.putUUID("Owner", s.owner);
+            if (s.owner != null) Nbt.putUUID(t, "Owner", s.owner);
             t.putString("OwnerName", s.ownerName);
             t.putString("Name", s.name);
             t.putLong("NextVisit", s.nextVisit);

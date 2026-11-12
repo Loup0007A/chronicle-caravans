@@ -16,13 +16,11 @@ import com.chroniclecaravans.Tier;
 import com.chroniclecaravans.world.CaravanData;
 import com.chroniclecaravans.world.CaravanSpawner;
 import com.chroniclecaravans.platform.Compat;
+import com.chroniclecaravans.platform.Nbt;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtUtils;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -165,8 +163,13 @@ public class CaravanMaster extends WanderingTrader {
 
     // ------------------------------------------------------------------ trading
 
+    //#if mc26
+    //$$ @Override
+    //$$ protected void updateTrades(ServerLevel level) {
+    //#else
     @Override
     protected void updateTrades() {
+    //#endif
         List<Region.Stocked> stock = region.stock(this.random);
         MerchantOffers all = this.offers;
         offerTiers = new int[stock.size()];
@@ -675,7 +678,7 @@ public class CaravanMaster extends WanderingTrader {
             bandit.moveTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, random.nextFloat() * 360F, 0F);
             Compat.finalizeSpawn(bandit, level, at);
             bandit.setCanJoinRaid(false);
-            bandit.getPersistentData().putUUID(AMBUSH_TAG, getUUID());
+            Nbt.putUUID(bandit.getPersistentData(), AMBUSH_TAG, getUUID());
             bandit.setTarget(this);
             level.addFreshEntity(bandit);
             raiders.add(bandit.getUUID());
@@ -706,8 +709,13 @@ public class CaravanMaster extends WanderingTrader {
         }
         announce(level, Component.translatable("msg.chroniclecaravans.saved", region.caravanName().withStyle(region.color)).withStyle(ChatFormatting.GREEN), null);
         playCelebrateSound();
+        //#if mc26
+        //$$ spawnAtLocation(level, new ItemStack(Items.EMERALD, 3 + random.nextInt(4)));
+        //$$ spawnAtLocation(level, region.gift(random));
+        //#else
         spawnAtLocation(new ItemStack(Items.EMERALD, 3 + random.nextInt(4)));
         spawnAtLocation(region.gift(random));
+        //#endif
         CaravanData data = CaravanData.get(level);
         for (UUID id : defenders) {
             ServerPlayer p = level.getServer().getPlayerList().getPlayer(id);
@@ -722,9 +730,15 @@ public class CaravanMaster extends WanderingTrader {
         CaravanData.get(player.serverLevel()).addReputation(player, 2, "reason.chroniclecaravans.bandit");
     }
 
+    //#if mc26
+    //$$ @Override
+    //$$ public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
+    //$$     boolean hurt = super.hurtServer(level, source, amount);
+    //#else
     @Override
     public boolean hurt(DamageSource source, float amount) {
         boolean hurt = super.hurt(source, amount);
+    //#endif
         if (hurt && source.getEntity() instanceof ServerPlayer p && !p.isCreative() && scoldCooldown == 0) {
             scoldCooldown = 40;
             CaravanData.get(p.serverLevel()).addReputation(p, -5, "reason.chroniclecaravans.attack");
@@ -746,6 +760,26 @@ public class CaravanMaster extends WanderingTrader {
 
     // ------------------------------------------------------------------ storage
 
+    //#if mc26
+    //$$ @Override
+    //$$ protected void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput out) {
+    //$$     savingOffers = true;
+    //$$     try {
+    //$$         super.addAdditionalSaveData(out);
+    //$$     } finally {
+    //$$         savingOffers = false;
+    //$$     }
+    //$$     CompoundTag tag = new CompoundTag();
+    //$$     writeCaravan(tag);
+    //$$     out.store("Caravan", CompoundTag.CODEC, tag);
+    //$$ }
+    //$$
+    //$$ @Override
+    //$$ protected void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput in) {
+    //$$     super.readAdditionalSaveData(in);
+    //$$     in.read("Caravan", CompoundTag.CODEC).ifPresent(this::readCaravan);
+    //$$ }
+    //#else
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         savingOffers = true;
@@ -754,6 +788,17 @@ public class CaravanMaster extends WanderingTrader {
         } finally {
             savingOffers = false;
         }
+        writeCaravan(tag);
+    }
+
+    @Override
+    public void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        readCaravan(tag);
+    }
+    //#endif
+
+    private void writeCaravan(CompoundTag tag) {
         tag.putString("CaravanRegion", region.name());
         tag.putString("CaravanState", state.name());
         if (target != null) tag.putLong("CaravanTarget", target.asLong());
@@ -761,50 +806,36 @@ public class CaravanMaster extends WanderingTrader {
         tag.putInt("LeaveTicks", leaveTicks);
         tag.putInt("LifeTicks", lifeTicks);
         tag.putLongArray("Visited", visited.stream().mapToLong(BlockPos::asLong).toArray());
-        tag.put("Llamas", uuids(llamas));
-        if (wagonId != null) tag.putUUID("Wagon", wagonId);
+        Nbt.putUUIDs(tag, "Llamas", llamas);
+        if (wagonId != null) Nbt.putUUID(tag, "Wagon", wagonId);
         tag.putIntArray("OfferTiers", offerTiers);
         tag.putBoolean("AmbushDone", ambushDone);
         tag.putBoolean("AmbushActive", ambushActive);
         tag.putInt("AmbushTicks", ambushTicks);
-        tag.put("Raiders", uuids(raiders));
-        tag.put("Defenders", uuids(defenders));
+        Nbt.putUUIDs(tag, "Raiders", raiders);
+        Nbt.putUUIDs(tag, "Defenders", defenders);
     }
 
-    @Override
-    public void readAdditionalSaveData(CompoundTag tag) {
-        super.readAdditionalSaveData(tag);
-        region = Region.byName(tag.getString("CaravanRegion"));
+    private void readCaravan(CompoundTag tag) {
+        region = Region.byName(Nbt.getString(tag, "CaravanRegion"));
         try {
-            state = State.valueOf(tag.getString("CaravanState"));
+            state = State.valueOf(Nbt.getString(tag, "CaravanState"));
         } catch (IllegalArgumentException e) {
             state = State.TRAVELING;
         }
-        target = tag.contains("CaravanTarget") ? BlockPos.of(tag.getLong("CaravanTarget")) : null;
-        haltTicks = tag.getInt("HaltTicks");
-        leaveTicks = tag.getInt("LeaveTicks");
-        lifeTicks = tag.getInt("LifeTicks");
+        target = tag.contains("CaravanTarget") ? BlockPos.of(Nbt.getLong(tag, "CaravanTarget")) : null;
+        haltTicks = Nbt.getInt(tag, "HaltTicks");
+        leaveTicks = Nbt.getInt(tag, "LeaveTicks");
+        lifeTicks = Nbt.getInt(tag, "LifeTicks");
         visited.clear();
-        for (long l : tag.getLongArray("Visited")) visited.add(BlockPos.of(l));
-        readUuids(tag, "Llamas", llamas);
-        wagonId = tag.hasUUID("Wagon") ? tag.getUUID("Wagon") : null;
-        offerTiers = tag.getIntArray("OfferTiers");
-        ambushDone = tag.getBoolean("AmbushDone");
-        ambushActive = tag.getBoolean("AmbushActive");
-        ambushTicks = tag.getInt("AmbushTicks");
-        readUuids(tag, "Raiders", raiders);
-        readUuids(tag, "Defenders", defenders);
-    }
-
-    private static ListTag uuids(Iterable<UUID> ids) {
-        ListTag list = new ListTag();
-        for (UUID id : ids) list.add(NbtUtils.createUUID(id));
-        return list;
-    }
-
-    private static void readUuids(CompoundTag tag, String key, java.util.Collection<UUID> into) {
-        into.clear();
-        ListTag list = tag.getList(key, Tag.TAG_INT_ARRAY);
-        for (Tag t : list) into.add(NbtUtils.loadUUID(t));
+        for (long l : Nbt.getLongArray(tag, "Visited")) visited.add(BlockPos.of(l));
+        Nbt.getUUIDs(tag, "Llamas", llamas);
+        wagonId = Nbt.hasUUID(tag, "Wagon") ? Nbt.getUUID(tag, "Wagon") : null;
+        offerTiers = Nbt.getIntArray(tag, "OfferTiers");
+        ambushDone = Nbt.getBoolean(tag, "AmbushDone");
+        ambushActive = Nbt.getBoolean(tag, "AmbushActive");
+        ambushTicks = Nbt.getInt(tag, "AmbushTicks");
+        Nbt.getUUIDs(tag, "Raiders", raiders);
+        Nbt.getUUIDs(tag, "Defenders", defenders);
     }
 }

@@ -1,0 +1,86 @@
+{
+  "tags": [
+    "neoforge",
+    "mc26",
+    "mc263"
+  ],
+  "delete": [],
+  "rewrites": [
+    [
+      "re:\\bResourceLocation\\b",
+      "Identifier"
+    ],
+    [
+      "import net.minecraft.world.entity.MobSpawnType;",
+      "import net.minecraft.world.entity.EntitySpawnReason;"
+    ],
+    [
+      "MobSpawnType.",
+      "EntitySpawnReason."
+    ],
+    [
+      "net.minecraft.world.entity.npc.WanderingTrader",
+      "net.minecraft.world.entity.npc.wanderingtrader.WanderingTrader"
+    ],
+    [
+      "net.minecraft.world.entity.npc.AbstractVillager",
+      "net.minecraft.world.entity.npc.villager.AbstractVillager"
+    ],
+    [
+      "net.minecraft.world.entity.animal.horse.",
+      "net.minecraft.world.entity.animal.equine."
+    ],
+    [
+      "net.minecraft.world.entity.monster.AbstractIllager",
+      "net.minecraft.world.entity.monster.illager.AbstractIllager"
+    ],
+    [
+      "net.minecraft.world.entity.monster.Pillager",
+      "net.minecraft.world.entity.monster.illager.Pillager"
+    ],
+    [
+      "InputConstants.Type.KEYSYM",
+      "InputConstants.Type.KEYBOARD"
+    ],
+    [
+      ", bus = EventBusSubscriber.Bus.MOD",
+      ""
+    ],
+    [
+      "re:\\.isClientSide\\b(?!\\()",
+      ".isClientSide()"
+    ],
+    [
+      ".serverLevel()",
+      ".level()"
+    ],
+    [
+      "re:\\.displayClientMessage\\((.*), false\\)",
+      ".sendSystemMessage(\\1)"
+    ],
+    [
+      "re:\\.displayClientMessage\\((.*), true\\)",
+      ".sendOverlayMessage(\\1)"
+    ],
+    [
+      "re:InteractionResult\\.sidedSuccess\\((?:[^()]|\\([^()]*\\))*\\)",
+      "InteractionResult.SUCCESS"
+    ],
+    [
+      "re:(?<!getNavigation\\(\\))\\.moveTo\\(",
+      ".snapTo("
+    ],
+    [
+      "re:\\bEntityType\\.([A-Z][A-Z_0-9]+)\\b",
+      "net.minecraft.world.entity.EntityTypes.\\1"
+    ],
+    [
+      "PushReaction.BLOCK",
+      "PushReaction.IMMOVEABLE"
+    ],
+    [
+      "ModConfig.Type.COMMON",
+      "ModConfig.Type.LOCAL"
+    ]
+  ]
+}

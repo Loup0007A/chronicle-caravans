@@ -9,6 +9,7 @@ import com.chroniclecaravans.Region;
 import com.chroniclecaravans.entity.CaravanMaster;
 import com.chroniclecaravans.entity.CaravanWagon;
 import com.chroniclecaravans.platform.Compat;
+import com.chroniclecaravans.platform.Nbt;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -85,7 +86,7 @@ public final class CaravanSpawner {
             CaravanMaster master = spawnCaravan(level, stop, null);
             long interval = CCConfig.VISIT_INTERVAL.get() * 20L;
             // No free spot around the milestone: try again in a minute
-            stop.nextVisit = now + (master == null ? 1200 : (long) (interval * (0.75 + level.random.nextDouble() * 0.5)));
+            stop.nextVisit = now + (master == null ? 1200 : (long) (interval * (0.75 + level.getRandom().nextDouble() * 0.5)));
             data.setDirty();
             if (master != null) active.add(master);
         }
@@ -103,7 +104,7 @@ public final class CaravanSpawner {
         level.getPoiManager().findAll(h -> h.is(PoiTypes.MEETING), p -> true, center, 128, PoiManager.Occupancy.ANY)
                 .forEach(bell -> {
                     if (!level.getBlockState(bell).is(Blocks.BELL) || data.nearestStop(bell, 48, null) != null) return;
-                    data.addVillage(bell, level.getGameTime() + 200 + (long) (level.random.nextDouble() * interval));
+                    data.addVillage(bell, level.getGameTime() + 200 + (long) (level.getRandom().nextDouble() * interval));
                     added[0]++;
                 });
         return added[0];
@@ -113,9 +114,9 @@ public final class CaravanSpawner {
     @SubscribeEvent
     public static void onDeath(LivingDeathEvent e) {
         if (!(e.getEntity().level() instanceof ServerLevel level)) return;
-        if (!e.getEntity().getPersistentData().hasUUID(CaravanMaster.AMBUSH_TAG)) return;
+        if (!Nbt.hasUUID(e.getEntity().getPersistentData(), CaravanMaster.AMBUSH_TAG)) return;
         if (!(e.getSource().getEntity() instanceof ServerPlayer player)) return;
-        if (level.getEntity(e.getEntity().getPersistentData().getUUID(CaravanMaster.AMBUSH_TAG)) instanceof CaravanMaster master) {
+        if (level.getEntity(Nbt.getUUID(e.getEntity().getPersistentData(), CaravanMaster.AMBUSH_TAG)) instanceof CaravanMaster master) {
             master.onBanditKilled(player);
         }
     }
@@ -137,7 +138,7 @@ public final class CaravanSpawner {
         if (!(entity instanceof TraderLlama llama) || !(llama.level() instanceof ServerLevel level)) return;
         if (!(source.getEntity() instanceof ServerPlayer player) || player.isCreative()) return;
         long now = level.getGameTime();
-        if (now - llama.getPersistentData().getLong("ChronicleCaravansScold") < 40) return;
+        if (now - Nbt.getLong(llama.getPersistentData(), "ChronicleCaravansScold") < 40) return;
         for (CaravanMaster master : caravans(level)) {
             if (master.llamaIds().contains(llama.getUUID())) {
                 llama.getPersistentData().putLong("ChronicleCaravansScold", now);
@@ -165,17 +166,17 @@ public final class CaravanSpawner {
 
     /** A new caravan appears 30 to 44 blocks from the milestone and walks to it. */
     public static CaravanMaster spawnCaravan(ServerLevel level, CaravanData.Stop stop, Region region) {
-        BlockPos at = findGround(level, stop.pos, 30, 44, level.random);
-        if (at == null) at = findGround(level, stop.pos, 12, 30, level.random);
+        BlockPos at = findGround(level, stop.pos, 30, 44, level.getRandom());
+        if (at == null) at = findGround(level, stop.pos, 12, 30, level.getRandom());
         if (at == null) return null;
-        if (region == null) region = Region.foreignTo(Region.at(level, stop.pos), level.random);
+        if (region == null) region = Region.foreignTo(Region.at(level, stop.pos), level.getRandom());
         return spawnCaravanAt(level, at, stop.pos, region);
     }
 
     public static CaravanMaster spawnCaravanAt(ServerLevel level, BlockPos at, BlockPos target, Region region) {
         CaravanMaster master = Compat.create(ChronicleCaravans.CARAVAN_MASTER.get(), level);
         if (master == null) return null;
-        RandomSource random = level.random;
+        RandomSource random = level.getRandom();
         float yaw = target == null ? random.nextFloat() * 360F
                 : (float) (Math.toDegrees(Math.atan2(target.getZ() - at.getZ(), target.getX() - at.getX())) - 90.0);
         master.moveTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, yaw, 0F);
