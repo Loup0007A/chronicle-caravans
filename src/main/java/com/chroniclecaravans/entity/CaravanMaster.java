@@ -15,6 +15,7 @@ import com.chroniclecaravans.Region;
 import com.chroniclecaravans.Tier;
 import com.chroniclecaravans.world.CaravanData;
 import com.chroniclecaravans.world.CaravanSpawner;
+import com.chroniclecaravans.platform.Compat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -23,7 +24,6 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -36,9 +36,6 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.MobSpawnType;
-import net.minecraft.world.entity.ai.attributes.AttributeInstance;
-import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
@@ -70,7 +67,6 @@ public class CaravanMaster extends WanderingTrader {
 
     /** Tag (persistent data) on the bandits of an ambush: the UUID of the caravan they attack. */
     public static final String AMBUSH_TAG = "ChronicleCaravansAmbush";
-    private static final ResourceLocation ROAD_SPEED = ChronicleCaravans.id("road_speed");
     /** Speed modifier of the walk goal: about 2.4 blocks per second, slow enough for the llamas. */
     private static final double WALK_SPEED = 0.46;
 
@@ -291,15 +287,9 @@ public class CaravanMaster extends WanderingTrader {
     }
 
     private void updateRoadSpeed(ServerLevel level) {
-        AttributeInstance speed = getAttribute(Attributes.MOVEMENT_SPEED);
-        if (speed == null) return;
         // A mob's real speed grows with the square of the attribute, hence the square root
         boolean onRoad = CCConfig.ROADS_ENABLED.get() && level.getBlockState(getOnPos()).is(ChronicleCaravans.ROADS);
-        if (onRoad) {
-            speed.addOrUpdateTransientModifier(new AttributeModifier(ROAD_SPEED, Math.sqrt(1.0 + CCConfig.ROAD_SPEED_BONUS.get()) - 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
-        } else {
-            speed.removeModifier(ROAD_SPEED);
-        }
+        Compat.speedBonus(this, onRoad ? Math.sqrt(1.0 + CCConfig.ROAD_SPEED_BONUS.get()) - 1.0 : 0);
     }
 
     // ------------------------------------------------------------------ the train
@@ -464,7 +454,7 @@ public class CaravanMaster extends WanderingTrader {
     /** The master is gone: the llamas are free again, the wagon goes with him. */
     private void breakTrain(ServerLevel level) {
         for (TraderLlama llama : loadedLlamas(level)) {
-            llama.dropLeash(true, false);
+            Compat.unleash(llama);
             llama.setNoAi(false);
         }
         llamas.clear();
@@ -492,7 +482,8 @@ public class CaravanMaster extends WanderingTrader {
         data.setDirty();
         Component msg = Component.translatable("msg.chroniclecaravans.arrived", region.caravanName().withStyle(region.color), stop.displayName());
         announce(level, msg, stop.owner);
-        if (stop.owner != null && level.getServer().getPlayerList().getPlayer(stop.owner) instanceof ServerPlayer owner) {
+        ServerPlayer owner = stop.owner == null ? null : level.getServer().getPlayerList().getPlayer(stop.owner);
+        if (owner != null) {
             data.addReputation(owner, 3, "reason.chroniclecaravans.host");
         }
     }
@@ -527,7 +518,7 @@ public class CaravanMaster extends WanderingTrader {
         for (TraderLlama llama : loadedLlamas(level)) {
             if (llama.isTamed() || llama.getLeashHolder() instanceof Player) continue;
             level.sendParticles(ParticleTypes.POOF, llama.getX(), llama.getY() + 1, llama.getZ(), 12, 0.4, 0.5, 0.4, 0.02);
-            llama.dropLeash(true, false);
+            Compat.unleash(llama);
             llama.discard();
         }
         CaravanWagon wagon = wagon(level);
@@ -677,12 +668,12 @@ public class CaravanMaster extends WanderingTrader {
         defenders.clear();
         for (int i = 0; i < count + (level.getDifficulty() == Difficulty.HARD ? 1 : 0); i++) {
             EntityType<? extends AbstractIllager> type = i >= count ? EntityType.VINDICATOR : EntityType.PILLAGER;
-            AbstractIllager bandit = type.create(level);
+            AbstractIllager bandit = Compat.create(type, level);
             if (bandit == null) continue;
             BlockPos at = i == 0 ? center : CaravanSpawner.findGround(level, center, 1, 4, random);
             if (at == null) at = center;
             bandit.moveTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, random.nextFloat() * 360F, 0F);
-            bandit.finalizeSpawn(level, level.getCurrentDifficultyAt(at), MobSpawnType.EVENT, null);
+            Compat.finalizeSpawn(bandit, level, at);
             bandit.setCanJoinRaid(false);
             bandit.getPersistentData().putUUID(AMBUSH_TAG, getUUID());
             bandit.setTarget(this);
@@ -693,7 +684,7 @@ public class CaravanMaster extends WanderingTrader {
         ambushActive = true;
         ambushDone = true;
         ambushTicks = 0;
-        level.playSound(null, getX(), getY(), getZ(), SoundEvents.RAID_HORN, SoundSource.HOSTILE, 24.0F, 1.0F);
+        level.playSound(null, getX(), getY(), getZ(), Compat.raidHorn(), SoundSource.HOSTILE, 24.0F, 1.0F);
         announce(level, Component.translatable("msg.chroniclecaravans.ambush", region.caravanName().withStyle(region.color)).withStyle(ChatFormatting.RED), null);
         return raiders.size();
     }
@@ -719,7 +710,8 @@ public class CaravanMaster extends WanderingTrader {
         spawnAtLocation(region.gift(random));
         CaravanData data = CaravanData.get(level);
         for (UUID id : defenders) {
-            if (level.getServer().getPlayerList().getPlayer(id) instanceof ServerPlayer p) data.addReputation(p, 5, "reason.chroniclecaravans.rescue");
+            ServerPlayer p = level.getServer().getPlayerList().getPlayer(id);
+            if (p != null) data.addReputation(p, 5, "reason.chroniclecaravans.rescue");
         }
         defenders.clear();
     }

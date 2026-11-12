@@ -361,10 +361,19 @@ public class WagonModel extends EntityModel<CaravanWagon> {
     public void setupAnim(CaravanWagon wagon, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
     }
 
+    //#if mc120
+    //$$ @Override
+    //$$ public void renderToBuffer(PoseStack poseStack, VertexConsumer buffer, int light, int overlay, float r, float g, float b, float a) {
+    //$$     body.render(poseStack, buffer, light, overlay, r, g, b, a);
+    //$$     canopy.render(poseStack, buffer, light, overlay, r, g, b, a);
+    //$$     lantern.render(poseStack, buffer, light, overlay, r, g, b, a);
+    //$$ }
+    //#else
     @Override
     public void renderToBuffer(PoseStack poseStack, VertexConsumer buffer, int light, int overlay, int color) {
         body.render(poseStack, buffer, light, overlay, color);
         canopy.render(poseStack, buffer, light, overlay, color);
         lantern.render(poseStack, buffer, light, overlay, color);
     }
+    //#endif
 }

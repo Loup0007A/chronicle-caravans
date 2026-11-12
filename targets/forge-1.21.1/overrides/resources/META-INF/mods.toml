@@ -1,0 +1,33 @@
+modLoader="javafml"
+loaderVersion="[52,)"
+license="MIT"
+issueTrackerURL="https://github.com/Loup0007A/chronicle-caravans/issues"
+
+[[mods]]
+modId="chroniclecaravans"
+version="${version}"
+displayName="Chronicle Caravans"
+authors="Loup0007A"
+displayURL="https://github.com/Loup0007A/chronicle-caravans"
+logoFile="chroniclecaravans_logo.png"
+description='''
+Living trade caravans travel between the milestones you place, and they follow the roads you build.
+Each caravan brings the goods of a far-away region. Trade, host and defend them against bandits
+to rise through the ranks of the caravan guilds and unlock rarer wares.
+
+Des caravanes marchandes voyagent entre les bornes que vous posez, en suivant vos routes.
+'''
+
+[[dependencies.chroniclecaravans]]
+    modId="forge"
+    mandatory=true
+    versionRange="[52,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.chroniclecaravans]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.21.1,1.21.2)"
+    ordering="NONE"
+    side="BOTH"

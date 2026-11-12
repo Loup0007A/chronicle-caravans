@@ -10,7 +10,11 @@ import net.minecraft.world.entity.Entity;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+//#if neoforge
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+//#else
+//$$ import net.minecraftforge.event.TickEvent;
+//#endif
 
 /**
  * Test client for the CI (JVM flag -Dchroniclecaravans.clienttest=true): joins the test server, watches the
@@ -36,8 +40,24 @@ public final class ClientTest {
                 c -> ChronicleCaravans.LOG.info("[CLIENTTEST] {}", c.getString()));
     }
 
+    //#if neoforge
     @SubscribeEvent
     public static void tick(ClientTickEvent.Post e) {
+        tick();
+    }
+    //#elif mc120
+    //$$ @SubscribeEvent
+    //$$ public static void tick(TickEvent.ClientTickEvent e) {
+    //$$     if (e.phase == TickEvent.Phase.END) tick();
+    //$$ }
+    //#else
+    //$$ @SubscribeEvent
+    //$$ public static void tick(TickEvent.ClientTickEvent.Post e) {
+    //$$     tick();
+    //$$ }
+    //#endif
+
+    private static void tick() {
         if (!ON || done) return;
         Minecraft mc = Minecraft.getInstance();
         if (++total > 14000) finish(mc, "FAIL timeout (never got into the world)");

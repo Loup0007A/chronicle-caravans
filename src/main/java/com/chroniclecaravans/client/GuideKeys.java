@@ -14,7 +14,11 @@ import net.minecraft.network.chat.MutableComponent;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+//#if neoforge
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+//#else
+//$$ import net.minecraftforge.event.TickEvent;
+//#endif
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
@@ -48,8 +52,24 @@ public final class GuideKeys {
         e.getToolTip().add(line);
     }
 
+    //#if neoforge
     @SubscribeEvent
     public static void tick(ClientTickEvent.Post e) {
+        tick();
+    }
+    //#elif mc120
+    //$$ @SubscribeEvent
+    //$$ public static void tick(TickEvent.ClientTickEvent e) {
+    //$$     if (e.phase == TickEvent.Phase.END) tick();
+    //$$ }
+    //#else
+    //$$ @SubscribeEvent
+    //$$ public static void tick(TickEvent.ClientTickEvent.Post e) {
+    //$$     tick();
+    //$$ }
+    //#endif
+
+    private static void tick() {
         clientTicks++;
         Minecraft mc = Minecraft.getInstance();
         if (pendingScene >= 0 && !(mc.screen instanceof ChatScreen) && mc.level != null) {

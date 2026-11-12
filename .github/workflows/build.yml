@@ -23,14 +23,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [ neoforge-1.21.1 ]
+        target: [ neoforge-1.21.1, forge-1.21.1, forge-1.20.1 ]
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - name: Java 17 / 25 / 21
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: |
+            17
+            25
+            21
 
       - name: Gradle cache
         uses: actions/cache@v4
@@ -38,7 +42,7 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ matrix.target }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle.properties') }}
+          key: gradle-${{ matrix.target }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle.properties', 'targets/*/gradle.properties') }}
           restore-keys: gradle-${{ matrix.target }}-
 
       - name: Build
@@ -48,10 +52,21 @@ jobs:
         run: |
           set -o pipefail
           V=$(grep '^mod_version' gradle.properties | cut -d= -f2 | tr -d '[:space:]')
-          chmod +x gradlew
+          chmod +x gradlew targets/*/gradlew 2>/dev/null || true
           mkdir -p out
-          ./gradlew build --no-daemon 2>&1 | tee "out/build-$T.log"
-          cp "build/libs/chroniclecaravans-$V-$T.jar" out/
+          if [ "$T" = "neoforge-1.21.1" ]; then
+            # The reference variant: the sources of src/main, as they are
+            ./gradlew build --no-daemon 2>&1 | tee "out/build-$T.log"
+            cp "build/libs/chroniclecaravans-$V-$T.jar" out/
+          else
+            python3 tools/port.py "$T"
+            cd "targets/$T"
+            ../../tools/export_libs.sh "$T" "${{ github.token }}" "${{ github.repository }}" || true
+            ./gradlew build --no-daemon -Porg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64,JAVA_HOME_21_X64,JAVA_HOME_25_X64 \
+              2>&1 | tee "../../out/build-$T.log"
+            cd ../..
+            cp "targets/$T/build/libs/chroniclecaravans-$V-$T.jar" out/
+          fi
           ls -l out
 
       - name: Upload jar
@@ -77,14 +92,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: neoforge-1.21.1, target: neoforge-1.21.1, loader_version: 21.1.265 }
+          - { name: neoforge-1.21.1, target: neoforge-1.21.1, loader: neoforge, loader_version: 21.1.265 }
+          - { name: forge-1.21.1,    target: forge-1.21.1,    loader: forge,    loader_version: 1.21.1-52.0.7 }
+          - { name: forge-1.20.1,    target: forge-1.20.1,    loader: forge,    loader_version: 1.20.1-47.4.23 }
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: ${{ matrix.java || 21 }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -93,9 +110,9 @@ jobs:
 
       - name: Test server and client
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1-mesa-dri mesa-utils > /dev/null
+          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1-mesa-dri mesa-utils libegl1 libegl-mesa0 > /dev/null
           pip install -q portablemc==5.0.6
-          bash tools/ci_test.sh out/*.jar "${{ matrix.loader_version }}" "${{ matrix.name }}"
+          BACKEND="${{ matrix.backend }}" bash tools/ci_test.sh out/*.jar "${{ matrix.loader }}" "${{ matrix.loader_version }}" "${{ matrix.name }}"
 
       - name: Upload logs and screenshots
         if: always()
@@ -192,4 +209,9 @@ jobs:
             echo "::notice::CurseForge skipped: add the CURSEFORGE_TOKEN secret and the CURSEFORGE_PROJECT_ID variable (see curseforge/SETUP.md)."
             exit 0
           fi
-          bash curseforge/upload.sh "out/chroniclecaravans-$V-neoforge-1.21.1.jar" "$V" "Chronicle Caravans $V (NeoForge 1.21.1)" "1.21.1" "NeoForge" "Java 21"
+          FAIL=0
+          [ ! -f "out/chroniclecaravans-$V-neoforge-1.21.1.jar" ] || bash curseforge/upload.sh "out/chroniclecaravans-$V-neoforge-1.21.1.jar" "$V" "Chronicle Caravans $V (NeoForge 1.21.1)" "1.21.1" "NeoForge" "Java 21" || FAIL=1
+          [ ! -f "out/chroniclecaravans-$V-forge-1.21.1.jar" ] || bash curseforge/upload.sh "out/chroniclecaravans-$V-forge-1.21.1.jar" "$V" "Chronicle Caravans $V (Forge 1.21.1)" "1.21.1" "Forge" "Java 21" || FAIL=1
+          [ ! -f "out/chroniclecaravans-$V-forge-1.20.1.jar" ] || bash curseforge/upload.sh "out/chroniclecaravans-$V-forge-1.20.1.jar" "$V" "Chronicle Caravans $V (Forge 1.20.1)" "1.20.1" "Forge" "Java 17" || FAIL=1
+          [ ! -f "out/chroniclecaravans-$V-neoforge-26.3.jar" ] || bash curseforge/upload.sh "out/chroniclecaravans-$V-neoforge-26.3.jar" "$V" "Chronicle Caravans $V (NeoForge 26.3)" "26.3" "NeoForge" "Java 25" || FAIL=1
+          exit $FAIL

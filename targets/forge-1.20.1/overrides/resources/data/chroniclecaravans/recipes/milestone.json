@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " L ",
+    " E ",
+    "SSS"
+  ],
+  "key": {
+    "L": {
+      "item": "minecraft:lantern"
+    },
+    "E": {
+      "item": "minecraft:emerald"
+    },
+    "S": {
+      "item": "minecraft:stone_bricks"
+    }
+  },
+  "result": {
+    "item": "chroniclecaravans:milestone",
+    "count": 1
+  }
+}

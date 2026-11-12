@@ -15,10 +15,10 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.trading.ItemCost;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.level.biome.Biome;
-import net.neoforged.neoforge.common.Tags;
+import net.minecraft.world.level.biome.Biomes;
+import com.chroniclecaravans.platform.Compat;
 
 /** Where a caravan comes from. Each region carries its own goods. */
 public enum Region {
@@ -117,10 +117,11 @@ public enum Region {
     public static Region at(ServerLevel level, BlockPos pos) {
         Holder<Biome> b = level.getBiome(pos);
         if (b.is(BiomeTags.IS_OCEAN) || b.is(BiomeTags.IS_BEACH) || b.is(BiomeTags.IS_RIVER)) return COAST;
-        if (b.is(Tags.Biomes.IS_DESERT) || b.is(BiomeTags.IS_BADLANDS)) return DUNES;
-        if (b.is(Tags.Biomes.IS_SNOWY)) return FROST;
+        // Vanilla checks only: they read the same on every loader and version
+        if (b.is(Biomes.DESERT) || b.is(BiomeTags.IS_BADLANDS)) return DUNES;
+        if (b.value().getBaseTemperature() <= 0.05F) return FROST;
         if (b.is(BiomeTags.IS_JUNGLE)) return JUNGLE;
-        if (b.is(Tags.Biomes.IS_SWAMP)) return MARSH;
+        if (b.is(Biomes.SWAMP) || b.is(Biomes.MANGROVE_SWAMP)) return MARSH;
         if (b.is(BiomeTags.IS_MOUNTAIN) || b.is(BiomeTags.IS_HILL)) return HIGHLANDS;
         if (b.is(BiomeTags.IS_TAIGA) || b.is(BiomeTags.IS_FOREST)) return WOODS;
         return STEPPE;
@@ -141,11 +142,11 @@ public enum Region {
         Collections.shuffle(buys, new java.util.Random(random.nextLong()));
         for (int i = 0; i < 2; i++) {
             Object[] p = buys.get(i);
-            out.add(new Stocked(new MerchantOffer(new ItemCost((Item) p[0], (Integer) p[1]), new ItemStack(Items.EMERALD), 8, 2, 0.05F), 0));
+            out.add(new Stocked(Compat.offer((Item) p[0], (Integer) p[1], new ItemStack(Items.EMERALD), 8, 2), 0));
         }
         for (Good g : goods) {
             int uses = g.tier >= 3 ? 1 : g.tier == 2 ? 3 : 6;
-            out.add(new Stocked(new MerchantOffer(new ItemCost(Items.EMERALD, g.price), new ItemStack(g.item, g.count), uses, 1 + g.tier * 2, 0.05F), g.tier));
+            out.add(new Stocked(Compat.offer(Items.EMERALD, g.price, new ItemStack(g.item, g.count), uses, 1 + g.tier * 2), g.tier));
         }
         return out;
     }

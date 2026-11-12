@@ -25,7 +25,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.Leashable;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
@@ -111,14 +111,25 @@ public class GuideScreen extends Screen {
 
     // ================================================================ rendering
 
+    //#if mc120
+    //$$ @Override
+    //$$ public void renderBackground(GuiGraphics g) {
+    //$$     g.fillGradient(0, 0, width, height, 0xF2181C24, 0xF80A0C10);
+    //$$ }
+    //#else
     @Override
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         g.fillGradient(0, 0, width, height, 0xF2181C24, 0xF80A0C10);
     }
+    //#endif
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        //#if mc120
+        //$$ renderBackground(g);
+        //#else
         renderBackground(g, mouseX, mouseY, partialTick);
+        //#endif
         GuideScene s = scene();
         float t = Math.min(s.length, time + (paused || time >= s.length ? 0F : partialTick));
         Matrix4f view = renderScene(g, s, t, partialTick);
@@ -251,9 +262,9 @@ public class GuideScreen extends Screen {
         if (e instanceof CaravanWagon wagon) {
             wagon.roll = wagon.rollO = a.travelled(t);
         }
-        if (a.leashedTo != null && e instanceof Leashable leashable) {
+        if (a.leashedTo != null && e instanceof Mob mob) {
             Entity holder = a.leashedTo.entity;
-            if (holder != null && a.leashedTo.visible(t) && leashable.getLeashHolder() != holder) leashable.setLeashedTo(holder, false);
+            if (holder != null && a.leashedTo.visible(t) && mob.getLeashHolder() != holder) mob.setLeashedTo(holder, false);
         }
     }
 
@@ -457,8 +468,13 @@ public class GuideScreen extends Screen {
         return super.mouseReleased(mx, my, button);
     }
 
+    //#if mc120
+    //$$ @Override
+    //$$ public boolean mouseScrolled(double mx, double my, double scrollY) {
+    //#else
     @Override
     public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
+    //#endif
         zoom = Mth.clamp(zoom * (1F + (float) scrollY * 0.1F), 0.4F, 3F);
         return true;
     }

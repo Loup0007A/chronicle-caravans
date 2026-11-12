@@ -27,7 +27,9 @@ import net.minecraft.world.level.saveddata.SavedData;
 /** World data: the milestones (caravan stops) and each player's reputation. Stored with the Overworld. */
 public class CaravanData extends SavedData {
     private static final String NAME = "chroniclecaravans";
+    //#if mc121
     private static final Factory<CaravanData> FACTORY = new Factory<>(CaravanData::new, CaravanData::load);
+    //#endif
 
     /** A milestone: a place caravans visit. */
     public static final class Stop {
@@ -58,7 +60,11 @@ public class CaravanData extends SavedData {
     private final Map<UUID, Integer> reputation = new HashMap<>();
 
     public static CaravanData get(MinecraftServer server) {
+        //#if mc120
+        //$$ return server.overworld().getDataStorage().computeIfAbsent(CaravanData::load, CaravanData::new, NAME);
+        //#else
         return server.overworld().getDataStorage().computeIfAbsent(FACTORY, NAME);
+        //#endif
     }
 
     public static CaravanData get(ServerLevel level) {
@@ -161,7 +167,11 @@ public class CaravanData extends SavedData {
 
     // ---------------------------------------------------------------- storage
 
+    //#if mc120
+    //$$ private static CaravanData load(CompoundTag tag) {
+    //#else
     private static CaravanData load(CompoundTag tag, HolderLookup.Provider registries) {
+    //#endif
         CaravanData d = new CaravanData();
         ListTag list = tag.getList("Stops", Tag.TAG_COMPOUND);
         for (int i = 0; i < list.size(); i++) {
@@ -185,8 +195,13 @@ public class CaravanData extends SavedData {
         return d;
     }
 
+    //#if mc120
+    //$$ @Override
+    //$$ public CompoundTag save(CompoundTag tag) {
+    //#else
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+    //#endif
         ListTag list = new ListTag();
         for (Stop s : stops.values()) {
             CompoundTag t = new CompoundTag();

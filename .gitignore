@@ -7,3 +7,6 @@ out/
 .vscode/
 eclipse/
 logs/
+targets/*/build/
+targets/*/.gradle/
+targets/*/run/

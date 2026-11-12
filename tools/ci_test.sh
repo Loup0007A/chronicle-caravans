@@ -1,13 +1,17 @@
 #!/bin/bash
 # In-game test of a jar: a real dedicated server (which stages the scene and checks the caravan logic)
 # and a real client (portablemc, Xvfb, software rendering) that joins it and takes screenshots.
-# Usage: tools/ci_test.sh <jar> <neoforge version> <test name>
-#   e.g. tools/ci_test.sh out/chroniclecaravans-0.1.0-neoforge-1.21.1.jar 21.1.265 neoforge-1.21.1
+# Usage: tools/ci_test.sh <jar> <loader: forge|neoforge> <loader version> <test name>
+#   e.g. tools/ci_test.sh out/chroniclecaravans-1.0.0-forge-1.20.1.jar forge 1.20.1-47.4.23 forge-1.20.1
 set -u
-JAR="$(realpath "$1")"; LV="$2"; NAME="$3"
+JAR="$(realpath "$1")"; LOADER="$2"; LV="$3"; NAME="$4"
 OUT="$PWD/ci-out/$NAME"; mkdir -p "$OUT/screenshots"
 W="$PWD/ci-work/$NAME"; rm -rf "$W"; mkdir -p "$W"; cd "$W"
-INSTALLER="https://maven.neoforged.net/releases/net/neoforged/neoforge/${LV}/neoforge-${LV}-installer.jar"
+case "$LOADER" in
+  forge)    INSTALLER="https://maven.minecraftforge.net/net/minecraftforge/forge/${LV}/forge-${LV}-installer.jar" ;;
+  neoforge) INSTALLER="https://maven.neoforged.net/releases/net/neoforged/neoforge/${LV}/neoforge-${LV}-installer.jar" ;;
+  *) echo "unknown loader: $LOADER"; exit 2 ;;
+esac
 
 # ---- Server ----
 mkdir -p srv && cd srv
@@ -26,8 +30,20 @@ grep -E "\[SELFTEST\]|Exception|ERROR" "$OUT/selftest.log" | head -60
 # ---- Client ----
 mkdir -p client/mods && cp "$JAR" client/mods/
 printf 'onboardAccessibility:false\npauseOnLostFocus:false\ntutorialStep:none\nsoundCategory_master:0.0\nnarrator:0\nguiScale:2\nskipMultiplayerWarning:true\njoinedFirstServer:true\nrenderDistance:8\nfov:0.0\nrenderClouds:"true"\n' > client/options.txt
+# Minecraft 26.x: rendering backend; under Xvfb, SDL must go through EGL for the sRGB visual 26.x asks for
+[ -n "${BACKEND:-}" ] && echo "preferredGraphicsBackend:${BACKEND}" >> client/options.txt
+[ "${BACKEND:-}" = "opengl" ] && export SDL_VIDEO_FORCE_EGL=1 SDL_VIDEO_X11_FORCE_EGL=1
+VERSION="${LOADER}::${LV}"; LAUNCH=()
+if [[ "$LV" =~ ^2[6-9]\. ]]; then
+  # Minecraft 26.x: the loader's own installer sets up the client, then portablemc starts that version
+  mkdir -p mcmain && echo '{"profiles":{}}' > mcmain/launcher_profiles.json
+  java -jar srv/installer.jar --installClient mcmain > "$OUT/client-installer.log" 2>&1 || tail -30 "$OUT/client-installer.log"
+  VERSION=$(ls mcmain/versions | grep -i "$LOADER" | head -1)
+  echo "installed version: $VERSION"
+  LAUNCH=(--jvm "$(command -v java)")
+fi
 LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1280x720x24" timeout 1500 \
-  portablemc --main-dir "$PWD/mcmain" start --mc-dir "$PWD/client" "neoforge::${LV}" \
+  portablemc --main-dir "$PWD/mcmain" start --mc-dir "$PWD/client" "${LAUNCH[@]}" "$VERSION" \
   -u Tester --join-server 127.0.0.1 --resolution 1280x720 \
   --jvm-arg=-Xmx3G,-Dchroniclecaravans.clienttest=true > "$OUT/clienttest.log" 2>&1
 echo "client exit $?"

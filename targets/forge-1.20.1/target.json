@@ -1,0 +1,69 @@
+{
+  "tags": [
+    "forge",
+    "mc120",
+    "mc1201"
+  ],
+  "delete": [
+    "resources/META-INF/neoforge.mods.toml",
+    "resources/data/chroniclecaravans/recipe",
+    "resources/data/chroniclecaravans/loot_table",
+    "resources/data/chroniclecaravans/advancement",
+    "resources/data/chroniclecaravans/tags/block",
+    "resources/data/minecraft/tags/block"
+  ],
+  "rewrites": [
+    [
+      "import net.neoforged.fml.common.EventBusSubscriber;",
+      "import net.minecraftforge.fml.common.Mod;"
+    ],
+    [
+      ", bus = EventBusSubscriber.Bus.MOD",
+      ", bus = Mod.EventBusSubscriber.Bus.MOD"
+    ],
+    [
+      "@EventBusSubscriber(",
+      "@Mod.EventBusSubscriber("
+    ],
+    [
+      "net.neoforged.bus.api.SubscribeEvent",
+      "net.minecraftforge.eventbus.api.SubscribeEvent"
+    ],
+    [
+      "net.neoforged.bus.api.IEventBus",
+      "net.minecraftforge.eventbus.api.IEventBus"
+    ],
+    [
+      "net.neoforged.api.distmarker.",
+      "net.minecraftforge.api.distmarker."
+    ],
+    [
+      "net.neoforged.fml.",
+      "net.minecraftforge.fml."
+    ],
+    [
+      "net.neoforged.neoforge.common.ModConfigSpec",
+      "net.minecraftforge.common.ForgeConfigSpec"
+    ],
+    [
+      "ModConfigSpec",
+      "ForgeConfigSpec"
+    ],
+    [
+      "net.neoforged.neoforge.",
+      "net.minecraftforge."
+    ],
+    [
+      "ResourceLocation.fromNamespaceAndPath(",
+      "new ResourceLocation("
+    ],
+    [
+      "Items.ARMADILLO_SCUTE",
+      "Items.RABBIT_HIDE"
+    ],
+    [
+      "Items.TURTLE_SCUTE",
+      "Items.SCUTE"
+    ]
+  ]
+}

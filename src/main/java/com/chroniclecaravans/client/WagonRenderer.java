@@ -61,7 +61,12 @@ public class WagonRenderer extends EntityRenderer<CaravanWagon> {
         model.setRoll(roll / SCALE);
         VertexConsumer vc = buffer.getBuffer(model.renderType(TEXTURE));
         model.body.render(poseStack, vc, light, OverlayTexture.NO_OVERLAY);
+        //#if mc120
+        //$$ int c = tint(region);
+        //$$ model.canopy.render(poseStack, vc, light, OverlayTexture.NO_OVERLAY, ((c >> 16) & 255) / 255F, ((c >> 8) & 255) / 255F, (c & 255) / 255F, 1F);
+        //#else
         model.canopy.render(poseStack, vc, light, OverlayTexture.NO_OVERLAY, tint(region));
+        //#endif
         model.lantern.render(poseStack, vc, LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY);
         poseStack.popPose();
     }

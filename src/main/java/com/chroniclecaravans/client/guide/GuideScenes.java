@@ -7,6 +7,7 @@ import com.chroniclecaravans.Region;
 import com.chroniclecaravans.Tier;
 import com.chroniclecaravans.client.guide.GuideScene.Actor;
 import com.chroniclecaravans.entity.CaravanWagon;
+import com.chroniclecaravans.platform.Compat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -46,11 +47,11 @@ public final class GuideScenes {
     // ---------------------------------------------------------------- entities
 
     static Entity master(Level level) {
-        return ChronicleCaravans.CARAVAN_MASTER.get().create(level);
+        return Compat.create(ChronicleCaravans.CARAVAN_MASTER.get(), level);
     }
 
     static Entity llama(Level level, boolean chest, Llama.Variant variant) {
-        TraderLlama llama = EntityType.TRADER_LLAMA.create(level);
+        TraderLlama llama = Compat.create(EntityType.TRADER_LLAMA, level);
         if (llama != null) {
             llama.setChest(chest);
             llama.setVariant(variant);
@@ -59,13 +60,13 @@ public final class GuideScenes {
     }
 
     static Entity wagon(Level level, Region region) {
-        CaravanWagon wagon = ChronicleCaravans.WAGON.get().create(level);
+        CaravanWagon wagon = Compat.create(ChronicleCaravans.WAGON.get(), level);
         if (wagon != null) wagon.setRegion(region);
         return wagon;
     }
 
     static Entity pillager(Level level) {
-        Pillager p = EntityType.PILLAGER.create(level);
+        Pillager p = Compat.create(EntityType.PILLAGER, level);
         if (p != null) p.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
         return p;
     }
@@ -162,7 +163,7 @@ public final class GuideScenes {
                 .block(15, 2, 7, Blocks.HAY_BLOCK.defaultBlockState(), 16).block(11, 1, 6, Blocks.COMPOSTER.defaultBlockState(), 18)
                 .block(16, 1, 2, Blocks.OAK_FENCE.defaultBlockState(), 20).block(16, 2, 2, Blocks.LANTERN.defaultBlockState(), 22)
                 .block(11, 1, 1, Blocks.OAK_LOG.defaultBlockState(), 24).block(11, 2, 1, Blocks.OAK_LEAVES.defaultBlockState(), 26);
-        s.actor(l -> EntityType.VILLAGER.create(l)).appear(20).key(20, 15.5, 1, 5.6).facing(160F);
+        s.actor(l -> Compat.create(EntityType.VILLAGER, l)).appear(20).key(20, 15.5, 1, 5.6).facing(160F);
         Actor[] t = train(s, 4.5, Region.WOODS, 1, 0, 9.2, 120, 9.2, 220, 12.6);
         s.text(26, 118, "bells", GuideScene.at(14.5, 2.0, 6.5)).icons(new ItemStack(Items.BELL)).highlight(14, 1, 6);
         s.text(124, 230, "paths", GuideScene.above(t[2], 2.8)).highlight(new AABB(0, 0, 4, 18, 1, 5));

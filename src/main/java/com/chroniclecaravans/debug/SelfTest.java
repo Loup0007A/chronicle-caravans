@@ -23,7 +23,11 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
+//#if neoforge
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+//#else
+//$$ import net.minecraftforge.event.TickEvent;
+//#endif
 
 /**
  * In-game test for the CI (JVM flag -Dchroniclecaravans.selftest=true, dedicated server only).
@@ -68,10 +72,26 @@ public final class SelfTest {
         }
     }
 
+    //#if neoforge
     @SubscribeEvent
     public static void onTick(ServerTickEvent.Post e) {
+        tick(e.getServer());
+    }
+    //#elif mc120
+    //$$ @SubscribeEvent
+    //$$ public static void onTick(TickEvent.ServerTickEvent e) {
+    //$$     if (e.phase == TickEvent.Phase.END) tick(e.getServer());
+    //$$ }
+    //#else
+    //$$ @SubscribeEvent
+    //$$ public static void onTick(TickEvent.ServerTickEvent.Post e) {
+    //$$     tick(e.getServer());
+    //$$ }
+    //#endif
+
+    private static void tick(net.minecraft.server.MinecraftServer server) {
         if (!ON || tick < 0) return;
-        ServerLevel level = e.getServer().overworld();
+        ServerLevel level = server.overworld();
         tick++;
         try {
             if (tick == 1) prepare(level);

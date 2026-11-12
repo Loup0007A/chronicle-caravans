@@ -45,10 +45,17 @@ public class CaravanWagon extends Entity {
         setNoGravity(true);
     }
 
+    //#if mc120
+    //$$ @Override
+    //$$ protected void defineSynchedData() {
+    //$$     entityData.define(REGION, Region.STEPPE.ordinal());
+    //$$ }
+    //#else
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         builder.define(REGION, Region.STEPPE.ordinal());
     }
+    //#endif
 
     public Region region() {
         int i = entityData.get(REGION);
@@ -103,8 +110,13 @@ public class CaravanWagon extends Entity {
         }
     }
 
+    //#if mc120
+    //$$ @Override
+    //$$ public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps, boolean teleport) {
+    //#else
     @Override
     public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
+    //#endif
         this.lerpX = x;
         this.lerpY = y;
         this.lerpZ = z;
@@ -113,6 +125,7 @@ public class CaravanWagon extends Entity {
         this.lerpSteps = Math.max(1, steps);
     }
 
+    //#if !mc120
     @Override
     public double lerpTargetX() {
         return lerpSteps > 0 ? lerpX : getX();
@@ -137,6 +150,8 @@ public class CaravanWagon extends Entity {
     public float lerpTargetYRot() {
         return lerpSteps > 0 ? lerpYRot : getYRot();
     }
+
+    //#endif
 
     @Override
     public InteractionResult interact(Player player, InteractionHand hand) {

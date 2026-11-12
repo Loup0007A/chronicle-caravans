@@ -6,7 +6,7 @@ import com.chroniclecaravans.world.CaravanData;
 import com.chroniclecaravans.world.CaravanSpawner;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.component.DataComponents;
+import com.chroniclecaravans.platform.Compat;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -14,7 +14,9 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+//#if !mc120 && !mc26
 import net.minecraft.world.ItemInteractionResult;
+//#endif
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -39,7 +41,7 @@ public class MilestoneBlock extends Block {
     }
 
     @Override
-    protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+    public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return SHAPE;
     }
 
@@ -52,7 +54,7 @@ public class MilestoneBlock extends Block {
             return;
         }
         CaravanData data = CaravanData.get(server);
-        Component custom = stack.get(DataComponents.CUSTOM_NAME);
+        Component custom = Compat.customName(stack);
         long first = server.getGameTime() + CCConfig.FIRST_VISIT_DELAY.get() * 20L;
         CaravanData.Stop stop = data.addStop(pos, placer == null ? null : placer.getUUID(),
                 placer == null ? "" : placer.getName().getString(), custom == null ? "" : custom.getString(), first);
@@ -76,22 +78,61 @@ public class MilestoneBlock extends Block {
         }
     }
 
+    //#if !mc26
+    // (26.x has no onRemove: a broken milestone is dropped by the spawner when it next checks the stop)
     @Override
-    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
         if (!state.is(newState.getBlock()) && level instanceof ServerLevel server) {
             CaravanData.get(server).removeStop(pos);
         }
         super.onRemove(state, level, pos, newState, movedByPiston);
     }
+    //#endif
 
+    //#if mc120
+    //$$ @Override
+    //$$ public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+    //$$     ItemStack stack = player.getItemInHand(hand);
+    //$$     if (stack.is(Items.EMERALD_BLOCK)) hire(stack, level, pos, player);
+    //$$     else info(level, pos, player);
+    //$$     return InteractionResult.sidedSuccess(level.isClientSide);
+    //$$ }
+    //#elif mc26
+    //$$ @Override
+    //$$ protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+    //$$     info(level, pos, player);
+    //$$     return InteractionResult.SUCCESS;
+    //$$ }
+    //$$
+    //$$ @Override
+    //$$ protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+    //$$     if (!stack.is(Items.EMERALD_BLOCK)) return InteractionResult.TRY_WITH_EMPTY_HAND;
+    //$$     hire(stack, level, pos, player);
+    //$$     return InteractionResult.SUCCESS;
+    //$$ }
+    //#else
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+        info(level, pos, player);
+        return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    @Override
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+        if (!stack.is(Items.EMERALD_BLOCK)) return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        hire(stack, level, pos, player);
+        return ItemInteractionResult.sidedSuccess(level.isClientSide);
+    }
+    //#endif
+
+    /** Right-click: when is the next caravan due, and where the player stands with the guilds. */
+    private static void info(Level level, BlockPos pos, Player player) {
         if (level instanceof ServerLevel server && player instanceof ServerPlayer p) {
             CaravanData data = CaravanData.get(server);
             CaravanData.Stop stop = data.stop(pos);
             if (stop == null) {
                 p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.overworld_only").withStyle(ChatFormatting.RED));
-                return InteractionResult.CONSUME;
+                return;
             }
             p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.stop_header", stop.displayName()).withStyle(ChatFormatting.GOLD));
             if (CaravanSpawner.caravanHeadingTo(server, stop.pos) != null) {
@@ -110,16 +151,14 @@ public class MilestoneBlock extends Block {
             }
             p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.stop_hint").withStyle(ChatFormatting.DARK_GRAY));
         }
-        return InteractionResult.sidedSuccess(level.isClientSide);
     }
 
-    @Override
-    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
-        if (!stack.is(Items.EMERALD_BLOCK)) return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+    /** An emerald block hires a caravan right away (with a cooldown). */
+    private static void hire(ItemStack stack, Level level, BlockPos pos, Player player) {
         if (level instanceof ServerLevel server && player instanceof ServerPlayer p) {
             CaravanData data = CaravanData.get(server);
             CaravanData.Stop stop = data.stop(pos);
-            if (stop == null) return ItemInteractionResult.CONSUME;
+            if (stop == null) return;
             long now = server.getGameTime();
             long wait = stop.lastCall + CCConfig.CALL_COOLDOWN.get() * 20L - now;
             if (CaravanSpawner.caravanHeadingTo(server, stop.pos) != null) {
@@ -135,6 +174,5 @@ public class MilestoneBlock extends Block {
                 p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.hired", stop.displayName()).withStyle(ChatFormatting.GREEN));
             }
         }
-        return ItemInteractionResult.sidedSuccess(level.isClientSide);
     }
 }

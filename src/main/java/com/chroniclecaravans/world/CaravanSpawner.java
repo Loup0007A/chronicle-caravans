@@ -8,13 +8,13 @@ import com.chroniclecaravans.ChronicleCaravans;
 import com.chroniclecaravans.Region;
 import com.chroniclecaravans.entity.CaravanMaster;
 import com.chroniclecaravans.entity.CaravanWagon;
+import com.chroniclecaravans.platform.Compat;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.animal.horse.TraderLlama;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
@@ -27,17 +27,38 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+//#if neoforge
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
+//#else
+//$$ import net.minecraftforge.event.TickEvent;
+//$$ import net.minecraftforge.event.entity.living.LivingAttackEvent;
+//#endif
 
 /** Sends caravans to the milestones, and watches what happens to them. */
 @EventBusSubscriber(modid = ChronicleCaravans.MODID)
 public final class CaravanSpawner {
     private CaravanSpawner() {}
 
+    //#if neoforge
     @SubscribeEvent
     public static void onLevelTick(LevelTickEvent.Post e) {
-        if (!(e.getLevel() instanceof ServerLevel level) || level.dimension() != Level.OVERWORLD) return;
+        tickLevel(e.getLevel());
+    }
+    //#elif mc120
+    //$$ @SubscribeEvent
+    //$$ public static void onLevelTick(TickEvent.LevelTickEvent e) {
+    //$$     if (e.phase == TickEvent.Phase.END) tickLevel(e.level);
+    //$$ }
+    //#else
+    //$$ @SubscribeEvent
+    //$$ public static void onLevelTick(TickEvent.LevelTickEvent.Post e) {
+    //$$     tickLevel(e.level);
+    //$$ }
+    //#endif
+
+    private static void tickLevel(Level world) {
+        if (!(world instanceof ServerLevel level) || level.dimension() != Level.OVERWORLD) return;
         if (level.getGameTime() % 100 != 0) return;
         CaravanData data = CaravanData.get(level);
         if (CCConfig.VILLAGE_STOPS.get() && level.getGameTime() % 600 == 0) {
@@ -100,10 +121,21 @@ public final class CaravanSpawner {
     }
 
     /** Hitting a pack llama costs reputation. */
+    //#if neoforge
     @SubscribeEvent
     public static void onDamage(LivingIncomingDamageEvent e) {
-        if (!(e.getEntity() instanceof TraderLlama llama) || !(llama.level() instanceof ServerLevel level)) return;
-        if (!(e.getSource().getEntity() instanceof ServerPlayer player) || player.isCreative()) return;
+        damaged(e.getEntity(), e.getSource());
+    }
+    //#else
+    //$$ @SubscribeEvent
+    //$$ public static void onDamage(LivingAttackEvent e) {
+    //$$     damaged(e.getEntity(), e.getSource());
+    //$$ }
+    //#endif
+
+    private static void damaged(net.minecraft.world.entity.LivingEntity entity, net.minecraft.world.damagesource.DamageSource source) {
+        if (!(entity instanceof TraderLlama llama) || !(llama.level() instanceof ServerLevel level)) return;
+        if (!(source.getEntity() instanceof ServerPlayer player) || player.isCreative()) return;
         long now = level.getGameTime();
         if (now - llama.getPersistentData().getLong("ChronicleCaravansScold") < 40) return;
         for (CaravanMaster master : caravans(level)) {
@@ -141,14 +173,14 @@ public final class CaravanSpawner {
     }
 
     public static CaravanMaster spawnCaravanAt(ServerLevel level, BlockPos at, BlockPos target, Region region) {
-        CaravanMaster master = ChronicleCaravans.CARAVAN_MASTER.get().create(level);
+        CaravanMaster master = Compat.create(ChronicleCaravans.CARAVAN_MASTER.get(), level);
         if (master == null) return null;
         RandomSource random = level.random;
         float yaw = target == null ? random.nextFloat() * 360F
                 : (float) (Math.toDegrees(Math.atan2(target.getZ() - at.getZ(), target.getX() - at.getX())) - 90.0);
         master.moveTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, yaw, 0F);
         master.setup(region, target);
-        master.finalizeSpawn(level, level.getCurrentDifficultyAt(at), MobSpawnType.EVENT, null);
+        Compat.finalizeSpawn(master, level, at);
         level.addFreshEntity(master);
 
         // The train: draft llama, covered wagon, then the pack llamas; the master lays it out on his trail
@@ -159,17 +191,17 @@ public final class CaravanSpawner {
         boolean withWagon = CCConfig.WAGON_ENABLED.get();
         int total = packs + (withWagon ? 1 : 0);
         for (int i = 0; i < total; i++) {
-            TraderLlama llama = EntityType.TRADER_LLAMA.create(level);
+            TraderLlama llama = Compat.create(EntityType.TRADER_LLAMA, level);
             if (llama == null) continue;
             llama.moveTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, yaw, 0F);
-            llama.finalizeSpawn(level, level.getCurrentDifficultyAt(at), MobSpawnType.EVENT, null);
+            Compat.finalizeSpawn(llama, level, at);
             llama.setChest(!(withWagon && i == 0));
             llama.setDespawnDelay(6000);
             llama.setNoAi(true);
             level.addFreshEntity(llama);
             master.addLlama(llama);
             if (withWagon && i == 0) {
-                CaravanWagon wagon = ChronicleCaravans.WAGON.get().create(level);
+                CaravanWagon wagon = Compat.create(ChronicleCaravans.WAGON.get(), level);
                 if (wagon != null) {
                     wagon.moveTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, yaw, 0F);
                     wagon.setRegion(region);

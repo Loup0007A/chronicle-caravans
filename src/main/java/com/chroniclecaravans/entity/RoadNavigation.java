@@ -10,7 +10,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.PathNavigationRegion;
 import net.minecraft.world.level.pathfinder.Node;
 import net.minecraft.world.level.pathfinder.PathFinder;
+//#if mc120
+//$$ import net.minecraft.world.level.pathfinder.BlockPathTypes;
+//#else
 import net.minecraft.world.level.pathfinder.PathType;
+//#endif
 import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
 
 /** Ground navigation that makes every block off the road more expensive, so paths stick to roads. */
@@ -37,11 +41,19 @@ public class RoadNavigation extends GroundPathNavigation {
         }
 
         @Override
+        //#if mc120
+        //$$ protected Node findAcceptedNode(int x, int y, int z, int verticalDeltaLimit, double nodeFloorLevel, Direction direction, BlockPathTypes pathType) {
+        //#else
         protected Node findAcceptedNode(int x, int y, int z, int verticalDeltaLimit, double nodeFloorLevel, Direction direction, PathType pathType) {
+        //#endif
             Node node = super.findAcceptedNode(x, y, z, verticalDeltaLimit, nodeFloorLevel, direction, pathType);
             if (node != null && penalty > 0F && node.costMalus >= 0F && node.costMalus < penalty) {
                 below.set(node.x, node.y - 1, node.z);
+                //#if mc120
+                //$$ if (!this.level.getBlockState(below).is(ChronicleCaravans.ROADS)) node.costMalus = penalty;
+                //#else
                 if (!this.currentContext.getBlockState(below).is(ChronicleCaravans.ROADS)) node.costMalus = penalty;
+                //#endif
             }
             return node;
         }

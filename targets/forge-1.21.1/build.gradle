@@ -1,0 +1,63 @@
+plugins {
+    id 'net.minecraftforge.gradle' version '[6.0.24,6.2)'
+    id 'org.parchmentmc.librarian.forgegradle' version '1.+'
+}
+
+// The mod version is shared by every target (gradle.properties at the root)
+def common = new Properties()
+file('../../gradle.properties').withInputStream { common.load(it) }
+version = common.mod_version
+group = 'com.chroniclecaravans'
+base { archivesName = 'chroniclecaravans' }
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+// Sources made by "python3 tools/port.py forge-1.21.1"
+sourceSets.main.java.srcDirs = ['build/ported/java']
+sourceSets.main.resources.srcDirs = ['build/ported/resources']
+
+minecraft {
+    mappings channel: 'parchment', version: project.parchment_version
+    reobf = false
+    copyIdeResources = true
+    runs {
+        client {
+            workingDirectory project.file('run')
+            mods { chroniclecaravans { source sourceSets.main } }
+        }
+    }
+}
+
+repositories {
+    maven { url = 'https://maven.parchmentmc.org' }
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-Xmaxerrs' << '1000'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/mods.toml') { expand 'version': project.version }
+}
+
+jar { archiveClassifier = project.target_name }
+
+// Classes and resources in one folder: needed by the Java module system in dev
+sourceSets.each {
+    def dir = layout.buildDirectory.dir("sourcesSets/$it.name")
+    it.output.resourcesDir = dir
+    it.java.destinationDirectory = dir
+}
+
+// Copies the compile classpath (to compile locally without access to the Maven repositories)
+tasks.register('exportLibs', Copy) {
+    from configurations.compileClasspath
+    into layout.buildDirectory.dir('export')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
