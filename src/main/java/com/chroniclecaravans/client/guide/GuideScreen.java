@@ -127,7 +127,7 @@ public class GuideScreen extends Screen {
 
     private float sceneScale(GuideScene s) {
         double span = Math.sqrt(s.sizeX * s.sizeX + s.sizeZ * s.sizeZ) + 2;
-        return (float) Mth.clamp(Math.min(width * 0.66, height * 1.05) / span, 6, 48) * zoom;
+        return (float) Mth.clamp(Math.min(width * 0.8, height * 1.25) / span, 6, 56) * zoom;
     }
 
     private static float ease(float p) {
@@ -351,7 +351,7 @@ public class GuideScreen extends Screen {
             int c = off ? 0x60FFFFFF : 0xFFF2EAD8;
             switch (i) {
                 case 0 -> triangle(g, x + 13, by + 10, -1, c);
-                case 1 -> g.drawString(font, "↺", x + 7, by + 6, c, false);
+                case 1 -> replayIcon(g, x, by, c);
                 case 2 -> {
                     if (paused || ended) triangle(g, x + 8, by + 10, 1, c);
                     else {
@@ -362,7 +362,18 @@ public class GuideScreen extends Screen {
                 default -> triangle(g, x + 8, by + 10, 1, c);
             }
         }
-        g.drawString(font, Component.translatable("guide.chroniclecaravans.controls"), 12, height - 24, 0xFF7C7468, false);
+        g.drawString(font, Component.translatable("guide.chroniclecaravans.controls"), 20, height - 58, 0xFF7C7468, false);
+    }
+
+    /** A square loop with an arrow head: "play again". */
+    private static void replayIcon(GuiGraphics g, int x, int y, int c) {
+        g.fill(x + 6, y + 5, x + 11, y + 6, c);
+        g.fill(x + 5, y + 6, x + 6, y + 14, c);
+        g.fill(x + 6, y + 14, x + 14, y + 15, c);
+        g.fill(x + 14, y + 9, x + 15, y + 14, c);
+        g.fill(x + 11, y + 3, x + 12, y + 8, c);
+        g.fill(x + 12, y + 4, x + 13, y + 7, c);
+        g.fill(x + 13, y + 5, x + 14, y + 6, c);
     }
 
     /** A small filled triangle pointing left (-1) or right (1), its flat side at {@code x}. */

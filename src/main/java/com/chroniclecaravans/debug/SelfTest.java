@@ -158,7 +158,7 @@ public final class SelfTest {
         if (w instanceof CaravanWagon wagon) {
             double gap = Math.sqrt(wagon.distanceToSqr(master));
             log("wagon gap=" + String.format("%.2f", gap) + " yaw=" + String.format("%.0f", wagon.getYRot()) + " y=" + String.format("%.2f", wagon.getY()) + " master y=" + String.format("%.2f", master.getY()));
-            check(gap > 3.5 && gap < 7.0, "wagon hitched at the right distance");
+            check(gap > 3.8 && gap < 7.5, "wagon hitched at the right distance");
             check(Math.abs(wagon.getZ() - (stop.getZ() + 0.5)) < 1.6, "wagon stayed on the road");
             check(wagon.region() == Region.DUNES, "wagon has the caravan's region");
             if (level.getEntity(master.llamaIds().get(0)) instanceof TraderLlama draft) {

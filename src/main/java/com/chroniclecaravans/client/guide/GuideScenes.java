@@ -75,7 +75,7 @@ public final class GuideScenes {
      * Returns master, draft llama, wagon, then the pack llamas.
      */
     static Actor[] train(GuideScene s, double z, Region region, int packs, double... moves) {
-        double[] offsets = {0, -2.2, -4.95, -8.1, -10.3, -12.5};
+        double[] offsets = {0, -2.2, -5.25, -8.6, -10.8, -13.0};
         Llama.Variant[] coats = {Llama.Variant.BROWN, Llama.Variant.CREAMY, Llama.Variant.WHITE, Llama.Variant.GRAY};
         Actor[] out = new Actor[3 + packs];
         for (int i = 0; i < out.length; i++) {
@@ -133,18 +133,18 @@ public final class GuideScenes {
     static GuideScene caravan() {
         GuideScene s = new GuideScene("caravan", 410, 22, 5, new ItemStack(Items.CHEST));
         s.plate(GRASS);
-        for (int x = 0; x <= 19; x++) s.block(x, 0, 2, PATH, 0);
+        for (int x = 0; x <= 19; x++) s.ground(x, 2, PATH);
         s.block(20, 1, 2, milestoneBlock(), 4);
-        Actor[] t = train(s, 2.5, Region.DUNES, 2, 0, 9.6, 20, 9.6, 150, 18.7);
+        Actor[] t = train(s, 2.5, Region.DUNES, 2, 0, 10.4, 20, 10.4, 150, 18.7);
         Actor wagon = t[2];
         wagon.each((e, time) -> {
             if (!(e instanceof CaravanWagon w)) return;
             Region[] all = Region.values();
             w.setRegion(time < 258 ? Region.DUNES : all[((int) (time - 258) / 18) % all.length]);
         });
-        s.text(12, 104, "arrive", GuideScene.above(wagon, 2.5));
+        s.text(12, 104, "arrive", GuideScene.above(wagon, 2.8));
         s.text(158, 250, "trade", GuideScene.above(t[0], 2.1));
-        s.text(256, 405, "regions", GuideScene.above(wagon, 2.5))
+        s.text(256, 405, "regions", GuideScene.above(wagon, 2.8))
                 .icons(new ItemStack(Items.CACTUS), new ItemStack(Items.BLUE_ICE), new ItemStack(Items.BAMBOO), new ItemStack(Items.AMETHYST_SHARD),
                         new ItemStack(Items.PRISMARINE_SHARD), new ItemStack(Items.SLIME_BALL), new ItemStack(Items.HONEYCOMB), new ItemStack(Items.SADDLE));
         return s;
@@ -155,7 +155,7 @@ public final class GuideScenes {
     static GuideScene ambush() {
         GuideScene s = new GuideScene("ambush", 390, 15, 7, new ItemStack(Items.CROSSBOW));
         s.plate(GRASS);
-        for (int x = 0; x <= 14; x++) s.block(x, 0, 4, PATH, 0);
+        for (int x = 0; x <= 14; x++) s.ground(x, 4, PATH);
         s.block(14, 1, 3, milestoneBlock(), 0);
         Actor[] t = train(s, 4.5, Region.FROST, 1, 0, 12.9);
         Actor master = t[0];

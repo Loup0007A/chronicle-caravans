@@ -65,6 +65,14 @@ public final class GuideScene {
         return this;
     }
 
+    /** Changes a block of the ground plate from the start (roads already built). */
+    public GuideScene ground(int x, int z, BlockState state) {
+        List<BlockCue> list = blocks.get(new BlockPos(x, 0, z));
+        if (list == null || list.isEmpty()) return block(x, 0, z, state, 0);
+        list.set(0, new BlockCue(state, list.get(0).tick));
+        return this;
+    }
+
     /** The cue visible at {@code t}, or null. */
     static BlockCue blockAt(List<BlockCue> list, float t) {
         BlockCue cur = null;

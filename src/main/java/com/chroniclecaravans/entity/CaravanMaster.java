@@ -305,9 +305,9 @@ public class CaravanMaster extends WanderingTrader {
     // ------------------------------------------------------------------ the train
 
     /** Gap between the master and the draft llama, then between the llama and the wagon's centre (blocks). */
-    private static final double DRAFT_GAP = 2.2, WAGON_GAP = 2.75;
+    private static final double DRAFT_GAP = 2.2, WAGON_GAP = 3.05;
     /** Half the distance between the wagon's axles, and gaps between pack llamas. */
-    private static final double AXLE_HALF = 0.85, PACK_GAP = 2.2, AFTER_WAGON = 1.7;
+    private static final double AXLE_HALF = 0.95, PACK_GAP = 2.2, AFTER_WAGON = 1.7;
     private static final double TRAIL_LENGTH = 24.0;
 
     /** Fills the trail with a straight line behind the master (at spawn, after a warp). */
@@ -525,8 +525,7 @@ public class CaravanMaster extends WanderingTrader {
     /** The whole caravan disappears in a puff of smoke (it has left the area). */
     public void vanish(ServerLevel level) {
         for (TraderLlama llama : loadedLlamas(level)) {
-            Entity holder = llama.getLeashHolder();
-            if (llama.isTamed() || (holder != null && holder != this)) continue;
+            if (llama.isTamed() || llama.getLeashHolder() instanceof Player) continue;
             level.sendParticles(ParticleTypes.POOF, llama.getX(), llama.getY() + 1, llama.getZ(), 12, 0.4, 0.5, 0.4, 0.02);
             llama.dropLeash(true, false);
             llama.discard();

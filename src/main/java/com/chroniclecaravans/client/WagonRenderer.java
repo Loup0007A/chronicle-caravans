@@ -22,7 +22,7 @@ public class WagonRenderer extends EntityRenderer<CaravanWagon> {
     public WagonRenderer(EntityRendererProvider.Context context) {
         super(context);
         this.model = new WagonModel(context.bakeLayer(WagonModel.LAYER));
-        this.shadowRadius = 1.3F;
+        this.shadowRadius = 1.5F;
         this.shadowStrength = 0.8F;
     }
 
@@ -49,13 +49,16 @@ public class WagonRenderer extends EntityRenderer<CaravanWagon> {
     }
 
     /** Also used by the guide screen. */
+    /** The model is drawn 15% bigger than its pixels. */
+    public static final float SCALE = 1.15F;
+
     public static void renderWagon(WagonModel model, Region region, float yaw, float pitch, float roll, PoseStack poseStack, MultiBufferSource buffer, int light) {
         poseStack.pushPose();
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - yaw));
         poseStack.mulPose(Axis.XP.rotationDegrees(-pitch));
-        poseStack.scale(-1.0F, -1.0F, 1.0F);
+        poseStack.scale(-SCALE, -SCALE, SCALE);
         poseStack.translate(0.0F, -1.501F, 0.0F);
-        model.setRoll(roll);
+        model.setRoll(roll / SCALE);
         VertexConsumer vc = buffer.getBuffer(model.renderType(TEXTURE));
         model.body.render(poseStack, vc, light, OverlayTexture.NO_OVERLAY);
         model.canopy.render(poseStack, vc, light, OverlayTexture.NO_OVERLAY, tint(region));

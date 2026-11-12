@@ -28,7 +28,7 @@ import net.minecraft.world.phys.Vec3;
 public class CaravanWagon extends Entity {
     private static final EntityDataAccessor<Integer> REGION = SynchedEntityData.defineId(CaravanWagon.class, EntityDataSerializers.INT);
     /** Distance from the wagon's centre to its rear hitch (where the first pack llama is tied), in blocks. */
-    public static final double REAR_HITCH = 1.45;
+    public static final double REAR_HITCH = 1.65;
 
     private UUID masterId;
     private int orphanTicks;
@@ -199,7 +199,7 @@ public class CaravanWagon extends Entity {
 
     public static EntityType.Builder<CaravanWagon> builder() {
         return EntityType.Builder.<CaravanWagon>of(CaravanWagon::new, net.minecraft.world.entity.MobCategory.MISC)
-                .sized(1.8F, 2.4F)
+                .sized(2.0F, 2.7F)
                 .clientTrackingRange(10)
                 .updateInterval(2)
                 .fireImmune();
