@@ -1,0 +1,10 @@
+{
+  "pack": {
+    "description": "Chronicle Caravans",
+    "min_format": 97,
+    "max_format": [
+      121,
+      0
+    ]
+  }
+}

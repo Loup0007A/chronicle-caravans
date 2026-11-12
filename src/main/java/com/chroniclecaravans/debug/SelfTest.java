@@ -15,8 +15,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.animal.horse.TraderLlama;
-import net.minecraft.world.level.ChunkPos;
+//#if !mc26
 import net.minecraft.world.level.GameRules;
+//#endif
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -116,21 +117,40 @@ public final class SelfTest {
     }
 
     private static void prepare(ServerLevel level) {
-        BlockPos spawn = level.getSharedSpawnPos();
-        ChunkPos c = new ChunkPos(spawn);
-        for (int dx = -4; dx <= 5; dx++) for (int dz = -4; dz <= 4; dz++) level.setChunkForced(c.x + dx, c.z + dz, true);
-        level.setDayTime(1000);
-        level.setWeatherParameters(100000, 0, false, false);
+        BlockPos spawn = spawn(level);
+        int cx = spawn.getX() >> 4, cz = spawn.getZ() >> 4;
+        for (int dx = -4; dx <= 5; dx++) for (int dz = -4; dz <= 4; dz++) level.setChunkForced(cx + dx, cz + dz, true);
         // A still, empty stage: no night, no rain, no wandering monsters
+        command(level, "time set 1000");
+        command(level, "weather clear 100000");
+        //#if mc26
+        //$$ net.minecraft.world.level.gamerules.GameRules rules = level.getGameRules();
+        //$$ rules.set(net.minecraft.world.level.gamerules.GameRules.ADVANCE_TIME, false, level.getServer());
+        //$$ rules.set(net.minecraft.world.level.gamerules.GameRules.ADVANCE_WEATHER, false, level.getServer());
+        //$$ rules.set(net.minecraft.world.level.gamerules.GameRules.SPAWN_MOBS, false, level.getServer());
+        //#else
         GameRules rules = level.getGameRules();
         rules.getRule(GameRules.RULE_DAYLIGHT).set(false, level.getServer());
         rules.getRule(GameRules.RULE_WEATHER_CYCLE).set(false, level.getServer());
         rules.getRule(GameRules.RULE_DOMOBSPAWNING).set(false, level.getServer());
+        //#endif
+    }
+
+    private static void command(ServerLevel level, String cmd) {
+        level.getServer().getCommands().performPrefixedCommand(level.getServer().createCommandSourceStack().withSuppressedOutput(), cmd);
+    }
+
+    private static BlockPos spawn(ServerLevel level) {
+        //#if mc26
+        //$$ return level.getRespawnData().pos();
+        //#else
+        return level.getSharedSpawnPos();
+        //#endif
     }
 
     /** A milestone at the spawn and a straight dirt path leading east from it. */
     private static void stage(ServerLevel level) {
-        BlockPos spawn = level.getSharedSpawnPos();
+        BlockPos spawn = spawn(level);
         int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, spawn.getX(), spawn.getZ());
         y = Math.max(y, level.getSeaLevel() + 1);
         stop = new BlockPos(spawn.getX(), y, spawn.getZ());
@@ -228,7 +248,7 @@ public final class SelfTest {
         if (viewer == null || viewer.hasDisconnected()) return;
         if (t == 60) {
             for (CaravanMaster m : CaravanSpawner.caravans(level)) m.vanish(level);
-            level.setDayTime(1000);
+            command(level, "time set 1000");
             spawn(level, Region.DUNES);
         }
         if (t == 760 && master != null && master.isAlive()) master.startAmbush(level);
@@ -254,6 +274,10 @@ public final class SelfTest {
         double dx = lx - x, dy = ly - y, dz = lz - z;
         float yaw = (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
         float pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
+        //#if mc26
+        //$$ viewer.teleportTo(level, x, y, z, java.util.Set.of(), yaw, pitch, true);
+        //#else
         viewer.teleportTo(level, x, y, z, yaw, pitch);
+        //#endif
     }
 }

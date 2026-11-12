@@ -24,8 +24,18 @@ public final class ClientSetup {
         e.registerLayerDefinition(WagonModel.LAYER, WagonModel::createLayer);
     }
 
+    //#if mc26
+    //$$ @SubscribeEvent
+    //$$ public static void pictureInPicture(net.neoforged.neoforge.client.event.RegisterPictureInPictureRenderersEvent e) {
+    //$$     com.chroniclecaravans.client.guide.GuideRender.register(e);
+    //$$ }
+    //#endif
+
     @SubscribeEvent
     public static void keys(RegisterKeyMappingsEvent e) {
+        //#if mc26
+        //$$ e.registerCategory(GuideKeys.CATEGORY);
+        //#endif
         e.register(GuideKeys.GUIDE);
     }
 }

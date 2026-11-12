@@ -64,7 +64,7 @@ public final class ClientTest {
         if (mc.player == null || mc.level == null) return;
         if (mc.screen != null && !(mc.screen instanceof GuideScreen)) return;
         t++;
-        mc.options.hideGui = !(t > 420 && t < 700) && t < 950;
+        hideHud(mc, !(t > 420 && t < 700) && t < 950);
         if (t % 20 == 0 && t < 950) {
             for (Entity en : mc.level.entitiesForRendering()) {
                 if (en instanceof CaravanMaster && !seenMaster) {
@@ -97,6 +97,14 @@ public final class ClientTest {
                     : !guideShown ? "FAIL the guide never opened" : "OK";
             finish(mc, why);
         }
+    }
+
+    private static void hideHud(Minecraft mc, boolean hidden) {
+        //#if mc26
+        //$$ if (mc.gui.hud.isHidden() != hidden) mc.gui.hud.toggle();
+        //#else
+        mc.options.hideGui = hidden;
+        //#endif
     }
 
     private static void finish(Minecraft mc, String result) {

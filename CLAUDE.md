@@ -1,17 +1,25 @@
 # Chronicle Caravans — consignes pour Claude
 
 - **Règle d'or : toujours pousser directement sur `main`** (pas de branche `dev`, pas de PR), à la demande de Loup0007A.
-- Avant de pousser : le code doit compiler. Ensuite, vérifier le résultat de la CI : sur la branche `ci-logs`, `main/status.txt` puis `main/neoforge-1.21.1/selftest.log` (serveur), `clienttest.log` (client) et `screenshots/`.
+- Avant de pousser : le code doit compiler pour **chaque cible**. Ensuite, vérifier le résultat de la CI : sur la branche `ci-logs`, `main/status.txt` puis, par cible, `main/<cible>/selftest.log` (serveur), `clienttest.log` (client) et `screenshots/`.
 - Après chaque push sur `main` qui passe les tests, la CI ajoute un commit « Jars compilés … » : faire `git fetch` + rebase avant le push suivant.
 - Même organisation que le dépôt `fate-flip` (CI, release, envoi CurseForge).
 
+## Multi-versions (comme fate-flip)
+- `src/main` = la variante de référence **NeoForge 1.21.1** (compile telle quelle avec le `build.gradle` racine).
+- Les autres cibles sont dans `targets/<cible>/` : `forge-1.21.1`, `forge-1.20.1` (Java 17), `neoforge-26.3` (Java 25). Chacune a son build Gradle, son `target.json` et ses `overrides/`. Leurs sources sont fabriquées par `python3 tools/port.py <cible>` : blocs `//#if` / `//#elif` / `//#else` / `//#endif` (étiquettes `neoforge`, `forge`, `mc120`, `mc121`, `mc26`…, lignes inactives préfixées `//$$ `), remplacements de `target.json`, puis fichiers de `overrides/`. `python3 tools/port.py --check` vérifie que `src/main` est cohérent.
+- Ce qui change d'une version de Minecraft à l'autre passe par `platform/Compat.java` et `platform/Nbt.java` (une copie par cible dans `overrides/` quand il le faut).
+- Compiler une cible localement : `bash /home/claude/tools/cc_target.sh <cible>` (bibliothèques dans `/home/claude/mc/lib-<cible>`, branches `mc-libs-<cible>` de ce dépôt ou de fate-flip ; le build CI les exporte automatiquement la première fois ; JDK 25 dans `/home/claude/jdk25` pour 26.3).
+- 26.x : rendu par états (`EntityRenderer.submit`, `SubmitNodeCollector`) ; le rendu du chariot est entièrement dans `targets/neoforge-26.3/overrides/.../WagonRenderer.java`, la scène 3D du guide est un « picture in picture » (`overrides/.../guide/GuideRender.java`, enregistré dans `ClientSetup`). Sauvegardes des entités par `ValueOutput`/`ValueInput` (pont vers `writeX/readX(CompoundTag)`).
+- CI : un job de build par cible, un test en jeu par cible, puis release (tous les jars) et CurseForge (un fichier par cible).
+
 ## Le mod
-- NeoForge **1.21.1**, Java 21, noms Mojang. Mod id `chroniclecaravans`, paquet `com.chroniclecaravans`. Le mod s'installe **des deux côtés** (client et serveur) : toute la logique est côté serveur, le client n'a que le rendu (`client/ClientSetup`).
+- Mod id `chroniclecaravans`, paquet `com.chroniclecaravans`, noms Mojang. Mod id `chroniclecaravans`, paquet `com.chroniclecaravans`. Le mod s'installe **des deux côtés** (client et serveur) : toute la logique est côté serveur, le client n'a que le rendu (`client/ClientSetup`).
 - `block/MilestoneBlock` : la borne. La poser enregistre un arrêt dans `world/CaravanData` (SavedData de l'Overworld : arrêts + réputation des joueurs).
 - `world/CaravanSpawner` : envoie les caravanes vers les bornes (tick du monde), crée le maître et ses lamas, suit les morts de bandits et les coups portés aux lamas.
 - `entity/CaravanMaster` (étend `WanderingTrader`, rendu vanilla) : états `TRAVELING` / `HALTED` / `LEAVING`, trajet par étapes de 24 blocs (`nextHop`), stock par rang de réputation (`getOffers` ne renvoie que les offres visibles par le joueur qui commerce), embuscades.
 - Le convoi : `CaravanMaster` garde la trace de ses pas (`trail`) et place à chaque tick, sur cette trace, le lama de trait (mené en laisse par le maître), le chariot `entity/CaravanWagon` puis les lamas de bât (attachés au chariot, puis l'un à l'autre). Les lamas du convoi sont en `NoAi` : seul le maître les déplace.
-- Le chariot : modèle **généré** par `python3 tools/wagon.py` (`client/WagonModel.java` + `textures/entity/wagon.png` ; `--preview` en fait un rendu logiciel dans `/tmp` pour vérifier l'aspect). Ne pas modifier `WagonModel.java` à la main. La bâche est teintée par région (`WagonRenderer.tint`).
+- Le chariot : modèle **généré** par `python3 tools/wagon.py` (variantes 1.20.1 / 1.21 / 26.x en blocs `//#if`) (`client/WagonModel.java` + `textures/entity/wagon.png` ; `--preview` en fait un rendu logiciel dans `/tmp` pour vérifier l'aspect). Ne pas modifier `WagonModel.java` à la main. La bâche est teintée par région (`WagonRenderer.tint`).
 - Le guide (façon Ponder de Create) : `client/guide/` — `GuideScene` (scène = fonction du temps : blocs, acteurs, objets, bulles), `GuideScenes` (les 5 scènes), `GuideScreen` (rendu et commandes) ; `client/GuideKeys` (maintenir W sur la borne, `/caravanguide`). Textes dans les fichiers de langue (`guide.chroniclecaravans.<scène>.<id>`).
 - `entity/RoadNavigation` : pathfinding qui pénalise les blocs hors route (tag de blocs `chroniclecaravans:roads`).
 - `Region` : les 8 régions d'origine, leurs marchandises (rang 0 à 4) et la détection par biome. `Tier` : les 5 rangs de réputation.

@@ -54,7 +54,9 @@ public final class GuideScenes {
         TraderLlama llama = Compat.create(EntityType.TRADER_LLAMA, level);
         if (llama != null) {
             llama.setChest(chest);
+            //#if !mc26
             llama.setVariant(variant);
+            //#endif
         }
         return llama;
     }

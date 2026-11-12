@@ -81,6 +81,54 @@
     [
       "ModConfig.Type.COMMON",
       "ModConfig.Type.LOCAL"
+    ],
+    [
+      "re:\\bGuiGraphics\\b",
+      "GuiGraphicsExtractor"
+    ],
+    [
+      "re:\\.drawString\\(",
+      ".text("
+    ],
+    [
+      "re:\\.drawCenteredString\\(",
+      ".centeredText("
+    ],
+    [
+      ".renderOutline(",
+      ".outline("
+    ],
+    [
+      ".renderItemDecorations(",
+      ".itemDecorations("
+    ],
+    [
+      ".renderItem(",
+      ".item("
+    ],
+    [
+      "re:\\b(MC|mc|minecraft|this\\.minecraft|Minecraft\\.getInstance\\(\\))\\.setScreen\\(",
+      "\\1.gui.setScreen("
+    ],
+    [
+      "re:\\b(MC|mc|minecraft|this\\.minecraft|Minecraft\\.getInstance\\(\\))\\.screen\\b(?!\\s*\\()",
+      "\\1.gui.screen()"
+    ],
+    [
+      "re:\\b(MC|mc|minecraft|this\\.minecraft|Minecraft\\.getInstance\\(\\))\\.getMainRenderTarget\\(\\)",
+      "\\1.gameRenderer.mainRenderTarget()"
+    ],
+    [
+      "re:Screenshot\\.grab\\(([^,]+), ([^,]+), ([^,]+),",
+      "Screenshot.grab(\\1, \\2, \\3, 1,"
+    ],
+    [
+      "import net.minecraft.client.renderer.LightTexture;",
+      "import net.minecraft.util.LightCoordsUtil;"
+    ],
+    [
+      "LightTexture.FULL_BRIGHT",
+      "LightCoordsUtil.FULL_BRIGHT"
     ]
   ]
 }

@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [ neoforge-1.21.1, forge-1.21.1, forge-1.20.1 ]
+        target: [ neoforge-1.21.1, forge-1.21.1, forge-1.20.1, neoforge-26.3 ]
     steps:
       - uses: actions/checkout@v4
 
@@ -95,6 +95,7 @@ jobs:
           - { name: neoforge-1.21.1, target: neoforge-1.21.1, loader: neoforge, loader_version: 21.1.265 }
           - { name: forge-1.21.1,    target: forge-1.21.1,    loader: forge,    loader_version: 1.21.1-52.0.7 }
           - { name: forge-1.20.1,    target: forge-1.20.1,    loader: forge,    loader_version: 1.20.1-47.4.23 }
+          - { name: neoforge-26.3,   target: neoforge-26.3,   loader: neoforge, loader_version: 26.3.0.101, java: 25, backend: opengl }
     steps:
       - uses: actions/checkout@v4
 

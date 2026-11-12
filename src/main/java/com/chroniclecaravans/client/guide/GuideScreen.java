@@ -4,22 +4,11 @@ import java.util.List;
 import java.util.Map;
 
 import com.chroniclecaravans.client.guide.GuideScene.Actor;
-import com.chroniclecaravans.client.guide.GuideScene.BlockCue;
-import com.chroniclecaravans.client.guide.GuideScene.ItemCue;
 import com.chroniclecaravans.client.guide.GuideScene.TextCue;
 import com.chroniclecaravans.entity.CaravanWagon;
-import com.mojang.blaze3d.platform.Lighting;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
-import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
@@ -27,7 +16,6 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -48,13 +36,17 @@ public class GuideScreen extends Screen {
     private int index;
     private int time;
     private boolean paused;
-    private float yaw = -32F, pitch = 28F, zoom = 1F;
+    float yaw = -32F, pitch = 28F, zoom = 1F;
     private boolean dragging;
 
     public GuideScreen(Screen previous, int scene) {
         super(Component.translatable("guide.chroniclecaravans.title"));
         this.previous = previous;
         this.index = Mth.clamp(scene, 0, scenes.size() - 1);
+    }
+
+    Minecraft minecraft() {
+        return minecraft;
     }
 
     public GuideScene scene() {
@@ -99,12 +91,16 @@ public class GuideScreen extends Screen {
             if (e instanceof LivingEntity living) {
                 Vec3 now = a.pos(time), before = a.pos(time - 1);
                 double moved = Math.sqrt((now.x - before.x) * (now.x - before.x) + (now.z - before.z) * (now.z - before.z));
+                //#if mc26
+                //$$ living.walkAnimation.update(Math.min((float) moved * 4F, 1F), 0.4F, 1F);
+                //#else
                 living.walkAnimation.update(Math.min((float) moved * 4F, 1F), 0.4F);
+                //#endif
             }
         }
     }
 
-    private Entity entity(Actor a) {
+    Entity entity(Actor a) {
         if (a.entity == null && minecraft.level != null) a.entity = a.factory.apply(minecraft.level);
         return a.entity;
     }
@@ -116,6 +112,11 @@ public class GuideScreen extends Screen {
     //$$ public void renderBackground(GuiGraphics g) {
     //$$     g.fillGradient(0, 0, width, height, 0xF2181C24, 0xF80A0C10);
     //$$ }
+    //#elif mc26
+    //$$ @Override
+    //$$ public void extractBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    //$$     g.fillGradient(0, 0, width, height, 0xF2181C24, 0xF80A0C10);
+    //$$ }
     //#else
     @Override
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
@@ -123,114 +124,57 @@ public class GuideScreen extends Screen {
     }
     //#endif
 
+    //#if mc26
+    //$$ @Override
+    //$$ public void extractRenderState(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    //#else
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    //#endif
         //#if mc120
         //$$ renderBackground(g);
-        //#else
+        //#elif !mc26
         renderBackground(g, mouseX, mouseY, partialTick);
         //#endif
         GuideScene s = scene();
         float t = Math.min(s.length, time + (paused || time >= s.length ? 0F : partialTick));
-        Matrix4f view = renderScene(g, s, t, partialTick);
+        GuideRender.draw(this, g, s, t, partialTick);
+        Matrix4f view = view(s);
+        //#if mc26
+        //$$ g.nextStratum();
+        //#else
         g.pose().pushPose();
         g.pose().translate(0, 0, 800);
+        //#endif
         for (TextCue c : s.texts) renderBubble(g, c, t, view);
         renderInterface(g, s, t, mouseX, mouseY);
+        //#if !mc26
         g.pose().popPose();
+        //#endif
     }
 
-    private float sceneScale(GuideScene s) {
+    float sceneScale(GuideScene s) {
         double span = Math.sqrt(s.sizeX * s.sizeX + s.sizeZ * s.sizeZ) + 2;
         return (float) Mth.clamp(Math.min(width * 0.8, height * 1.25) / span, 6, 56) * zoom;
     }
 
-    private static float ease(float p) {
+    static float ease(float p) {
         p = Mth.clamp(p, 0F, 1F);
         return 1F - (1F - p) * (1F - p) * (1F - p);
     }
 
-    private Matrix4f renderScene(GuiGraphics g, GuideScene s, float t, float partialTick) {
-        PoseStack ps = g.pose();
-        ps.pushPose();
+    /** Scene space to screen (GUI pixels): what the scene renderer uses, and where the bubbles point. */
+    Matrix4f view(GuideScene s) {
         float scale = sceneScale(s);
-        ps.translate(width / 2F, height * 0.52F, 400F);
-        ps.scale(scale, -scale, scale);
-        ps.mulPose(Axis.XP.rotationDegrees(pitch));
-        ps.mulPose(Axis.YP.rotationDegrees(yaw));
-        ps.translate(-s.sizeX / 2F, -1F, -s.sizeZ / 2F);
-        Matrix4f view = new Matrix4f(ps.last().pose());
-
-        Lighting.setupFor3DItems();
-        MultiBufferSource.BufferSource buffers = g.bufferSource();
-        int light = LightTexture.FULL_BRIGHT;
-
-        // Blocks drop into place
-        for (Map.Entry<BlockPos, List<BlockCue>> en : s.blocks.entrySet()) {
-            BlockCue c = GuideScene.blockAt(en.getValue(), t);
-            if (c == null || c.state().isAir()) continue;
-            float age = t - c.tick();
-            boolean replacing = en.getValue().get(0) != c;
-            float drop = age < 6 ? (1F - ease(age / 6F)) * (replacing ? 0.7F : 1.6F) : 0F;
-            BlockPos p = en.getKey();
-            ps.pushPose();
-            ps.translate(p.getX(), p.getY() + drop, p.getZ());
-            minecraft.getBlockRenderer().renderSingleBlock(c.state(), ps, buffers, light, OverlayTexture.NO_OVERLAY);
-            BlockEntity be = blockEntity(p, c.state());
-            if (be != null) minecraft.getBlockEntityRenderDispatcher().renderItem(be, ps, buffers, light, OverlayTexture.NO_OVERLAY);
-            ps.popPose();
-        }
-
-        // Pulsing outline around what a bubble talks about
-        for (TextCue c : s.texts) {
-            if (c.highlight == null || t < c.start || t > c.end) continue;
-            float a = 0.55F + 0.35F * Mth.sin(t * 0.25F);
-            LevelRenderer.renderLineBox(ps, buffers.getBuffer(RenderType.lines()), c.highlight.inflate(0.02), 0.95F, 0.72F, 0.3F, a);
-        }
-
-        // Flying items (rewards, the emerald block)
-        for (ItemCue c : s.items) {
-            if (t < c.start() || t > c.end()) continue;
-            float k = ease((t - c.start()) / Math.max(1F, c.land() - c.start()));
-            Vec3 p = c.from().lerp(c.to(), k).add(0, Mth.sin(k * Mth.PI) * 0.8, 0);
-            ps.pushPose();
-            ps.translate(p.x, p.y + (k >= 1 ? Mth.sin(t * 0.15F) * 0.05 : 0), p.z);
-            ps.mulPose(Axis.YP.rotationDegrees(t * 6F));
-            ps.scale(1.3F, 1.3F, 1.3F);
-            minecraft.getItemRenderer().renderStatic(c.stack(), ItemDisplayContext.GROUND, light, OverlayTexture.NO_OVERLAY, ps, buffers, minecraft.level, 0);
-            ps.popPose();
-        }
-
-        // Entities
-        if (minecraft.level != null) {
-            EntityRenderDispatcher dispatcher = minecraft.getEntityRenderDispatcher();
-            dispatcher.setRenderShadow(false);
-            for (Actor a : s.actors) {
-                if (!a.visible(t)) continue;
-                Entity e = entity(a);
-                if (e == null) continue;
-                pose(a, e, t);
-                if (a.each != null) a.each.accept(e, t);
-                float pop = ease((t - a.appear) / 5F);
-                Vec3 p = a.pos(t);
-                ps.pushPose();
-                ps.translate(p.x, p.y, p.z);
-                ps.scale(pop, pop, pop);
-                dispatcher.render(e, 0, 0, 0, a.yaw(t), partialTick, ps, buffers, light);
-                ps.popPose();
-            }
-            dispatcher.setRenderShadow(true);
-        }
-        g.flush();
-        ps.popPose();
-        Lighting.setupFor3DItems();
-        return view;
+        return new Matrix4f().translate(width / 2F, height * 0.52F, 400F).scale(scale, -scale, scale)
+                .rotateX(pitch * Mth.DEG_TO_RAD).rotateY(yaw * Mth.DEG_TO_RAD)
+                .translate(-s.sizeX / 2F, -1F, -s.sizeZ / 2F);
     }
 
     private final Map<BlockPos, BlockEntity> blockEntities = new java.util.HashMap<>();
 
     /** Bells, chests...: the part drawn by a block entity renderer. */
-    private BlockEntity blockEntity(BlockPos pos, BlockState state) {
+    BlockEntity blockEntity(BlockPos pos, BlockState state) {
         if (!(state.getBlock() instanceof EntityBlock eb)) return null;
         BlockEntity be = blockEntities.get(pos);
         if (be == null || be.getBlockState() != state) {
@@ -242,7 +186,7 @@ public class GuideScreen extends Screen {
     }
 
     /** Puts an actor's entity where the scene wants it at time {@code t}. */
-    private void pose(Actor a, Entity e, float t) {
+    void pose(Actor a, Entity e, float t) {
         Vec3 p = a.pos(t);
         float yaw = a.yaw(t);
         e.setPos(p.x, p.y, p.z);
@@ -426,8 +370,51 @@ public class GuideScreen extends Screen {
         if (index < scenes.size() - 1) jump(index + 1, 0);
     }
 
+    //#if mc26
+    //$$ @Override
+    //$$ public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent ev, boolean doubleClick) {
+    //$$     return clicked(ev.x(), ev.y());
+    //$$ }
+    //$$
+    //$$ @Override
+    //$$ public boolean mouseDragged(net.minecraft.client.input.MouseButtonEvent ev, double dx, double dy) {
+    //$$     return dragged(dx, dy) || super.mouseDragged(ev, dx, dy);
+    //$$ }
+    //$$
+    //$$ @Override
+    //$$ public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent ev) {
+    //$$     dragging = false;
+    //$$     return super.mouseReleased(ev);
+    //$$ }
+    //$$
+    //$$ @Override
+    //$$ public boolean keyPressed(net.minecraft.client.input.KeyEvent ev) {
+    //$$     return key(ev.key()) || super.keyPressed(ev);
+    //$$ }
+    //#else
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
+        return clicked(mx, my);
+    }
+
+    @Override
+    public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
+        return dragged(dx, dy) || super.mouseDragged(mx, my, button, dx, dy);
+    }
+
+    @Override
+    public boolean mouseReleased(double mx, double my, int button) {
+        dragging = false;
+        return super.mouseReleased(mx, my, button);
+    }
+
+    @Override
+    public boolean keyPressed(int key, int scan, int modifiers) {
+        return key(key) || super.keyPressed(key, scan, modifiers);
+    }
+    //#endif
+
+    private boolean clicked(double mx, double my) {
         int b = buttonAt(mx, my);
         if (b >= 0) {
             switch (b) {
@@ -452,20 +439,11 @@ public class GuideScreen extends Screen {
         return true;
     }
 
-    @Override
-    public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
-        if (dragging) {
-            yaw += (float) dx * 0.8F;
-            pitch = Mth.clamp(pitch + (float) dy * 0.6F, 5F, 85F);
-            return true;
-        }
-        return super.mouseDragged(mx, my, button, dx, dy);
-    }
-
-    @Override
-    public boolean mouseReleased(double mx, double my, int button) {
-        dragging = false;
-        return super.mouseReleased(mx, my, button);
+    private boolean dragged(double dx, double dy) {
+        if (!dragging) return false;
+        yaw += (float) dx * 0.8F;
+        pitch = Mth.clamp(pitch + (float) dy * 0.6F, 5F, 85F);
+        return true;
     }
 
     //#if mc120
@@ -479,15 +457,14 @@ public class GuideScreen extends Screen {
         return true;
     }
 
-    @Override
-    public boolean keyPressed(int key, int scan, int modifiers) {
+    private boolean key(int key) {
         switch (key) {
             case 263 -> previousScene();      // left arrow
             case 262 -> nextScene();          // right arrow
             case 32 -> paused = !paused;      // space
             case 82 -> jump(index, 0);        // R
             default -> {
-                return super.keyPressed(key, scan, modifiers);
+                return false;
             }
         }
         return true;

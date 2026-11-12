@@ -22,7 +22,6 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
-import org.lwjgl.glfw.GLFW;
 
 /**
  * Opens the Caravan Guide like Create's Ponder: hold the guide key (W) while hovering the milestone in an
@@ -30,8 +29,14 @@ import org.lwjgl.glfw.GLFW;
  */
 @EventBusSubscriber(modid = ChronicleCaravans.MODID, value = Dist.CLIENT)
 public final class GuideKeys {
+    //#if mc26
+    //$$ public static final KeyMapping.Category CATEGORY = new KeyMapping.Category(ChronicleCaravans.id("main"));
+    //$$ public static final KeyMapping GUIDE = new KeyMapping("key.chroniclecaravans.guide", KeyConflictContext.GUI,
+    //$$         InputConstants.Type.KEYSYM, InputConstants.KEY_W, CATEGORY);
+    //#else
     public static final KeyMapping GUIDE = new KeyMapping("key.chroniclecaravans.guide", KeyConflictContext.GUI,
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_W, "key.categories.chroniclecaravans");
+            InputConstants.Type.KEYSYM, InputConstants.KEY_W, "key.categories.chroniclecaravans");
+    //#endif
     private static final int HOLD_TICKS = 14;
 
     private static int clientTicks;
@@ -80,7 +85,7 @@ public final class GuideKeys {
         boolean shown = mc.screen != null && !(mc.screen instanceof GuideScreen) && clientTicks - lastTooltip <= 2;
         InputConstants.Key key = GUIDE.getKey();
         boolean down = shown && key.getType() == InputConstants.Type.KEYSYM && key.getValue() > 0
-                && InputConstants.isKeyDown(mc.getWindow().getWindow(), key.getValue());
+                && keyDown(mc, key.getValue());
         if (down) {
             if (++hold >= HOLD_TICKS) {
                 hold = 0;
@@ -89,6 +94,14 @@ public final class GuideKeys {
         } else {
             hold = Math.max(0, hold - 2);
         }
+    }
+
+    private static boolean keyDown(Minecraft mc, int key) {
+        //#if mc26
+        //$$ return InputConstants.isKeyDown(key);
+        //#else
+        return InputConstants.isKeyDown(mc.getWindow().getWindow(), key);
+        //#endif
     }
 
     @SubscribeEvent
