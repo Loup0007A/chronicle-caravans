@@ -1,0 +1,29 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "placed_milestone": {
+      "trigger": "minecraft:placed_block",
+      "conditions": {
+        "location": [
+          {
+            "condition": "minecraft:block_state_property",
+            "block": "chroniclecaravans:milestone"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "placed_milestone"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "chroniclecaravans:caravan_atlas",
+      "chroniclecaravans:inn_sign",
+      "chroniclecaravans:loading_dock",
+      "chroniclecaravans:trading_post"
+    ]
+  }
+}

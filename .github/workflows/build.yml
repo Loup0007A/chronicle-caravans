@@ -142,6 +142,7 @@ jobs:
             echo "build: ${{ needs.build.result }}  test: ${{ needs.test.result }}  ${GITHUB_SHA}"
             for f in /tmp/logs/$NAME/*/selftest.log; do [ -f "$f" ] && echo "$(basename $(dirname $f)) server: $(grep -o 'RESULT: .*' "$f" | tail -1)"; done
             for f in /tmp/logs/$NAME/*/clienttest.log; do [ -f "$f" ] && echo "$(basename $(dirname $f)) client: $(grep -o 'RESULT: .*' "$f" | tail -1)"; done
+            for f in /tmp/logs/$NAME/*/selftest.log; do if [ -f "$f" ] && grep -q '\[SELFTEST\] FAIL ' "$f"; then echo "$(basename $(dirname $f)) server, with the player: $(grep -o '\[SELFTEST\] FAIL .*' "$f" | tr '\n' ' ')"; fi; done
           } > "/tmp/logs/$NAME/status.txt"
           cat "/tmp/logs/$NAME/status.txt"
           cd /tmp/logs

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1
+
+- **Recipes unlock when you place your first milestone**: the Caravan Atlas, the Inn Sign, the Loading Dock and the Trading Post appear in the recipe book as soon as you place a Caravan Milestone. The milestone itself is unlocked by picking up an emerald.
+
 ## 1.2.0
 
 - **A new look for every screen**: the caravan interface, the atlas and the new blocks share a hand-drawn "trader's ledger" style: a wooden frame with brass corners, parchment pages, leather tabs, wooden buttons, wax seals and icons, the caravan master's portrait, the colours of his region, one card per offer and the market news of the day.

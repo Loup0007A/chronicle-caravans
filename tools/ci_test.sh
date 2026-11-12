@@ -56,4 +56,6 @@ cp srv/crash-reports/*.txt "$OUT/" 2>/dev/null || true
 echo "screenshots: $(ls "$OUT/screenshots" | wc -l)"
 pkill -f "nogui" || true
 wait
-grep -q "\[SELFTEST\] RESULT: OK" "$OUT/selftest.log" && grep -q "\[CLIENTTEST\] RESULT: OK" "$OUT/clienttest.log"
+# Checks made with the test player (after the server RESULT line) count too
+grep -E "\[SELFTEST\] FAIL " "$OUT/selftest.log" && echo "server checks failed while the test player was online"
+grep -q "\[SELFTEST\] RESULT: OK" "$OUT/selftest.log" && grep -q "\[CLIENTTEST\] RESULT: OK" "$OUT/clienttest.log" && ! grep -q "\[SELFTEST\] FAIL " "$OUT/selftest.log"

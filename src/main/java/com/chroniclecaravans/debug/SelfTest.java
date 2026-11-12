@@ -696,9 +696,42 @@ public final class SelfTest {
         log("bandits left=" + n);
     }
 
+    /**
+     * Placing a milestone unlocks the mod's other recipes (advancement recipes/caravan_network).
+     * Checked with the real player of the test client: ci_test.sh fails on any "[SELFTEST] FAIL" line.
+     */
+    private static void recipeUnlock(ServerLevel level) {
+        if (!level.getBlockState(stop).is(ChronicleCaravans.MILESTONE.get()))
+            level.setBlockAndUpdate(stop, ChronicleCaravans.MILESTONE.get().defaultBlockState());
+        //#if mc120
+        //$$ var adv = level.getServer().getAdvancements().getAdvancement(ChronicleCaravans.id("recipes/caravan_network"));
+        //#else
+        var adv = level.getServer().getAdvancements().get(ChronicleCaravans.id("recipes/caravan_network"));
+        //#endif
+        check(adv != null, "recipe unlock advancement loaded");
+        if (adv == null) return;
+        check(!viewer.getAdvancements().getOrStartProgress(adv).isDone(), "new player has not unlocked the recipes yet");
+        ItemStack placed = new ItemStack(ChronicleCaravans.MILESTONE_ITEM.get());
+        //#if mc26
+        //$$ net.minecraft.advancements.triggers.CriteriaTriggers.PLACED_BLOCK.trigger(viewer, stop, placed);
+        //#else
+        net.minecraft.advancements.CriteriaTriggers.PLACED_BLOCK.trigger(viewer, stop, placed);
+        //#endif
+        check(viewer.getAdvancements().getOrStartProgress(adv).isDone(), "placing a milestone unlocks the recipes");
+        for (String r : new String[] {"caravan_atlas", "inn_sign", "loading_dock", "trading_post"}) {
+            //#if mc26
+            //$$ boolean known = viewer.getRecipeBook().contains(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.RECIPE, ChronicleCaravans.id(r)));
+            //#else
+            boolean known = viewer.getRecipeBook().contains(ChronicleCaravans.id(r));
+            //#endif
+            check(known, "recipe " + r + " unlocked");
+        }
+    }
+
     /** What the test client sees: a new caravan walks down the road, halts, then gets ambushed. */
     private static void scene(ServerLevel level, int t) {
         if (viewer == null || viewer.hasDisconnected()) return;
+        if (t == 10) recipeUnlock(level);
         if (t == 60) {
             for (CaravanMaster m : CaravanSpawner.caravans(level)) m.vanish(level);
             command(level, "time set 1000");

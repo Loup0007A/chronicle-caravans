@@ -14,6 +14,8 @@ Living trade caravans travel between villages and the milestones you place, foll
 
 Place a **Caravan Milestone** at your base. A few minutes later, a caravan appears on the horizon: a caravan master leading a draft llama hitched to a **covered wagon**, pack llamas trailing behind, loaded with goods from a far-away region. It walks to your milestone, halts to trade, then sets off for the next one.
 
+Placing your first milestone also unlocks the mod's other recipes in your recipe book: the atlas, the inn sign, the loading dock and the trading post.
+
 Place a second milestone, build a road between the two, and you have a **trade route**: caravans follow your road, and move faster on it.
 
 ### ✦ A real caravan
