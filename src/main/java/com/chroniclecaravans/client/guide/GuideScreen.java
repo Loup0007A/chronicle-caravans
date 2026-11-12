@@ -31,6 +31,8 @@ import org.joml.Vector4f;
 public class GuideScreen extends Screen {
     private static final int GOLD = 0xFFE0A84A, BROWN = 0xFF6E4A22, BG = 0xF0141012;
 
+    private static final java.util.concurrent.atomic.AtomicInteger NEXT_ID = new java.util.concurrent.atomic.AtomicInteger(-1_000_000);
+
     private final Screen previous;
     private final List<GuideScene> scenes = GuideScenes.all();
     private int index;
@@ -101,7 +103,11 @@ public class GuideScreen extends Screen {
     }
 
     Entity entity(Actor a) {
-        if (a.entity == null && minecraft.level != null) a.entity = a.factory.apply(minecraft.level);
+        if (a.entity == null && minecraft.level != null) {
+            a.entity = a.factory.apply(minecraft.level);
+            // Never added to the world, but some renderers ask for an id: a negative one cannot clash
+            if (a.entity != null) a.entity.setId(NEXT_ID.decrementAndGet());
+        }
         return a.entity;
     }
 
