@@ -169,10 +169,10 @@ public final class GuideScenes {
         }
         s.text(26, 108, "bandits", GuideScene.above(bandits[1], 2.2));
         Vec3 from = master.pos(0).add(0, 1.4, 0);
-        s.item(new ItemStack(Items.EMERALD), 168, 182, 390, from, new Vec3(11.6, 1.15, 3.1));
-        s.item(new ItemStack(Items.EMERALD), 171, 185, 390, from, new Vec3(12.3, 1.15, 2.6));
-        s.item(new ItemStack(Items.BLUE_ICE), 175, 190, 390, from, new Vec3(11.0, 1.15, 2.4));
-        s.text(172, 258, "reward", GuideScene.at(11.6, 1.5, 2.8)).icons(new ItemStack(Items.EMERALD, 5), new ItemStack(Items.BLUE_ICE, 2));
+        s.item(new ItemStack(Items.EMERALD), 168, 182, 390, from, new Vec3(10.6, 1.15, 2.4));
+        s.item(new ItemStack(Items.EMERALD), 171, 185, 390, from, new Vec3(11.3, 1.15, 1.9));
+        s.item(new ItemStack(Items.BLUE_ICE), 175, 190, 390, from, new Vec3(10.0, 1.15, 1.7));
+        s.text(172, 258, "reward", GuideScene.at(10.6, 1.5, 2.1)).icons(new ItemStack(Items.EMERALD, 5), new ItemStack(Items.BLUE_ICE, 2));
         MutableComponent ranks = Component.translatable("guide.chroniclecaravans.ambush.reputation").append("\n");
         Tier[] tiers = Tier.values();
         for (int i = 0; i < tiers.length; i++) {
