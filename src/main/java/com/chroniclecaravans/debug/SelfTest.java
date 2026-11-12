@@ -6,6 +6,7 @@ import java.util.List;
 import com.chroniclecaravans.ChronicleCaravans;
 import com.chroniclecaravans.Region;
 import com.chroniclecaravans.entity.CaravanMaster;
+import com.chroniclecaravans.entity.CaravanWagon;
 import com.chroniclecaravans.world.CaravanData;
 import com.chroniclecaravans.world.CaravanSpawner;
 import net.minecraft.core.BlockPos;
@@ -149,8 +150,25 @@ public final class SelfTest {
             }
         }
         log("llamas=" + llamas + " following=" + following);
-        check(llamas >= 2, "at least two pack llamas");
+        check(llamas >= 2, "draft llama and at least one pack llama");
         check(following == llamas, "llamas followed the master");
+        // The wagon: present, hitched behind the draft llama, on the road, in the colours of the region
+        Entity w = master.wagonId() == null ? null : level.getEntity(master.wagonId());
+        check(w instanceof CaravanWagon, "wagon exists");
+        if (w instanceof CaravanWagon wagon) {
+            double gap = Math.sqrt(wagon.distanceToSqr(master));
+            log("wagon gap=" + String.format("%.2f", gap) + " yaw=" + String.format("%.0f", wagon.getYRot()) + " y=" + String.format("%.2f", wagon.getY()) + " master y=" + String.format("%.2f", master.getY()));
+            check(gap > 3.5 && gap < 7.0, "wagon hitched at the right distance");
+            check(Math.abs(wagon.getZ() - (stop.getZ() + 0.5)) < 1.6, "wagon stayed on the road");
+            check(wagon.region() == Region.DUNES, "wagon has the caravan's region");
+            if (level.getEntity(master.llamaIds().get(0)) instanceof TraderLlama draft) {
+                check(draft.getLeashHolder() == master, "draft llama led by the master");
+                check(draft.isNoAi(), "train members are moved by the master");
+            }
+            if (master.llamaIds().size() > 1 && level.getEntity(master.llamaIds().get(1)) instanceof TraderLlama pack) {
+                check(pack.getLeashHolder() == wagon, "pack llama tied to the wagon");
+            }
+        }
         check(master.getOffers().size() >= 9, "stock has offers (" + master.getOffers().size() + ")");
     }
 
@@ -181,14 +199,18 @@ public final class SelfTest {
             x = stop.getX() + 8; y = stop.getY() + 4; z = stop.getZ() + 9;
             lx = stop.getX() + 14; ly = stop.getY() + 1; lz = stop.getZ();
         } else if (master.state() == CaravanMaster.State.TRAVELING) {
-            x = master.getX() - 6; y = stop.getY() + 3.2; z = stop.getZ() + 7.5;
-            lx = master.getX() + 4; ly = stop.getY() + 1.2; lz = stop.getZ() + 0.5;
+            // Side view of the whole train (it stretches about 10 blocks behind the master)
+            x = master.getX() + 1; y = stop.getY() + 4.0; z = stop.getZ() + 11;
+            lx = master.getX() + 5; ly = stop.getY() + 1.0; lz = stop.getZ() + 0.5;
         } else if (t < 760) {
-            x = stop.getX() - 4.5; y = stop.getY() + 2.6; z = stop.getZ() + 5.5;
-            lx = stop.getX() + 3; ly = stop.getY() + 1.2; lz = stop.getZ() + 0.5;
+            // Three-quarter close-up of the wagon
+            Entity w = master.wagonId() == null ? null : level.getEntity(master.wagonId());
+            double wx = w != null ? w.getX() : master.getX() + 5;
+            x = wx - 4.2; y = stop.getY() + 3.0; z = stop.getZ() + 5.2;
+            lx = wx + 0.3; ly = stop.getY() + 1.1; lz = stop.getZ() + 0.5;
         } else {
-            x = stop.getX() - 7; y = stop.getY() + 7; z = stop.getZ() + 12;
-            lx = stop.getX() + 6; ly = stop.getY() + 1; lz = stop.getZ() - 2;
+            x = master.getX() + 2; y = stop.getY() + 8; z = stop.getZ() + 14;
+            lx = master.getX() + 4; ly = stop.getY() + 1; lz = stop.getZ() - 1;
         }
         double dx = lx - x, dy = ly - y, dz = lz - z;
         float yaw = (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90.0);

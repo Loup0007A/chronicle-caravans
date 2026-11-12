@@ -12,9 +12,18 @@ Living trade caravans travel between the milestones you place and follow the roa
 
 ### Your roads finally lead somewhere.
 
-Place a **Caravan Milestone** at your base. A few minutes later, a caravan appears on the horizon: a caravan master leading a line of pack llamas, loaded with goods from a far-away region. It walks to your milestone, halts to trade, then sets off for the next one.
+Place a **Caravan Milestone** at your base. A few minutes later, a caravan appears on the horizon: a caravan master leading a draft llama hitched to a **covered wagon**, pack llamas trailing behind, loaded with goods from a far-away region. It walks to your milestone, halts to trade, then sets off for the next one.
 
 Place a second milestone, build a road between the two, and you have a **trade route**: caravans follow your road, and move faster on it.
+
+### ✦ A real caravan
+- A **covered wagon** with spoked wheels that roll as it moves, cargo crates and barrels, and a lantern glowing at the front.
+- The canopy takes the **colour of the caravan's home region**: you can tell where it comes from before it arrives.
+- The whole train walks **in the master's footsteps**: it stays on your roads around corners and up slopes.
+- Right-click the master or the wagon to trade.
+
+### ✦ A guide in the style of Create's Ponder
+Hold **[W]** over the Caravan Milestone in your inventory: five animated 3D scenes show how everything works, with text bubbles and a timeline. Turn the scene, zoom in, replay. Or type `/caravanguide`.
 
 ### ✦ Milestones and roads
 - **Caravan Milestone**: lantern + emerald + 3 stone bricks. A lit stone marker, and a stop for every caravan. Right-click it to see when the next one is due.

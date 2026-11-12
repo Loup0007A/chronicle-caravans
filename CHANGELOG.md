@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0
+
+- **A real caravan**: the master now leads a draft llama hitched to a **covered wagon** (new 3D model): spoked wheels with iron tyres that roll as it moves, wooden hoops, cargo crates and barrels, a lantern glowing at the front. The canopy takes the colour of the caravan's home region.
+- Pack llamas follow the wagon on leads. The whole train walks exactly in the master's footsteps, so it stays on your roads, even around corners and up slopes; the wagon tilts with the ground.
+- Right-click the wagon to trade with the caravan master.
+- **Caravan Guide**, in the style of Create's Ponder: hold **[W]** while hovering the Caravan Milestone in your inventory. Five animated 3D scenes (the milestone, trade routes, the caravan, ambushes and reputation, hiring), with text bubbles, a timeline, and a scene you can turn and zoom. Also `/caravanguide [scene]`.
+- New config options: `wagonEnabled`; `minLlamas` / `maxLlamas` now count the pack llamas behind the wagon (default 1 to 2).
+
 ## 0.1.0
 
 First release (NeoForge 1.21.1).

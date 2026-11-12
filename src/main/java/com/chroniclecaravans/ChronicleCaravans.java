@@ -2,6 +2,7 @@ package com.chroniclecaravans;
 
 import com.chroniclecaravans.block.MilestoneBlock;
 import com.chroniclecaravans.entity.CaravanMaster;
+import com.chroniclecaravans.entity.CaravanWagon;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -54,6 +55,9 @@ public class ChronicleCaravans {
                     .eyeHeight(1.62F)
                     .clientTrackingRange(10)
                     .build(MODID + ":caravan_master"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<CaravanWagon>> WAGON = ENTITIES.register("wagon",
+            () -> CaravanWagon.builder().build(MODID + ":wagon"));
 
     /** Blocks a caravan treats as a road: it prefers walking on them and moves faster there. */
     public static final TagKey<Block> ROADS = TagKey.create(Registries.BLOCK, id("roads"));

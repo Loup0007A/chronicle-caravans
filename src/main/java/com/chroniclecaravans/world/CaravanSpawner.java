@@ -7,6 +7,7 @@ import com.chroniclecaravans.CCConfig;
 import com.chroniclecaravans.ChronicleCaravans;
 import com.chroniclecaravans.Region;
 import com.chroniclecaravans.entity.CaravanMaster;
+import com.chroniclecaravans.entity.CaravanWagon;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -123,27 +124,35 @@ public final class CaravanSpawner {
         master.finalizeSpawn(level, level.getCurrentDifficultyAt(at), MobSpawnType.EVENT, null);
         level.addFreshEntity(master);
 
+        // The train: draft llama, covered wagon, then the pack llamas; the master lays it out on his trail
+        master.seedTrail(level);
         int min = CCConfig.MIN_LLAMAS.get();
         int max = Math.max(min, CCConfig.MAX_LLAMAS.get());
-        int count = min + random.nextInt(max - min + 1);
-        // The llamas line up behind the master, away from the destination
-        double back = Math.toRadians(yaw - 90.0);
-        for (int i = 0; i < count; i++) {
+        int packs = min + random.nextInt(max - min + 1);
+        boolean withWagon = CCConfig.WAGON_ENABLED.get();
+        int total = packs + (withWagon ? 1 : 0);
+        for (int i = 0; i < total; i++) {
             TraderLlama llama = EntityType.TRADER_LLAMA.create(level);
             if (llama == null) continue;
-            int x = (int) Math.floor(at.getX() + 0.5 + Math.cos(back) * 3.0 * (i + 1));
-            int z = (int) Math.floor(at.getZ() + 0.5 + Math.sin(back) * 3.0 * (i + 1));
-            BlockPos p = standable(level, x, z, at.getY());
-            if (p == null) p = findGround(level, at, 2, 6, random);
-            if (p == null) p = at;
-            llama.moveTo(p.getX() + 0.5, p.getY(), p.getZ() + 0.5, yaw, 0F);
-            llama.finalizeSpawn(level, level.getCurrentDifficultyAt(p), MobSpawnType.EVENT, null);
-            llama.setChest(true);
+            llama.moveTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, yaw, 0F);
+            llama.finalizeSpawn(level, level.getCurrentDifficultyAt(at), MobSpawnType.EVENT, null);
+            llama.setChest(!(withWagon && i == 0));
             llama.setDespawnDelay(6000);
+            llama.setNoAi(true);
             level.addFreshEntity(llama);
-            if (i == 0) llama.setLeashedTo(master, true);
             master.addLlama(llama);
+            if (withWagon && i == 0) {
+                CaravanWagon wagon = ChronicleCaravans.WAGON.get().create(level);
+                if (wagon != null) {
+                    wagon.moveTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, yaw, 0F);
+                    wagon.setRegion(region);
+                    wagon.setMaster(master.getUUID());
+                    level.addFreshEntity(wagon);
+                    master.setWagon(wagon);
+                }
+            }
         }
+        master.settleTrain(level);
         return master;
     }
 

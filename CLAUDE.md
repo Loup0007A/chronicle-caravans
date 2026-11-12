@@ -10,6 +10,9 @@
 - `block/MilestoneBlock` : la borne. La poser enregistre un arrêt dans `world/CaravanData` (SavedData de l'Overworld : arrêts + réputation des joueurs).
 - `world/CaravanSpawner` : envoie les caravanes vers les bornes (tick du monde), crée le maître et ses lamas, suit les morts de bandits et les coups portés aux lamas.
 - `entity/CaravanMaster` (étend `WanderingTrader`, rendu vanilla) : états `TRAVELING` / `HALTED` / `LEAVING`, trajet par étapes de 24 blocs (`nextHop`), stock par rang de réputation (`getOffers` ne renvoie que les offres visibles par le joueur qui commerce), embuscades.
+- Le convoi : `CaravanMaster` garde la trace de ses pas (`trail`) et place à chaque tick, sur cette trace, le lama de trait (mené en laisse par le maître), le chariot `entity/CaravanWagon` puis les lamas de bât (attachés au chariot, puis l'un à l'autre). Les lamas du convoi sont en `NoAi` : seul le maître les déplace.
+- Le chariot : modèle **généré** par `python3 tools/wagon.py` (`client/WagonModel.java` + `textures/entity/wagon.png` ; `--preview` en fait un rendu logiciel dans `/tmp` pour vérifier l'aspect). Ne pas modifier `WagonModel.java` à la main. La bâche est teintée par région (`WagonRenderer.tint`).
+- Le guide (façon Ponder de Create) : `client/guide/` — `GuideScene` (scène = fonction du temps : blocs, acteurs, objets, bulles), `GuideScenes` (les 5 scènes), `GuideScreen` (rendu et commandes) ; `client/GuideKeys` (maintenir W sur la borne, `/caravanguide`). Textes dans les fichiers de langue (`guide.chroniclecaravans.<scène>.<id>`).
 - `entity/RoadNavigation` : pathfinding qui pénalise les blocs hors route (tag de blocs `chroniclecaravans:roads`).
 - `Region` : les 8 régions d'origine, leurs marchandises (rang 0 à 4) et la détection par biome. `Tier` : les 5 rangs de réputation.
 - `CCConfig` : chaque fonctionnalité a son réglage (`config/chroniclecaravans-common.toml`).

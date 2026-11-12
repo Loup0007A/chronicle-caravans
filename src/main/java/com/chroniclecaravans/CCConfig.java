@@ -18,12 +18,15 @@ public final class CCConfig {
     public static final ModConfigSpec.IntValue MAX_CARAVANS = B
             .comment("Maximum number of caravans loaded at the same time in a dimension.")
             .defineInRange("maxActiveCaravans", 3, 1, 32);
+    public static final ModConfigSpec.BooleanValue WAGON_ENABLED = B
+            .comment("Caravans travel with a covered wagon pulled by a draft llama.")
+            .define("wagonEnabled", true);
     public static final ModConfigSpec.IntValue MIN_LLAMAS = B
-            .comment("Smallest number of pack llamas in a caravan.")
-            .defineInRange("minLlamas", 2, 0, 8);
+            .comment("Smallest number of pack llamas walking behind the wagon (the draft llama is not counted).")
+            .defineInRange("minLlamas", 1, 0, 6);
     public static final ModConfigSpec.IntValue MAX_LLAMAS = B
-            .comment("Largest number of pack llamas in a caravan.")
-            .defineInRange("maxLlamas", 4, 0, 8);
+            .comment("Largest number of pack llamas walking behind the wagon (the draft llama is not counted).")
+            .defineInRange("maxLlamas", 2, 0, 6);
     public static final ModConfigSpec.IntValue LINK_RANGE = B
             .comment("Two milestones closer than this (in blocks) are linked: caravans travel from one to the other.")
             .defineInRange("milestoneLinkRange", 320, 32, 2048);

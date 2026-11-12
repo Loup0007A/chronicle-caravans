@@ -6,8 +6,9 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 
-/** Client side: the caravan master is drawn like a wandering trader. */
+/** Client side: renderers, the wagon model, the guide key. */
 @EventBusSubscriber(modid = ChronicleCaravans.MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public final class ClientSetup {
     private ClientSetup() {}
@@ -15,5 +16,16 @@ public final class ClientSetup {
     @SubscribeEvent
     public static void renderers(EntityRenderersEvent.RegisterRenderers e) {
         e.registerEntityRenderer(ChronicleCaravans.CARAVAN_MASTER.get(), WanderingTraderRenderer::new);
+        e.registerEntityRenderer(ChronicleCaravans.WAGON.get(), WagonRenderer::new);
+    }
+
+    @SubscribeEvent
+    public static void layers(EntityRenderersEvent.RegisterLayerDefinitions e) {
+        e.registerLayerDefinition(WagonModel.LAYER, WagonModel::createLayer);
+    }
+
+    @SubscribeEvent
+    public static void keys(RegisterKeyMappingsEvent e) {
+        e.register(GuideKeys.GUIDE);
     }
 }

@@ -1,5 +1,6 @@
 package com.chroniclecaravans.entity;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -25,6 +26,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.Difficulty;
@@ -79,7 +81,11 @@ public class CaravanMaster extends WanderingTrader {
     private int leaveTicks;
     private int lifeTicks;
     private final List<BlockPos> visited = new ArrayList<>();
+    /** Llamas of the train, in walking order. With a wagon, the first one is the draft llama. */
     private final List<UUID> llamas = new ArrayList<>();
+    private UUID wagonId;
+    /** Where the master walked, newest first: every member of the train walks in his footsteps. */
+    private final ArrayDeque<Vec3> trail = new ArrayDeque<>();
 
     private int[] offerTiers = new int[0];
     private MerchantOffers visibleOffers;
@@ -151,6 +157,14 @@ public class CaravanMaster extends WanderingTrader {
 
     public void addLlama(TraderLlama llama) {
         llamas.add(llama.getUUID());
+    }
+
+    public void setWagon(CaravanWagon wagon) {
+        this.wagonId = wagon.getUUID();
+    }
+
+    public UUID wagonId() {
+        return wagonId;
     }
 
     // ------------------------------------------------------------------ trading
@@ -238,9 +252,11 @@ public class CaravanMaster extends WanderingTrader {
         lifeTicks++;
         if (scoldCooldown > 0) scoldCooldown--;
         if (tickCount % 10 == 0) updateRoadSpeed(level);
+        recordTrail();
+        layoutTrain(level);
         if (tickCount % 40 == 0) {
             setDespawnDelay(6000);
-            tendLlamas(level);
+            tendTrain(level);
             if (!ambushActive && getHealth() < getMaxHealth()) heal(1.0F);
         }
         if (tickCount % 100 == 0) checkTarget(level);
@@ -286,28 +302,177 @@ public class CaravanMaster extends WanderingTrader {
         }
     }
 
-    /** Keeps the pack llamas alive and tied: the first one on a lead, the others follow it in a line. */
-    private void tendLlamas(ServerLevel level) {
-        TraderLlama leader = null;
-        TraderLlama candidate = null;
+    // ------------------------------------------------------------------ the train
+
+    /** Gap between the master and the draft llama, then between the llama and the wagon's centre (blocks). */
+    private static final double DRAFT_GAP = 2.2, WAGON_GAP = 2.75;
+    /** Half the distance between the wagon's axles, and gaps between pack llamas. */
+    private static final double AXLE_HALF = 0.85, PACK_GAP = 2.2, AFTER_WAGON = 1.7;
+    private static final double TRAIL_LENGTH = 24.0;
+
+    /** Fills the trail with a straight line behind the master (at spawn, after a warp). */
+    public void seedTrail(ServerLevel level) {
+        trail.clear();
+        float yaw = getYRot() * Mth.DEG_TO_RAD;
+        Vec3 back = new Vec3(Mth.sin(yaw), 0, -Mth.cos(yaw));
+        for (double s = 0.5; s <= TRAIL_LENGTH; s += 0.5) {
+            Vec3 p = position().add(back.scale(s));
+            trail.addLast(new Vec3(p.x, groundY(level, p), p.z));
+        }
+    }
+
+    private double groundY(ServerLevel level, Vec3 p) {
+        int x = Mth.floor(p.x), z = Mth.floor(p.z);
+        if (!level.isLoaded(new BlockPos(x, getBlockY(), z))) return getY();
+        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+        return Math.abs(y - getY()) <= 3 ? y : getY();
+    }
+
+    private void recordTrail() {
+        Vec3 p = position();
+        if (trail.isEmpty() || trail.peekFirst().distanceToSqr(p) > 0.04) trail.addFirst(p);
+        double len = 0;
+        Vec3 prev = p;
+        int keep = 0;
+        for (Vec3 q : trail) {
+            keep++;
+            len += prev.distanceTo(q);
+            prev = q;
+            if (len > TRAIL_LENGTH) break;
+        }
+        while (trail.size() > keep) trail.removeLast();
+    }
+
+    /** The point of the trail {@code s} blocks behind the master. */
+    private Vec3 sample(double s) {
+        Vec3 prev = position();
+        Vec3 dir = null;
+        double acc = 0;
+        for (Vec3 q : trail) {
+            double seg = prev.distanceTo(q);
+            if (seg > 1e-4) {
+                if (acc + seg >= s) return prev.lerp(q, (s - acc) / seg);
+                dir = q.subtract(prev).scale(1.0 / seg);
+                acc += seg;
+            }
+            prev = q;
+        }
+        if (dir == null) {
+            float yaw = getYRot() * Mth.DEG_TO_RAD;
+            dir = new Vec3(Mth.sin(yaw), 0, -Mth.cos(yaw));
+        }
+        return prev.add(dir.x * (s - acc), 0, dir.z * (s - acc));
+    }
+
+    private static float yawTowards(Vec3 from, Vec3 to) {
+        return (float) (Mth.atan2(to.z - from.z, to.x - from.x) * Mth.RAD_TO_DEG) - 90.0F;
+    }
+
+    private CaravanWagon wagon(ServerLevel level) {
+        return wagonId != null && level.getEntity(wagonId) instanceof CaravanWagon w && w.isAlive() ? w : null;
+    }
+
+    /** Places every member of the train on the trail. Called every tick. */
+    private void layoutTrain(ServerLevel level) {
+        if (llamas.isEmpty() && wagonId == null) return;
+        CaravanWagon wagon = wagon(level);
+        if (trail.size() < 2) seedTrailFromMembers(level, wagon);
+        if (llamas.isEmpty() && wagon != null) {
+            // No llama left: the master drags the wagon himself
+            Vec3 front = sample(1.6), rear = sample(1.6 + 2 * AXLE_HALF);
+            wagon.place(front.add(rear).scale(0.5), yawTowards(rear, front), 0F);
+            return;
+        }
+        double d = 0;
+        boolean afterWagon = false;
+        for (int i = 0; i < llamas.size(); i++) {
+            Entity e = level.getEntity(llamas.get(i));
+            d += i == 0 ? DRAFT_GAP : afterWagon ? AFTER_WAGON + CaravanWagon.REAR_HITCH : PACK_GAP;
+            afterWagon = false;
+            if (e instanceof TraderLlama llama && llama.isAlive() && llama.isNoAi()) {
+                Vec3 p = sample(d);
+                float yaw = yawTowards(p, sample(d - 0.8));
+                llama.setPos(p.x, p.y, p.z);
+                llama.setDeltaMovement(Vec3.ZERO);
+                llama.setYRot(yaw);
+                llama.setYHeadRot(yaw);
+                llama.yBodyRot = yaw;
+            }
+            if (i == 0 && wagon != null) {
+                d += WAGON_GAP;
+                Vec3 front = sample(d - AXLE_HALF), rear = sample(d + AXLE_HALF);
+                double flat = Math.sqrt((front.x - rear.x) * (front.x - rear.x) + (front.z - rear.z) * (front.z - rear.z));
+                float pitch = (float) (Mth.atan2(rear.y - front.y, Math.max(0.1, flat)) * Mth.RAD_TO_DEG);
+                wagon.place(front.add(rear).scale(0.5), yawTowards(rear, front), Mth.clamp(pitch, -25F, 25F));
+                afterWagon = true;
+            }
+        }
+    }
+
+    /** Lays the train out at once and ties it (right after spawning). */
+    public void settleTrain(ServerLevel level) {
+        layoutTrain(level);
+        tendTrain(level);
+    }
+
+    /** After a reload the trail is lost: rebuild it through the members, where they stand. */
+    private void seedTrailFromMembers(ServerLevel level, CaravanWagon wagon) {
+        trail.clear();
+        for (int i = 0; i < llamas.size(); i++) {
+            if (level.getEntity(llamas.get(i)) instanceof TraderLlama llama && llama.isAlive()) trail.addLast(llama.position());
+            if (i == 0 && wagon != null) trail.addLast(wagon.position());
+        }
+        if (trail.size() < 2) seedTrail(level);
+    }
+
+    /** Keeps the train in order: alive, tied, and moved by the master only. */
+    private void tendTrain(ServerLevel level) {
+        CaravanWagon wagon = wagon(level);
+        if (wagon != null) wagon.setMaster(getUUID());
+        Entity prev = this;
         for (Iterator<UUID> it = llamas.iterator(); it.hasNext(); ) {
-            Entity e = level.getEntity(it.next());
-            if (!(e instanceof TraderLlama llama)) continue;
-            if (!llama.isAlive()) {
+            UUID id = it.next();
+            Entity e = level.getEntity(id);
+            if (e == null) {
+                continue;
+            }
+            if (!(e instanceof TraderLlama llama) || !llama.isAlive()) {
                 it.remove();
                 continue;
             }
+            Entity holder = llama.getLeashHolder();
+            if (llama.isTamed() || llama.isVehicle() || holder instanceof Player) {
+                // A player took this one: it leaves the caravan
+                llama.setNoAi(false);
+                it.remove();
+                continue;
+            }
+            llama.setNoAi(true);
             llama.setDespawnDelay(6000);
-            if (llama.getLeashHolder() == this) leader = llama;
-            else if (candidate == null && llama.getLeashHolder() == null && !llama.isTamed() && !llama.inCaravan() && llama.distanceToSqr(this) < 144) candidate = llama;
+            Entity expected = prev == this ? this : prev;
+            if (holder != expected) llama.setLeashedTo(expected, true);
+            prev = (prev == this && wagon != null) ? wagon : llama;
         }
-        if (leader == null && candidate != null) candidate.setLeashedTo(this, true);
     }
 
     private List<TraderLlama> loadedLlamas(ServerLevel level) {
         List<TraderLlama> out = new ArrayList<>();
         for (UUID id : llamas) if (level.getEntity(id) instanceof TraderLlama l && l.isAlive()) out.add(l);
         return out;
+    }
+
+    /** The master is gone: the llamas are free again, the wagon goes with him. */
+    private void breakTrain(ServerLevel level) {
+        for (TraderLlama llama : loadedLlamas(level)) {
+            llama.dropLeash(true, false);
+            llama.setNoAi(false);
+        }
+        llamas.clear();
+        CaravanWagon wagon = wagon(level);
+        if (wagon != null) {
+            level.sendParticles(ParticleTypes.POOF, wagon.getX(), wagon.getY() + 1, wagon.getZ(), 30, 1.0, 0.8, 1.0, 0.02);
+            wagon.discard();
+        }
     }
 
     // ------------------------------------------------------------------ route
@@ -366,6 +531,11 @@ public class CaravanMaster extends WanderingTrader {
             llama.dropLeash(true, false);
             llama.discard();
         }
+        CaravanWagon wagon = wagon(level);
+        if (wagon != null) {
+            level.sendParticles(ParticleTypes.POOF, wagon.getX(), wagon.getY() + 1, wagon.getZ(), 30, 1.0, 0.8, 1.0, 0.02);
+            wagon.discard();
+        }
         level.sendParticles(ParticleTypes.POOF, getX(), getY() + 1, getZ(), 16, 0.3, 0.6, 0.3, 0.02);
         level.playSound(null, blockPosition(), SoundEvents.WANDERING_TRADER_DISAPPEARED, SoundSource.NEUTRAL, 1.0F, 1.0F);
         discard();
@@ -411,14 +581,13 @@ public class CaravanMaster extends WanderingTrader {
         if (hop == null) return;
         BlockPos ground = CaravanSpawner.findGround(level, BlockPos.containing(hop), 0, 4, random);
         if (ground == null) return;
-        List<TraderLlama> pack = loadedLlamas(level);
         level.sendParticles(ParticleTypes.POOF, getX(), getY() + 1, getZ(), 10, 0.3, 0.5, 0.3, 0.02);
-        teleportTo(ground.getX() + 0.5, ground.getY(), ground.getZ() + 0.5);
-        for (TraderLlama llama : pack) {
-            if (llama.isTamed() || llama.distanceToSqr(this) > 64 * 64) continue;
-            BlockPos near = CaravanSpawner.findGround(level, ground, 2, 5, random);
-            if (near != null) llama.teleportTo(near.getX() + 0.5, near.getY(), near.getZ() + 0.5);
-        }
+        Vec3 dest = new Vec3(ground.getX() + 0.5, ground.getY(), ground.getZ() + 0.5);
+        setYRot(yawTowards(position(), dest));
+        teleportTo(dest.x, dest.y, dest.z);
+        // The whole train reappears in a line behind the master
+        seedTrail(level);
+        layoutTrain(level);
     }
 
     private class TravelGoal extends Goal {
@@ -576,6 +745,7 @@ public class CaravanMaster extends WanderingTrader {
     public void die(DamageSource source) {
         super.die(source);
         if (level() instanceof ServerLevel level) {
+            breakTrain(level);
             announce(level, Component.translatable("msg.chroniclecaravans.lost", region.caravanName().withStyle(region.color)).withStyle(ChatFormatting.DARK_RED), null);
             if (source.getEntity() instanceof ServerPlayer p && !p.isCreative()) {
                 CaravanData.get(level).addReputation(p, -25, "reason.chroniclecaravans.murder");
@@ -601,6 +771,7 @@ public class CaravanMaster extends WanderingTrader {
         tag.putInt("LifeTicks", lifeTicks);
         tag.putLongArray("Visited", visited.stream().mapToLong(BlockPos::asLong).toArray());
         tag.put("Llamas", uuids(llamas));
+        if (wagonId != null) tag.putUUID("Wagon", wagonId);
         tag.putIntArray("OfferTiers", offerTiers);
         tag.putBoolean("AmbushDone", ambushDone);
         tag.putBoolean("AmbushActive", ambushActive);
@@ -625,6 +796,7 @@ public class CaravanMaster extends WanderingTrader {
         visited.clear();
         for (long l : tag.getLongArray("Visited")) visited.add(BlockPos.of(l));
         readUuids(tag, "Llamas", llamas);
+        wagonId = tag.hasUUID("Wagon") ? tag.getUUID("Wagon") : null;
         offerTiers = tag.getIntArray("OfferTiers");
         ambushDone = tag.getBoolean("AmbushDone");
         ambushActive = tag.getBoolean("AmbushActive");
