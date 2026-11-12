@@ -83,7 +83,8 @@ public class CaravanData extends SavedData {
 
         public Component displayName() {
             if (!name.isEmpty()) return Component.literal(name).withStyle(ChatFormatting.GOLD);
-            return Component.translatable("inn.chroniclecaravans.default", ownerName.isEmpty() ? "?" : ownerName).withStyle(ChatFormatting.GOLD);
+            if (ownerName.isEmpty()) return Component.translatable("gui.chroniclecaravans.atlas.kind.inn").withStyle(ChatFormatting.GOLD);
+            return Component.translatable("inn.chroniclecaravans.default", ownerName).withStyle(ChatFormatting.GOLD);
         }
     }
 

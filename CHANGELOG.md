@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1
+
+- Atlas: names of nearby places no longer overlap.
+- Services tab: says clearly when no other stop is within reach (instead of "every route already has its road").
+- An inn without an owner is simply called "Inn".
+
 ## 1.1.0
 
 - **New caravan interface**, in four tabs: **Market** (one click to buy, shift-click to buy as much as you can; no more dragging items into slots), **Requests** (goods the caravan pays emeralds for, with how many you have), **Services** and **Guild**.

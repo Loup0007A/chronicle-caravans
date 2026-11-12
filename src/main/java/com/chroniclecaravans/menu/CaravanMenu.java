@@ -47,7 +47,7 @@ public class CaravanMenu extends AbstractContainerMenu {
             D_GUARDS = OFFERS + 9, D_ESCORT_LEFT = OFFERS + 10, D_ESCORT_PRICE = OFFERS + 11, D_ESCORT_COUNT = OFFERS + 12,
             D_ESCORT_MINUTES = OFFERS + 13, D_ROAD_PRICE = OFFERS + 14, D_ROAD_DIST = D_ROAD_PRICE + DESTS,
             D_XP = D_ROAD_DIST + DESTS, D_FLAGS = D_XP + 1, DATA = D_FLAGS + 1;
-    public static final int FLAG_AT_STOP = 1, FLAG_REPUTATION = 2, FLAG_TO_INN = 4;
+    public static final int FLAG_AT_STOP = 1, FLAG_REPUTATION = 2, FLAG_TO_INN = 4, FLAG_LINKED = 8;
 
     // Buttons (ids stay under 128: 1.20.1 sends them as a byte)
     public static final int B_BUY = 0, B_BUY_ALL = 24, B_ESCORT = 60, B_ROAD = 70, B_SKILL = 80;
@@ -213,6 +213,7 @@ public class CaravanMenu extends AbstractContainerMenu {
         CaravanData.Stop here = stop == null ? null : cd.stop(stop);
         setIfChanged(STOP_SLOT, here == null ? ItemStack.EMPTY : named(here));
         List<CaravanData.Stop> linked = here == null ? List.of() : cd.linked(here.pos);
+        if (!linked.isEmpty()) data.set(D_FLAGS, flags | FLAG_LINKED);
         int k = 0;
         for (CaravanData.Stop s : linked) {
             if (k >= DESTS) break;

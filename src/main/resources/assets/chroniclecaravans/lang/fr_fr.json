@@ -223,5 +223,6 @@
   "guide.chroniclecaravans.inn.morning": "Le matin, elles refont leur stock et paient l'aubergiste, dans un coffre ou un tonneau contre l'enseigne.",
   "guide.chroniclecaravans.services.title": "Bâtisseurs et escortes",
   "guide.chroniclecaravans.services.crew": "Dans l'onglet Services, engagez une équipe de bâtisseurs : elle construit la route jusqu'à l'étape suivante.",
-  "guide.chroniclecaravans.services.escort": "Engagez une escorte : des gardes accompagnent la caravane et repoussent monstres et bandits."
+  "guide.chroniclecaravans.services.escort": "Engagez une escorte : des gardes accompagnent la caravane et repoussent monstres et bandits.",
+  "gui.chroniclecaravans.roads_alone": "Aucune autre étape à portée : posez une borne à moins de 320 blocs."
 }

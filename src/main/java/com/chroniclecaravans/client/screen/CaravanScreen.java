@@ -284,7 +284,10 @@ public class CaravanScreen extends CCScreen implements MenuAccess<CaravanMenu> {
                 item(g, new ItemStack(Items.EMERALD, p), rx + rw - 64, ry);
                 button(g, rx + rw - 44, ry, 38, Component.translatable("gui.chroniclecaravans.build"), emeralds() >= p, mx, my);
             }
-            if (any == 0) wrap(g, Component.translatable("gui.chroniclecaravans.roads_none"), rx + 6, cy + 48, rw - 12, MUTED);
+            if (any == 0) {
+                boolean linked = (menu.get(CaravanMenu.D_FLAGS) & CaravanMenu.FLAG_LINKED) != 0;
+                wrap(g, Component.translatable(linked ? "gui.chroniclecaravans.roads_none" : "gui.chroniclecaravans.roads_alone"), rx + 6, cy + 48, rw - 12, MUTED);
+            }
         }
         text(g, Component.translatable("gui.chroniclecaravans.hint_services"), x0 + 8, y0 + H - 13, MUTED);
         return tip;

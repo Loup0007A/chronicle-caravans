@@ -223,5 +223,6 @@
   "guide.chroniclecaravans.inn.morning": "In the morning they restock their goods and pay the innkeeper, in a chest or barrel next to the sign.",
   "guide.chroniclecaravans.services.title": "Road Crews and Escorts",
   "guide.chroniclecaravans.services.crew": "In the Services tab, hire a road crew: it builds the road to the next stop for you.",
-  "guide.chroniclecaravans.services.escort": "Hire an escort: guards walk with the caravan and fight off monsters and bandits."
+  "guide.chroniclecaravans.services.escort": "Hire an escort: guards walk with the caravan and fight off monsters and bandits.",
+  "gui.chroniclecaravans.roads_alone": "No other stop within reach of this one: place a milestone less than 320 blocks away."
 }

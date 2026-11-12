@@ -220,12 +220,25 @@ public class AtlasScreen extends CCScreen implements MenuAccess<AtlasMenu> {
             boolean sel = p.equals(selPlace), hov = p.equals(hoverPlace);
             if (sel || hov) g.fill(px - 10, py - 10, px + 10, py + 10, sel ? 0x60B02818 : 0x402A6AB0);
             g.renderItem(p.stack, px - 8, py - 8);
-            if (scale >= 0.3 || sel || hov) {
-                String n = fit(p.stack.getHoverName().getString(), 100);
-                int tx = px - font.width(n) / 2;
-                g.fill(tx - 2, py + 8, tx + font.width(n) + 1, py + 18, 0xC0E9D9B0);
-                text(g, n, tx, py + 9, INK);
-            }
+        }
+        // Names under the icons: the selected and hovered places first, then the others where there is room
+        List<int[]> taken = new ArrayList<>();
+        List<Place> order = new ArrayList<>(places);
+        final Place hovered = hoverPlace;
+        order.sort((a, b) -> Boolean.compare(!(a.equals(selPlace) || a.equals(hovered)), !(b.equals(selPlace) || b.equals(hovered))));
+        for (Place p : order) {
+            boolean sel = p.equals(selPlace), hov = p.equals(hovered);
+            if (scale < 0.3 && !sel && !hov) continue;
+            int px = (int) sx(p.pos.getX() + 0.5), py = (int) sy(p.pos.getZ() + 0.5);
+            String n = fit(p.stack.getHoverName().getString(), 100);
+            int tx = px - font.width(n) / 2;
+            int[] r = {tx - 2, py + 8, tx + font.width(n) + 1, py + 18};
+            boolean clash = false;
+            for (int[] o : taken) if (r[0] < o[2] && o[0] < r[2] && r[1] < o[3] && o[1] < r[3]) clash = true;
+            if (clash && !sel && !hov) continue;
+            taken.add(r);
+            g.fill(r[0], r[1], r[2], r[3], 0xC0E9D9B0);
+            text(g, n, tx, py + 9, INK);
         }
         // The player
         if (minecraft.player != null) {
