@@ -182,12 +182,12 @@ public final class SelfTest {
             if (tick == 1220) stormCaravan(level);
             if (tick == 1340) stormCheck(level);
             if (tick == 1460) afterStorm(level);
-            if (tick == 1470) innSleep(level);
-            if (tick == 1480) relay(level);
-            if (tick == 1800) innMorning(level);
-            if (tick == 1840) relayCheck(level);
-            if (tick == 2020) relayLeft(level);
-            if (tick == 2040) {
+            if (tick == 1560) innSleep(level);
+            if (tick == 1570) relay(level);
+            if (tick == 1900) innMorning(level);
+            if (tick == 1930) relayCheck(level);
+            if (tick == 2110) relayLeft(level);
+            if (tick == 2130) {
                 log("RESULT: " + (failures.isEmpty() ? "OK" : "FAIL " + failures));
                 log("READY");
             }

@@ -623,55 +623,60 @@ public class CaravanMaster extends WanderingTrader {
             for (TraderLlama l : m.loadedLlamas(level)) taken.add(l.position());
         }
         obstacles = taken;
+        bestScore = Double.MAX_VALUE;
+        // The closest free post with room for the train
         for (BlockPos post : freePosts(level, center)) {
             for (Direction side : Direction.Plane.HORIZONTAL) {
                 Vec3 head = standOn(level, post.getX() + side.getStepX(), post.getZ() + side.getStepZ(), post.getY());
-                if (head == null) continue;
-                if (planFrom(level, head, center, length, false, false, side.getStepX(), side.getStepZ())) {
-                    parkPost = post;
-                    return true;
-                }
+                if (head != null) planFrom(level, head, center, length, false, false, side.getStepX(), side.getStepZ());
+            }
+            if (bestScore < Double.MAX_VALUE) {
+                parkPost = post;
+                return true;
             }
         }
         if (!toInn) return false;
-        // Open ground around the inn: the closest strip that is off the road and under the open sky
-        for (int r = 5; r <= 16; r++) {
+        // Open ground around the inn: off the road and under the open sky; of the strips nearest the inn,
+        // the one he can enter soonest
+        int found = 0;
+        for (int r = 5; r <= 16 && found < 24; r++) {
             for (int dx = -r; dx <= r; dx++) {
                 for (int dz = -r; dz <= r; dz++) {
                     if (Math.max(Math.abs(dx), Math.abs(dz)) != r || ((dx + dz) & 1) != 0) continue;
                     Vec3 head = standOn(level, center.getX() + dx, center.getZ() + dz, center.getY());
-                    if (head == null) continue;
-                    if (planFrom(level, head, center, length, true, true, 0, 0)) {
-                        parkPost = null;
-                        return true;
-                    }
+                    if (head != null) found += planFrom(level, head, center, length, true, true, 0, 0);
                 }
             }
         }
-        return false;
+        parkPost = null;
+        return bestScore < Double.MAX_VALUE;
     }
 
-    /** Other trains, while a parking strip is being looked for. */
+    /** Other trains, while a parking strip is being looked for, and the score of the best strip so far. */
     private List<Vec3> obstacles = List.of();
+    private double bestScore;
 
-    /** Tries the eight directions from {@code head} (away from the centre first); {@code sx, sz}: only directions not towards the post. */
-    private boolean planFrom(ServerLevel level, Vec3 head, BlockPos center, double length, boolean offRoad, boolean openSky, int sx, int sz) {
-        List<double[]> dirs = new ArrayList<>();
+    /**
+     * Tries the eight directions from {@code head} ({@code sx, sz}: only those not towards the post) and keeps the
+     * best strip so far: the one he enters soonest, close to the centre. Returns how many strips fit.
+     */
+    private int planFrom(ServerLevel level, Vec3 head, BlockPos center, double length, boolean offRoad, boolean openSky, int sx, int sz) {
+        int found = 0;
         for (int i = 0; i < 8; i++) {
             double a = i * Math.PI / 4;
             double bx = Math.round(Math.cos(a) * 1000) / 1000.0, bz = Math.round(Math.sin(a) * 1000) / 1000.0;
             if (bx * sx + bz * sz < -0.01) continue;
-            double ax = head.x - (center.getX() + 0.5), az = head.z - (center.getZ() + 0.5);
-            dirs.add(new double[] {bx, bz, -(bx * ax + bz * az)});
+            if (!clearStrip(level, head, bx, bz, length + 1.0, offRoad, openSky) || crowded(head, bx, bz, length)) continue;
+            found++;
+            Vec3 entry = new Vec3(head.x + bx * length, head.y, head.z + bz * length);
+            double score = Math.sqrt(entry.distanceToSqr(position())) + 0.5 * Math.sqrt(head.distanceToSqr(Vec3.atCenterOf(center)));
+            if (score < bestScore) {
+                bestScore = score;
+                parkHead = head;
+                parkEntry = entry;
+            }
         }
-        dirs.sort((u, v) -> Double.compare(u[2], v[2]));
-        for (double[] d : dirs) {
-            if (!clearStrip(level, head, d[0], d[1], length + 1.0, offRoad, openSky) || crowded(head, d[0], d[1], length)) continue;
-            parkHead = head;
-            parkEntry = new Vec3(head.x + d[0] * length, head.y, head.z + d[1] * length);
-            return true;
-        }
-        return false;
+        return found;
     }
 
     /** Another train stands on (or right next to) the strip. */
@@ -980,7 +985,8 @@ public class CaravanMaster extends WanderingTrader {
 
         @Override
         public void tick() {
-            if (!(level() instanceof ServerLevel level)) return;
+            // Goals get one more tick after they stop being usable: nothing to do then
+            if (!(level() instanceof ServerLevel level) || !canUse()) return;
             boolean toBed = park == PARK_OUT && footSpot != null && level.getBlockState(footSpot).getBlock() instanceof BedBlock;
             if (toBed && bedside == null) bedside = bedside(level, footSpot);
             Vec3 dest = park == PARK_BACK ? parkHead : toBed && bedside != null ? bedside : footSpot == null ? null : Vec3.atBottomCenterOf(footSpot);
@@ -1512,7 +1518,8 @@ public class CaravanMaster extends WanderingTrader {
 
         @Override
         public void tick() {
-            if (!(level() instanceof ServerLevel level) || target == null) return;
+            // Goals get one more tick after they stop being usable (an arrival would happen twice)
+            if (!(level() instanceof ServerLevel level) || !canUse()) return;
             if (park == PARK_ENTRY || park == PARK_LINE) {
                 tickParking(level, this);
                 return;
