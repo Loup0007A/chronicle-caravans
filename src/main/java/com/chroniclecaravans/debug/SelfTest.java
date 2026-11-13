@@ -765,7 +765,7 @@ public final class SelfTest {
         check(MilestoneBlock.upgrade(level, stop) == MilestoneBlock.UPGRADED && s.tier == 2, "a relay charter raises the milestone to tier 2");
         check(CaravanSpawner.capacity(level, s) == 2, "a tier 2 relay takes two caravans at once");
         check(MilestoneBlock.upgrade(level, stop) == MilestoneBlock.NEEDS_POSTS, "tier 3 needs a second hitching post");
-        postB = placePost(level, stop.offset(20, 0, -6));
+        postB = placePost(level, stop.offset(-6, 0, -6));
         check(MilestoneBlock.upgrade(level, stop) == MilestoneBlock.UPGRADED && CaravanSpawner.capacity(level, s) == 3, "with two posts, tier 3: three caravans at once");
         check(level.getBlockState(stop).getValue(MilestoneBlock.TIER) == 3, "the milestone shows its tier");
         check(Nbt.getInt(MilestoneBlock.snapshot(level, stop), "Tier") == 3, "Silk Touch keeps the tier");

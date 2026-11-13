@@ -132,6 +132,11 @@ public class CaravanMaster extends WanderingTrader {
     private int parkTicks;
     /** No parking strip was found on the way (not saved: tried again after a reload). */
     private boolean parkFailed;
+    /** Headway towards the current goal on foot (not saved). */
+    private double bestDist = Double.MAX_VALUE;
+    private int noProgress;
+    /** Where he walks to reach his bed: beside it (not saved, found again). */
+    private Vec3 bedside;
 
     private final List<UUID> guards = new ArrayList<>();
     private int escortTicks;
@@ -722,6 +727,31 @@ public class CaravanMaster extends WanderingTrader {
         return null;
     }
 
+    private void setPark(int phase) {
+        park = phase;
+        parkTicks = 0;
+        bestDist = Double.MAX_VALUE;
+        noProgress = 0;
+        bedside = null;
+    }
+
+    /** No headway towards the goal (at least a block) for five seconds. */
+    private boolean stuck(double d2) {
+        double d = Math.sqrt(d2);
+        if (d < bestDist - 1.0) {
+            bestDist = d;
+            noProgress = 0;
+            return false;
+        }
+        return ++noProgress > 100;
+    }
+
+    /** Straight to a point close by (or along a strip known to be clear), without path finding. */
+    private void walkStraight(Vec3 dest) {
+        getNavigation().stop();
+        getMoveControl().setWantedPosition(dest.x, dest.y, dest.z, WALK_SPEED);
+    }
+
     /** Walking to the strip, then along it: the train lines up behind the master on its way. */
     private void tickParking(ServerLevel level, TravelGoal goal) {
         if (target == null || parkHead == null || parkEntry == null || parkHead.distanceToSqr(Vec3.atCenterOf(target)) > 32 * 32) {
@@ -734,22 +764,29 @@ public class CaravanMaster extends WanderingTrader {
         Vec3 dest = park == PARK_ENTRY ? parkEntry : parkHead;
         double dx = dest.x - getX(), dz = dest.z - getZ();
         double d2 = dx * dx + dz * dz;
-        if (park == PARK_ENTRY && d2 <= 2.25) {
-            park = PARK_LINE;
-            parkTicks = 0;
-            getNavigation().moveTo(parkHead.x, parkHead.y, parkHead.z, WALK_SPEED);
+        boolean stuck = stuck(d2);
+        if (park == PARK_ENTRY && (d2 <= 2.25 || stuck)) {
+            // At the far end of the strip (or as close as he gets): now straight along it
+            setPark(PARK_LINE);
+            walkStraight(parkHead);
             return;
         }
-        if (park == PARK_LINE && (d2 <= 0.36 || (getNavigation().isDone() && d2 <= 2.5))) {
-            parkTrain(level, true);
+        if (park == PARK_LINE) {
+            if (d2 <= 0.36 || stuck) {
+                parkTrain(level, true);
+                return;
+            }
+            // The strip is clear: no path finding, he walks it straight
+            walkStraight(parkHead);
             return;
         }
-        if (parkTicks > 500) {
+        if (parkTicks > 600) {
             // Could not get there: the train stays where it is
             parkTrain(level, false);
             return;
         }
-        if (getNavigation().isDone() || parkTicks % 60 == 0) getNavigation().moveTo(dest.x, dest.y, dest.z, WALK_SPEED);
+        if (d2 <= 9) walkStraight(dest);
+        else if (getNavigation().isDone() || parkTicks % 60 == 0) getNavigation().moveTo(dest.x, dest.y, dest.z, WALK_SPEED);
     }
 
     /** The train stops; the draft llama is tied to the post (or the wagon); the master goes on foot. */
@@ -769,8 +806,7 @@ public class CaravanMaster extends WanderingTrader {
             parkPost = null;
         }
         parkHead = position();
-        park = PARK_OUT;
-        parkTicks = 0;
+        setPark(PARK_OUT);
         tendTrain(level);
         if (toInn) {
             arriveAtInn(level);
@@ -779,7 +815,7 @@ public class CaravanMaster extends WanderingTrader {
             arrive(level);
             footSpot = target == null ? null : CaravanSpawner.findGround(level, target, 2, 4, random);
         }
-        if (footSpot == null) park = PARK_STAY;
+        if (footSpot == null) setPark(PARK_STAY);
     }
 
     /** What the draft llama is tied to while the train is parked: the post (with a lead knot), else the wagon. */
@@ -818,6 +854,23 @@ public class CaravanMaster extends WanderingTrader {
         return best;
     }
 
+    /** A free spot beside the bed (head or foot part), the closest to the master: he walks there, then lies down. */
+    private Vec3 bedside(ServerLevel level, BlockPos head) {
+        BlockState b = level.getBlockState(head);
+        if (!(b.getBlock() instanceof BedBlock)) return null;
+        BlockPos foot = head.relative(b.getValue(BedBlock.FACING).getOpposite());
+        Vec3 best = null;
+        for (BlockPos part : new BlockPos[] {head, foot}) {
+            for (Direction d : Direction.Plane.HORIZONTAL) {
+                BlockPos q = part.relative(d);
+                if (q.equals(head) || q.equals(foot)) continue;
+                Vec3 v = standOn(level, q.getX(), q.getZ(), q.getY());
+                if (v != null && (best == null || v.distanceToSqr(position()) < best.distanceToSqr(position()))) best = v;
+            }
+        }
+        return best;
+    }
+
     /** Every tick while parked: the train is held, and the master goes back to it when it is time to go on. */
     private void tickParked(ServerLevel level) {
         parkTicks++;
@@ -827,8 +880,7 @@ public class CaravanMaster extends WanderingTrader {
         }
         if ((state == State.TRAVELING || state == State.LEAVING) && park != PARK_BACK) {
             if (isSleeping()) stopSleeping();
-            park = PARK_BACK;
-            parkTicks = 0;
+            setPark(PARK_BACK);
             getNavigation().stop();
         }
         if (park == PARK_STAY && state == State.LODGING && tickCount % 100 == 0) goToBed(level);
@@ -850,17 +902,15 @@ public class CaravanMaster extends WanderingTrader {
             unpark(level);
             return;
         }
-        park = PARK_STAY;
-        parkTicks = 0;
+        setPark(PARK_STAY);
         if (state == State.LODGING) goToBed(level);
     }
 
     /** Back at the head of the train: it follows him again. */
     private void unpark(ServerLevel level) {
-        park = PARK_NONE;
+        setPark(PARK_NONE);
         footSpot = null;
         parkHead = parkEntry = null;
-        parkTicks = 0;
         parkFailed = false;
         // Tie the draft llama to the master first: a knot taken away from under a lead would snap it
         tendTrain(level);
@@ -909,25 +959,28 @@ public class CaravanMaster extends WanderingTrader {
         @Override
         public void tick() {
             if (!(level() instanceof ServerLevel level)) return;
-            Vec3 dest = park == PARK_BACK ? parkHead : footSpot == null ? null : Vec3.atBottomCenterOf(footSpot);
+            boolean toBed = park == PARK_OUT && footSpot != null && level.getBlockState(footSpot).getBlock() instanceof BedBlock;
+            if (toBed && bedside == null) bedside = bedside(level, footSpot);
+            Vec3 dest = park == PARK_BACK ? parkHead : toBed && bedside != null ? bedside : footSpot == null ? null : Vec3.atBottomCenterOf(footSpot);
             if (dest == null) {
                 footArrived(level);
                 return;
             }
             double dx = dest.x - getX(), dz = dest.z - getZ(), dy = dest.y - getY();
             double d2 = dx * dx + dz * dz;
-            double reach = park == PARK_BACK ? 1.0 : footSpot != null && level.getBlockState(footSpot).getBlock() instanceof BedBlock ? 4.0 : 2.25;
-            if (d2 <= reach && Math.abs(dy) < 2.5) {
+            if (d2 <= (park == PARK_BACK ? 0.36 : 1.0) && Math.abs(dy) < 2.5) {
                 footArrived(level);
                 return;
             }
-            if (parkTicks > 600) {
+            if (stuck(d2) || parkTicks > 900) {
                 // Lost his way: he finds it in the end
                 teleportTo(dest.x, dest.y, dest.z);
                 footArrived(level);
                 return;
             }
-            if (getNavigation().isDone() || parkTicks % 40 == 0) getNavigation().moveTo(dest.x, dest.y, dest.z, WALK_SPEED);
+            // The last steps straight, the rest by the paths (doors included)
+            if (d2 <= 6.25 && Math.abs(dy) < 1.5) walkStraight(dest);
+            else if (getNavigation().isDone() || parkTicks % 40 == 0) getNavigation().moveTo(dest.x, dest.y, dest.z, WALK_SPEED);
         }
     }
 
@@ -1444,8 +1497,7 @@ public class CaravanMaster extends WanderingTrader {
             double d2 = distanceToSqr(Vec3.atBottomCenterOf(target));
             if (state != State.LEAVING && park == PARK_NONE && !parkFailed && d2 <= 24 * 24 && wantsParking(level)) {
                 if (planParking(level)) {
-                    park = PARK_ENTRY;
-                    parkTicks = 0;
+                    setPark(PARK_ENTRY);
                     getNavigation().stop();
                     return;
                 }
