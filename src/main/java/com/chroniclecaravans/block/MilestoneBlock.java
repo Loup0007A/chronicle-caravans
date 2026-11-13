@@ -35,6 +35,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
@@ -54,15 +55,67 @@ public class MilestoneBlock extends Block {
 
     /** Powered by redstone (a rising edge calls a caravan). */
     public static final BooleanProperty POWERED = BlockStateProperties.POWERED;
+    /** Relay tier, for the looks (gold collar, pennants): the stop keeps the real value. */
+    public static final IntegerProperty TIER = IntegerProperty.create("tier", 1, 4);
 
     public MilestoneBlock(Properties properties) {
         super(properties);
-        registerDefaultState(stateDefinition.any().setValue(POWERED, false));
+        registerDefaultState(stateDefinition.any().setValue(POWERED, false).setValue(TIER, 1));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(POWERED);
+        builder.add(POWERED, TIER);
+    }
+
+    // ---------------------------------------------------------------- relay tiers
+
+    public static final int UPGRADED = 0, MAX_TIER = 1, NEEDS_POSTS = 2, NOT_A_STOP = 3, DISABLED = 4;
+
+    /**
+     * A relay charter raises the milestone by one tier: one more caravan at once, if there is a hitching post
+     * nearby for each caravan beyond the first. Returns {@link #UPGRADED} or why not.
+     */
+    public static int upgrade(ServerLevel level, BlockPos pos) {
+        if (!CCConfig.RELAYS.get()) return DISABLED;
+        CaravanData data = CaravanData.get(level);
+        CaravanData.Stop stop = data.stop(pos);
+        if (stop == null || stop.village) return NOT_A_STOP;
+        if (stop.tier >= CCConfig.MAX_TIER.get()) return MAX_TIER;
+        int posts = data.postsNear(level, pos, HitchingPostBlock.RANGE).size();
+        if (posts < stop.tier) return NEEDS_POSTS;
+        stop.tier++;
+        data.setDirty();
+        showTier(level, pos, stop.tier);
+        return UPGRADED;
+    }
+
+    /** The milestone shows its tier. */
+    public static void showTier(Level level, BlockPos pos, int tier) {
+        BlockState state = level.getBlockState(pos);
+        if (state.hasProperty(TIER)) level.setBlock(pos, state.setValue(TIER, Math.max(1, Math.min(4, tier))), Block.UPDATE_CLIENTS);
+    }
+
+    private static void charter(ItemStack stack, Level level, BlockPos pos, Player player) {
+        if (!(level instanceof ServerLevel server) || !(player instanceof ServerPlayer p)) return;
+        int result = upgrade(server, pos);
+        CaravanData.Stop stop = CaravanData.get(server).stop(pos);
+        switch (result) {
+            case UPGRADED -> {
+                if (!p.getAbilities().instabuild) stack.shrink(1);
+                server.playSound(null, pos, SoundEvents.PLAYER_LEVELUP, SoundSource.BLOCKS, 1.0F, 1.2F);
+                server.sendParticles(net.minecraft.core.particles.ParticleTypes.HAPPY_VILLAGER, pos.getX() + 0.5, pos.getY() + 1.2, pos.getZ() + 0.5, 20, 0.5, 0.6, 0.5, 0.0);
+                p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.relay_upgraded", stop.displayName(), stop.tier,
+                        CaravanSpawner.capacity(server, stop)).withStyle(ChatFormatting.GREEN));
+            }
+            case MAX_TIER -> p.displayClientMessage(Component.translatable("msg.chroniclecaravans.relay_max").withStyle(ChatFormatting.GOLD), true);
+            case NEEDS_POSTS -> {
+                Component msg = Component.translatable("msg.chroniclecaravans.relay_posts", stop.tier, HitchingPostBlock.RANGE).withStyle(ChatFormatting.RED);
+                p.displayClientMessage(msg, true);
+            }
+            case DISABLED -> p.displayClientMessage(Component.translatable("msg.chroniclecaravans.relay_disabled").withStyle(ChatFormatting.RED), true);
+            default -> p.displayClientMessage(Component.translatable("msg.chroniclecaravans.overworld_only").withStyle(ChatFormatting.RED), true);
+        }
     }
 
     // ---------------------------------------------------------------- redstone
@@ -131,7 +184,7 @@ public class MilestoneBlock extends Block {
         if (!CCConfig.REDSTONE.get()) return false;
         CaravanData data = CaravanData.get(level);
         CaravanData.Stop stop = data.stop(pos);
-        if (stop == null || CaravanSpawner.caravanHeadingTo(level, pos) != null) return false;
+        if (stop == null || CaravanSpawner.full(level, stop)) return false;
         long now = level.getGameTime();
         if (stop.lastCall + CCConfig.CALL_COOLDOWN.get() * 20L > now) return false;
         for (net.minecraft.core.Direction d : net.minecraft.core.Direction.values()) {
@@ -174,6 +227,10 @@ public class MilestoneBlock extends Block {
         CaravanData.Stop stop = data.addStop(pos, placer == null ? null : placer.getUUID(),
                 placer == null ? "" : placer.getName().getString(), name, first);
         if (saved != null && saved.contains("SinceCall")) stop.lastCall = now - Nbt.getLong(saved, "SinceCall");
+        if (saved != null && saved.contains("Tier")) {
+            stop.tier = Math.max(1, Math.min(CCConfig.MAX_TIER.get(), Nbt.getInt(saved, "Tier")));
+            showTier(server, pos, stop.tier);
+        }
         if (placer instanceof ServerPlayer p) {
             List<CaravanData.Stop> linked = data.linked(pos);
             p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.stop_placed", stop.displayName()).withStyle(ChatFormatting.GREEN));
@@ -199,6 +256,7 @@ public class MilestoneBlock extends Block {
         t.putLong("Remaining", stop == null ? CCConfig.FIRST_VISIT_DELAY.get() * 20L : Math.max(0, stop.nextVisit - now));
         t.putLong("SinceCall", stop == null ? Long.MAX_VALUE / 4 : Math.min(Long.MAX_VALUE / 4, now - stop.lastCall));
         t.putString("Name", stop == null ? "" : stop.name);
+        t.putInt("Tier", stop == null ? 1 : stop.tier);
         // A unique id: two picked-up milestones never stack (each keeps its own schedule)
         t.putLong("Id", level.getRandom().nextLong());
         return t;
@@ -212,7 +270,11 @@ public class MilestoneBlock extends Block {
         String name = Nbt.getString(snapshot, "Name");
         if (!name.isEmpty()) Compat.setName(st, Component.literal(name));
         long minutes = Math.max(1, Math.round(Nbt.getLong(snapshot, "Remaining") / 1200.0));
-        Compat.setLore(st, List.of(Component.translatable("item.chroniclecaravans.milestone.kept", minutes).withStyle(ChatFormatting.GRAY)));
+        int tier = Nbt.getInt(snapshot, "Tier");
+        Compat.setLore(st, tier > 1
+                ? List.of(Component.translatable("item.chroniclecaravans.milestone.kept", minutes).withStyle(ChatFormatting.GRAY),
+                        Component.translatable("item.chroniclecaravans.milestone.tier", tier).withStyle(ChatFormatting.GOLD))
+                : List.of(Component.translatable("item.chroniclecaravans.milestone.kept", minutes).withStyle(ChatFormatting.GRAY)));
         return st;
     }
 
@@ -275,6 +337,7 @@ public class MilestoneBlock extends Block {
     //$$ public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
     //$$     ItemStack stack = player.getItemInHand(hand);
     //$$     if (stack.is(Items.EMERALD_BLOCK)) hire(stack, level, pos, player);
+    //$$     else if (stack.is(ChronicleCaravans.CHARTER.get())) charter(stack, level, pos, player);
     //$$     else info(level, pos, player);
     //$$     return InteractionResult.sidedSuccess(level.isClientSide);
     //$$ }
@@ -287,6 +350,10 @@ public class MilestoneBlock extends Block {
     //$$
     //$$ @Override
     //$$ protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+    //$$     if (stack.is(ChronicleCaravans.CHARTER.get())) {
+    //$$         charter(stack, level, pos, player);
+    //$$         return InteractionResult.SUCCESS;
+    //$$     }
     //$$     if (!stack.is(Items.EMERALD_BLOCK)) return InteractionResult.TRY_WITH_EMPTY_HAND;
     //$$     hire(stack, level, pos, player);
     //$$     return InteractionResult.SUCCESS;
@@ -300,6 +367,10 @@ public class MilestoneBlock extends Block {
 
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+        if (stack.is(ChronicleCaravans.CHARTER.get())) {
+            charter(stack, level, pos, player);
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        }
         if (!stack.is(Items.EMERALD_BLOCK)) return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         hire(stack, level, pos, player);
         return ItemInteractionResult.sidedSuccess(level.isClientSide);
@@ -316,6 +387,11 @@ public class MilestoneBlock extends Block {
                 return;
             }
             p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.stop_header", stop.displayName()).withStyle(ChatFormatting.GOLD));
+            if (CCConfig.RELAYS.get()) {
+                int posts = data.postsNear(server, pos, HitchingPostBlock.RANGE).size();
+                p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.stop_relay", stop.tier, CaravanSpawner.capacity(server, stop), posts)
+                        .withStyle(ChatFormatting.GRAY));
+            }
             if (CaravanSpawner.caravanHeadingTo(server, stop.pos) != null) {
                 p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.stop_incoming").withStyle(ChatFormatting.GREEN));
             } else {
@@ -341,7 +417,7 @@ public class MilestoneBlock extends Block {
             if (stop == null) return;
             long now = server.getGameTime();
             long wait = stop.lastCall + CCConfig.CALL_COOLDOWN.get() * 20L - now;
-            if (CaravanSpawner.caravanHeadingTo(server, stop.pos) != null) {
+            if (CaravanSpawner.full(server, stop)) {
                 p.displayClientMessage(Component.translatable("msg.chroniclecaravans.stop_incoming").withStyle(ChatFormatting.GREEN), true);
             } else if (wait > 0) {
                 p.displayClientMessage(Component.translatable("msg.chroniclecaravans.hire_cooldown", (int) Math.ceil(wait / 1200.0)).withStyle(ChatFormatting.RED), true);

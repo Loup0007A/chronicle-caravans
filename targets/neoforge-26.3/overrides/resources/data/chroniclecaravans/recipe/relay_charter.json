@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:paper",
+    "minecraft:emerald_block",
+    "minecraft:gold_ingot",
+    "minecraft:honeycomb"
+  ],
+  "result": {
+    "id": "chroniclecaravans:relay_charter"
+  }
+}

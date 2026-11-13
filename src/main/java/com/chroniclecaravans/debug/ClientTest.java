@@ -39,7 +39,8 @@ public final class ClientTest {
     private static int total;
     private static boolean seenMaster, seenWagon, guideShown;
     private static boolean seenGuard, caravanShown, atlasShown, dockShown, postShown;
-    private static int caravanTicks, atlasTicks, dockTicks, postTicks;
+    private static int caravanTicks, atlasTicks, dockTicks, postTicks, innTicks;
+    private static boolean innShown;
     private static String uiProblem;
     private static boolean done;
 
@@ -75,7 +76,7 @@ public final class ClientTest {
         if (mc.screen != null && !(mc.screen instanceof GuideScreen) && !(mc.screen instanceof CaravanScreen) && !(mc.screen instanceof AtlasScreen)
                 && !(mc.screen instanceof DockScreen) && !(mc.screen instanceof TradingPostScreen)) return;
         t++;
-        hideHud(mc, !(t > 420 && t < 700) && t < 950);
+        hideHud(mc, (!(t > 420 && t < 700) && t < 950) || (t > 1755 && t < 1790) || innTicks > 0);
         if (t % 20 == 0 && t < 950) {
             for (Entity en : mc.level.entitiesForRendering()) {
                 if (en instanceof CaravanMaster && !seenMaster) {
@@ -93,6 +94,8 @@ public final class ClientTest {
             }
         }
         for (int i = 0; i < SHOTS.length; i++) if (t == SHOTS[i]) shot(mc, "caravan_" + i);
+        // The relay: a second caravan's train parked at a hitching post
+        if (t == 1775) shot(mc, "relay_0");
         for (int i = 0; i < GUIDE.length; i++) {
             int[] g = GUIDE[i];
             if (t == g[0]) {
@@ -158,7 +161,16 @@ public final class ClientTest {
             }
             if (postTicks == 30) ps.onClose();
         }
-        if ((postShown && mc.screen == null) || t > last + 1300) {
+        // Last, a night at the inn: the train parked, then the master asleep in the bed
+        if (postShown && mc.screen == null) {
+            innTicks++;
+            if (innTicks == 300) shot(mc, "inn_0");
+            if (innTicks == 640) {
+                shot(mc, "inn_1");
+                innShown = true;
+            }
+        }
+        if ((innShown && innTicks > 660) || t > last + 1700) {
             String why = !seenMaster ? "FAIL the caravan master was never rendered"
                     : !seenWagon ? "FAIL the wagon was never rendered"
                     : !guideShown ? "FAIL the guide never opened"

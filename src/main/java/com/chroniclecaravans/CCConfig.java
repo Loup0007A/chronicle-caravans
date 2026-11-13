@@ -89,6 +89,17 @@ public final class CCConfig {
             .comment("Milestones give a comparator signal (caravan coming / halted) and a redstone pulse calls a caravan,",
                     "paid with an emerald block from a container next to the milestone.")
             .define("redstoneMilestones", true);
+    public static final ModConfigSpec.BooleanValue RELAYS = B
+            .comment("Relay charters raise a milestone's tier: it then takes several caravans at once, one per hitching post nearby,",
+                    "and caravans come more often.")
+            .define("relayMilestones", true);
+    public static final ModConfigSpec.IntValue MAX_TIER = B
+            .comment("Highest tier of a milestone (1 = no upgrades).")
+            .defineInRange("maxMilestoneTier", 4, 1, 4);
+    public static final ModConfigSpec.BooleanValue PARKING = B
+            .comment("Caravans park their train (off the road, or at a hitching post) before going to bed at an inn",
+                    "or to an upgraded milestone that already has a caravan.")
+            .define("parking", true);
 
     public static final ModConfigSpec SPEC = B.build();
 

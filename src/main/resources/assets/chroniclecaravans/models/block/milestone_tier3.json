@@ -1,0 +1,138 @@
+{
+  "textures": {
+    "particle": "minecraft:block/stone_bricks",
+    "gold": "minecraft:block/gold_block",
+    "pole": "minecraft:block/dark_oak_planks",
+    "flag": "minecraft:block/green_wool"
+  },
+  "elements": [
+    {
+      "from": [
+        12.5,
+        12,
+        7.5
+      ],
+      "to": [
+        16,
+        12.75,
+        8.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#pole"
+        },
+        "south": {
+          "texture": "#pole"
+        },
+        "east": {
+          "texture": "#pole"
+        },
+        "west": {
+          "texture": "#pole"
+        },
+        "up": {
+          "texture": "#pole"
+        },
+        "down": {
+          "texture": "#pole"
+        }
+      }
+    },
+    {
+      "from": [
+        14.5,
+        7.5,
+        7.75
+      ],
+      "to": [
+        15.75,
+        12,
+        8.25
+      ],
+      "faces": {
+        "north": {
+          "texture": "#flag"
+        },
+        "south": {
+          "texture": "#flag"
+        },
+        "east": {
+          "texture": "#flag"
+        },
+        "west": {
+          "texture": "#flag"
+        },
+        "up": {
+          "texture": "#flag"
+        },
+        "down": {
+          "texture": "#flag"
+        }
+      }
+    },
+    {
+      "from": [
+        0,
+        12,
+        7.5
+      ],
+      "to": [
+        3.5,
+        12.75,
+        8.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#pole"
+        },
+        "south": {
+          "texture": "#pole"
+        },
+        "east": {
+          "texture": "#pole"
+        },
+        "west": {
+          "texture": "#pole"
+        },
+        "up": {
+          "texture": "#pole"
+        },
+        "down": {
+          "texture": "#pole"
+        }
+      }
+    },
+    {
+      "from": [
+        0.25,
+        7.5,
+        7.75
+      ],
+      "to": [
+        1.5,
+        12,
+        8.25
+      ],
+      "faces": {
+        "north": {
+          "texture": "#flag"
+        },
+        "south": {
+          "texture": "#flag"
+        },
+        "east": {
+          "texture": "#flag"
+        },
+        "west": {
+          "texture": "#flag"
+        },
+        "up": {
+          "texture": "#flag"
+        },
+        "down": {
+          "texture": "#flag"
+        }
+      }
+    }
+  ]
+}

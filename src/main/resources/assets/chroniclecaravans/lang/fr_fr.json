@@ -28,7 +28,7 @@
   "msg.chroniclecaravans.stop_next": "Prochaine caravane attendue dans environ %s min.",
   "msg.chroniclecaravans.rep": "Guilde : %s · %s/%s xp vers le niveau suivant",
   "msg.chroniclecaravans.rep_disabled": "La réputation est désactivée sur ce serveur : chaque caravane montre tout son stock.",
-  "msg.chroniclecaravans.stop_hint": "Astuce : un bloc d'émeraude sur la borne engage une caravane tout de suite. Maintenez [W] sur la borne dans l'inventaire pour ouvrir le guide.",
+  "msg.chroniclecaravans.stop_hint": "Astuce : un bloc d'émeraude sur la borne engage une caravane tout de suite, une charte de relais l'améliore. Maintenez [W] sur la borne dans l'inventaire pour ouvrir le guide.",
   "msg.chroniclecaravans.hire_cooldown": "La guilde demande encore %s min avant d'envoyer une autre caravane engagée.",
   "msg.chroniclecaravans.hired": "Une caravane a été engagée pour %s. Elle arrive sous peu.",
   "msg.chroniclecaravans.arrived": "La %s est arrivée à : %s.",
@@ -310,5 +310,17 @@
   "guide.chroniclecaravans.automation.call": "Une impulsion de redstone sur une borne appelle une caravane, payée avec un bloc d'émeraude pris dans un coffre ou un tonneau voisin.",
   "guide.chroniclecaravans.automation.comparator": "Un comparateur lit la borne : 15 quand une caravane y est arrêtée, 1 à 7 quand une caravane approche.",
   "guide.chroniclecaravans.automation.post": "Le comptoir commerce tout seul avec les caravanes à l'arrêt : il leur vend ce qu'elles demandent, puis achète ce que montrent ses commandes. Les entonnoirs le remplissent et le vident.",
-  "gui.chroniclecaravans.dock.at": "Arrêt : %s"
+  "gui.chroniclecaravans.dock.at": "Arrêt : %s",
+  "block.chroniclecaravans.hitching_post": "Poteau d'attelage",
+  "item.chroniclecaravans.relay_charter": "Charte de relais",
+  "item.chroniclecaravans.milestone.tier": "Relais de niveau %s",
+  "msg.chroniclecaravans.relay_upgraded": "%s devient un relais de niveau %s : %s caravane(s) à la fois avec ses poteaux d'attelage.",
+  "msg.chroniclecaravans.relay_max": "Cette borne est déjà au niveau maximum.",
+  "msg.chroniclecaravans.relay_posts": "Il faut d'abord %s poteau(x) d'attelage à moins de %s blocs : un par caravane en plus de la première.",
+  "msg.chroniclecaravans.relay_disabled": "Les relais sont désactivés sur ce serveur.",
+  "msg.chroniclecaravans.stop_relay": "Relais de niveau %s : %s caravane(s) à la fois (%s poteau(x) d'attelage à proximité).",
+  "msg.chroniclecaravans.post_stop": "Poteau d'attelage de %s : %s poteau(x) autour, niveau %s, %s caravane(s) à la fois.",
+  "msg.chroniclecaravans.post_inn": "Poteau d'attelage de %s : les caravanes y rangent leur convoi pour la nuit.",
+  "msg.chroniclecaravans.post_alone": "Aucune borne ni auberge à moins de %s blocs : ce poteau ne sert pas encore.",
+  "msg.chroniclecaravans.asleep": "La %s dort. Revenez au matin."
 }

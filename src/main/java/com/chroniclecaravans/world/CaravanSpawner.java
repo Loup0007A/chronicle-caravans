@@ -125,29 +125,60 @@ public final class CaravanSpawner {
         for (BlockPos p : stale) data.removeStopAndRoutes(p);
     }
 
+    /** How many caravans a stop takes at once: its tier, with one hitching post nearby for each caravan beyond the first. */
+    public static int capacity(ServerLevel level, CaravanData.Stop stop) {
+        if (stop.village || stop.tier <= 1 || !CCConfig.RELAYS.get()) return 1;
+        int posts = CaravanData.get(level).postsNear(level, stop.pos, com.chroniclecaravans.block.HitchingPostBlock.RANGE).size();
+        return Math.max(1, Math.min(Math.min(stop.tier, CCConfig.MAX_TIER.get()), 1 + posts));
+    }
+
+    /** The caravans serving a stop: travelling there, halted there, or resting (inn, camp) on their way there. */
+    public static List<CaravanMaster> serving(List<CaravanMaster> all, BlockPos stop) {
+        List<CaravanMaster> out = new ArrayList<>();
+        for (CaravanMaster m : all) if (m.state() != CaravanMaster.State.LEAVING && stop.equals(m.destination())) out.add(m);
+        return out;
+    }
+
+    /** The stop already has as many caravans as it can take. */
+    public static boolean full(ServerLevel level, CaravanData.Stop stop) {
+        return serving(caravans(level), stop.pos).size() >= capacity(level, stop);
+    }
+
+    /** Extra caravans the upgraded milestones make room for, on top of the configured number. */
+    private static int extraRoom(ServerLevel level, CaravanData data) {
+        int extra = 0;
+        for (CaravanData.Stop s : data.stops()) if (s.tier > 1 && !s.village) extra += capacity(level, s) - 1;
+        return Math.min(extra, 16);
+    }
+
     /**
-     * A stop wants a caravan. In order: one already heading there; a free caravan close by, sent over;
-     * a caravan asleep in faraway land, moved here; a brand new one (rarely: at most one every few minutes,
-     * and never more than the configured number). Returns the caravan that comes, or null (try again later).
+     * A stop wants a caravan. In order: one already heading there (or resting on its way); a free caravan close by,
+     * sent over; a caravan asleep in faraway land, moved here; a brand new one (rarely: at most one every few minutes,
+     * and never more than the configured number). An upgraded milestone takes several. Nobody sets out from afar at
+     * night: the caravans of the area sleep at the inns or camp. Returns the caravan that comes, or null (try again later).
      */
     public static CaravanMaster dispatch(ServerLevel level, CaravanData data, CaravanData.Stop stop, List<CaravanMaster> active) {
         long now = level.getGameTime();
-        CaravanMaster coming = headingTo(active, stop.pos);
-        if (coming != null) {
+        List<CaravanMaster> coming = serving(active, stop.pos);
+        if (coming.size() >= capacity(level, stop)) {
             stop.nextVisit = now + 1200;
-            return coming;
+            return coming.get(0);
         }
-        // 1. A loaded caravan with nothing better to do
+        // 1. A loaded caravan with nothing better to do (one resting at an inn comes in the morning)
         double reach = CCConfig.LINK_RANGE.get() * (stop.hired ? 2.0 : 1.25);
         CaravanMaster best = null;
         for (CaravanMaster m : active) {
-            if (!m.available() || m.distanceToSqr(stop.pos.getX(), stop.pos.getY(), stop.pos.getZ()) > reach * reach) continue;
+            if (coming.contains(m) || !m.available() || m.distanceToSqr(stop.pos.getX(), stop.pos.getY(), stop.pos.getZ()) > reach * reach) continue;
             if (best == null || m.distanceToSqr(stop.pos.getX(), stop.pos.getY(), stop.pos.getZ()) < best.distanceToSqr(stop.pos.getX(), stop.pos.getY(), stop.pos.getZ())) best = m;
         }
         if (best != null) {
             best.redirect(level, stop.pos);
             stop.nextVisit = now + 1200;
             return best;
+        }
+        if (Compat.isNight(level) && !stop.hired) {
+            stop.nextVisit = now + 1200;
+            return null;
         }
         // 2. A caravan asleep far away is moved here (the old one vanishes when its land wakes up)
         int known = data.caravans().size();
@@ -165,7 +196,7 @@ public final class CaravanSpawner {
             fresh = false;
         } else {
             // 3. A new caravan, now and then
-            int max = CCConfig.MAX_CARAVANS.get() + (stop.hired ? 1 : 0);
+            int max = CCConfig.MAX_CARAVANS.get() + extraRoom(level, data) + (stop.hired ? 1 : 0);
             if (known >= max || (now < data.nextSpawn && !stop.hired)) {
                 stop.nextVisit = now + 1200;
                 return null;
@@ -256,10 +287,8 @@ public final class CaravanSpawner {
     }
 
     private static CaravanMaster headingTo(List<CaravanMaster> list, BlockPos stop) {
-        for (CaravanMaster m : list) {
-            if (m.state() != CaravanMaster.State.LEAVING && stop.equals(m.target())) return m;
-        }
-        return null;
+        List<CaravanMaster> s = serving(list, stop);
+        return s.isEmpty() ? null : s.get(0);
     }
 
     /** A caravan comes into view: it appears 48 to 80 blocks from the stop, out of sight of players, and walks to it. */

@@ -89,6 +89,11 @@ public class CaravanWagon extends Entity {
         orphanTicks = 0;
     }
 
+    /** The train is parked: the master does not place the wagon, but it still belongs to him. */
+    public void hold() {
+        orphanTicks = 0;
+    }
+
     @Override
     public void tick() {
         super.tick();

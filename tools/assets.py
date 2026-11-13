@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Dessine les textures des nouveautés 1.1 et 1.2 : enseigne d'auberge, atlas, peaux des gardes et des bâtisseurs,
-quai de chargement, comptoir de commerce, colis ; écrit leurs modèles et états de blocs.
+"""Dessine les textures des nouveautés 1.1 à 1.3 : enseigne d'auberge, atlas, peaux des gardes et des bâtisseurs,
+quai de chargement, comptoir de commerce, colis, charte de relais ; écrit leurs modèles et états de blocs
+(dont le poteau d'attelage et les niveaux de la borne).
 Usage : python3 tools/assets.py [--preview]  (--preview : planche agrandie dans /tmp/assets_preview.png)"""
 import json
 import os
@@ -447,11 +448,98 @@ for (x, y, k) in ((7, 8, 1.15), (6, 9, 1.0), (7, 9, 0.95), (8, 9, 0.8), (7, 10, 
 save(parcel, 'textures', 'item', 'caravan_parcel.png')
 jsave({'parent': 'minecraft:item/generated', 'textures': {'layer0': 'chroniclecaravans:item/caravan_parcel'}}, 'models', 'item', 'caravan_parcel.json')
 
+# ------------------------------------------------------------------ relay charter (16x16 item): parchment, ribbon, emerald wax seal
+charter = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+PAPER = (232, 214, 170)
+for y in range(3, 13):
+    for x in range(3, 12):
+        px(charter, x, y, PAPER, 0.93 + 0.09 * rnd.random())
+for x in range(2, 13):
+    # Rolled ends, top and bottom
+    px(charter, x, 2, PAPER, 0.80)
+    px(charter, x, 3, PAPER, 1.08)
+    px(charter, x, 13, PAPER, 0.74)
+    px(charter, x, 12, PAPER, 1.02)
+for (x0, y0) in ((2, 2), (12, 2), (2, 13), (12, 13)):
+    px(charter, x0, y0, PAPER, 0.62)
+for y in range(2, 14):
+    for x in range(2, 13):
+        c = charter.getpixel((x, y))
+        if c[3] and (x in (2, 12) or y in (2, 13)):
+            charter.putpixel((x, y), shade(c, 0.78))
+INK = (92, 64, 40)
+for (y, a, b) in ((5, 4, 10), (7, 4, 9), (9, 4, 7)):
+    for x in range(a, b + 1):
+        if rnd.random() > 0.18:
+            px(charter, x, y, INK, 0.9 + 0.2 * rnd.random())
+# Ribbon and seal (emerald green, the guilds' colour)
+RIBBON = (40, 120, 64)
+for (x, y) in ((9, 11), (10, 12), (10, 13), (11, 14), (8, 12), (8, 13), (7, 14)):
+    px(charter, x, y, RIBBON, 0.9)
+SEAL = (36, 168, 84)
+for (x, y, k) in ((9, 9, 1.2), (10, 9, 1.0), (8, 10, 1.05), (9, 10, 0.95), (10, 10, 0.85), (11, 10, 0.75), (9, 11, 0.7), (10, 11, 0.62), (11, 9, 0.8), (8, 9, 0.9)):
+    px(charter, x, y, SEAL, k)
+px(charter, 9, 10, (210, 240, 200), 1.0)
+save(charter, 'textures', 'item', 'relay_charter.png')
+jsave({'parent': 'minecraft:item/generated', 'textures': {'layer0': 'chroniclecaravans:item/relay_charter'}}, 'models', 'item', 'relay_charter.json')
+
+
+# ------------------------------------------------------------------ hitching post (model with vanilla textures)
+def el(frm, to, tex, faces=('north', 'south', 'east', 'west', 'up', 'down')):
+    return {'from': frm, 'to': to, 'faces': {f: {'texture': (tex[f] if isinstance(tex, dict) else tex)} for f in faces}}
+
+
+log = {'north': '#side', 'south': '#side', 'east': '#side', 'west': '#side', 'up': '#top', 'down': '#top'}
+jsave({'parent': 'minecraft:block/block',
+       'textures': {'particle': 'minecraft:block/stripped_spruce_log', 'side': 'minecraft:block/stripped_spruce_log',
+                    'top': 'minecraft:block/stripped_spruce_log_top', 'cap': 'minecraft:block/spruce_planks', 'iron': 'minecraft:block/iron_block'},
+       'elements': [
+           el([6, 0, 6], [10, 14, 10], log),
+           el([5, 14, 5], [11, 16, 11], '#cap'),
+           el([5.5, 1, 5.5], [10.5, 2, 10.5], '#cap'),
+           # The iron ring the leads tie to, on two sides
+           el([10, 11, 7.5], [12.5, 11.75, 8.5], '#iron'),
+           el([11.75, 9, 7.5], [12.5, 11, 8.5], '#iron'),
+           el([10, 8.25, 7.5], [12.5, 9, 8.5], '#iron'),
+           el([3.5, 11, 7.5], [6, 11.75, 8.5], '#iron'),
+           el([3.5, 9, 7.5], [4.25, 11, 8.5], '#iron'),
+           el([3.5, 8.25, 7.5], [6, 9, 8.5], '#iron'),
+       ]}, 'models', 'block', 'hitching_post.json')
+jsave({'variants': {'': {'model': 'chroniclecaravans:block/hitching_post'}}}, 'blockstates', 'hitching_post.json')
+jsave({'parent': 'chroniclecaravans:block/hitching_post'}, 'models', 'item', 'hitching_post.json')
+
+
+# ------------------------------------------------------------------ milestone tiers: gold collar, then guild pennants
+def tier_model(elements):
+    return {'textures': {'particle': 'minecraft:block/stone_bricks', 'gold': 'minecraft:block/gold_block',
+                         'pole': 'minecraft:block/dark_oak_planks', 'flag': 'minecraft:block/green_wool'}, 'elements': elements}
+
+
+def pennant(axis, sign):
+    """A small pole out of the cap and a green pennant hanging from it, on one side (x or z, + or -)."""
+    def box(a0, a1, y0, y1, c0, c1):
+        lo, hi = (a0, a1) if sign > 0 else (16 - a1, 16 - a0)
+        return ([lo, y0, c0], [hi, y1, c1]) if axis == 'x' else ([c0, y0, lo], [c1, y1, hi])
+    pole = box(12.5, 16, 12, 12.75, 7.5, 8.5)
+    flag = box(14.5, 15.75, 7.5, 12, 7.75, 8.25)
+    return [el(pole[0], pole[1], '#pole'), el(flag[0], flag[1], '#flag')]
+
+
+jsave(tier_model([el([3, 3, 3], [13, 4, 13], '#gold'), el([3.75, 10, 3.75], [12.25, 11, 12.25], '#gold')]), 'models', 'block', 'milestone_tier2.json')
+jsave(tier_model(pennant('x', 1) + pennant('x', -1)), 'models', 'block', 'milestone_tier3.json')
+jsave(tier_model(pennant('z', 1) + pennant('z', -1)), 'models', 'block', 'milestone_tier4.json')
+jsave({'multipart': [
+    {'apply': {'model': 'chroniclecaravans:block/milestone'}},
+    {'when': {'tier': '2|3|4'}, 'apply': {'model': 'chroniclecaravans:block/milestone_tier2'}},
+    {'when': {'tier': '3|4'}, 'apply': {'model': 'chroniclecaravans:block/milestone_tier3'}},
+    {'when': {'tier': '4'}, 'apply': {'model': 'chroniclecaravans:block/milestone_tier4'}},
+]}, 'blockstates', 'milestone.json')
+
 import sys
 if '--preview' in sys.argv:
     names = [('block', 'loading_dock_side_out'), ('block', 'loading_dock_side_in'), ('block', 'loading_dock_top'), ('block', 'loading_dock_bottom'),
              ('block', 'trading_post_front'), ('block', 'trading_post_side'), ('block', 'trading_post_top'), ('block', 'trading_post_board'),
-             ('item', 'caravan_parcel'), ('block', 'inn_sign'), ('item', 'caravan_atlas')]
+             ('item', 'caravan_parcel'), ('block', 'inn_sign'), ('item', 'caravan_atlas'), ('item', 'relay_charter')]
     sheet = Image.new('RGBA', (len(names) * 136, 136), (40, 40, 48, 255))
     for i, (kind, n) in enumerate(names):
         t = Image.open(os.path.join(ASSETS, 'textures', kind, n + '.png')).convert('RGBA').resize((128, 128), Image.NEAREST)

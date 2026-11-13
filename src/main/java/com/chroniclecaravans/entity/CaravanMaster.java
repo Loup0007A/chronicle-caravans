@@ -45,9 +45,11 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
+import net.minecraft.world.entity.ai.goal.OpenDoorGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.animal.horse.TraderLlama;
+import net.minecraft.world.entity.decoration.LeashFenceKnotEntity;
 import net.minecraft.world.entity.monster.AbstractIllager;
 import net.minecraft.world.entity.npc.WanderingTrader;
 import net.minecraft.world.entity.player.Player;
@@ -56,8 +58,12 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 import net.minecraft.world.level.Level;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
@@ -113,6 +119,20 @@ public class CaravanMaster extends WanderingTrader {
     private int campReason;
     private BlockPos campfire;
 
+    // Parking: the train waits on a strip of ground (off the road, or at a hitching post) while the master goes on
+    // foot to a bed at the inn, or to an upgraded milestone that already has a caravan in its main spot.
+    private static final int PARK_NONE = 0, PARK_ENTRY = 1, PARK_LINE = 2, PARK_OUT = 3, PARK_STAY = 4, PARK_BACK = 5;
+    private int park;
+    /** Head of the parking strip (the master's last step before the train stops) and its far end (where he enters it). */
+    private Vec3 parkHead, parkEntry;
+    /** The hitching post the draft llama is tied to, if any. */
+    private BlockPos parkPost;
+    /** Where the master walks once the train is parked: a bed, or a spot by the milestone. */
+    private BlockPos footSpot;
+    private int parkTicks;
+    /** No parking strip was found on the way (not saved: tried again after a reload). */
+    private boolean parkFailed;
+
     private final List<UUID> guards = new ArrayList<>();
     private int escortTicks;
     private UUID escortBuyer;
@@ -140,7 +160,9 @@ public class CaravanMaster extends WanderingTrader {
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
         this.goalSelector.addGoal(1, new ServeGoal());
+        this.goalSelector.addGoal(1, new OpenDoorGoal(this, true));
         this.goalSelector.addGoal(2, new TravelGoal());
+        this.goalSelector.addGoal(2, new FootGoal());
         this.goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 8.0F));
         this.goalSelector.addGoal(9, new RandomLookAroundGoal(this));
     }
@@ -179,6 +201,33 @@ public class CaravanMaster extends WanderingTrader {
     /** The stop the caravan is halted at, or null. */
     public BlockPos currentStop() {
         return state == State.HALTED && !toInn ? target : null;
+    }
+
+    /**
+     * The stop this caravan serves: where it travels to, where it is halted, or (at an inn, or camping on the way to
+     * one) where it goes on in the morning. Null when it leaves the area.
+     */
+    public BlockPos destination() {
+        if (state == State.LEAVING) return null;
+        return toInn ? resumeTarget : target;
+    }
+
+    /** The train is parked and the master is on foot (or in bed). */
+    public boolean parked() {
+        return park >= PARK_OUT;
+    }
+
+    public BlockPos parkPost() {
+        return parkPost;
+    }
+
+    public Vec3 parkHead() {
+        return parkHead;
+    }
+
+    /** The bed (or the spot by the milestone) the master walks to while the train is parked. */
+    public BlockPos footSpot() {
+        return footSpot;
     }
 
     public int haltTicks() {
@@ -227,6 +276,12 @@ public class CaravanMaster extends WanderingTrader {
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
         ItemStack held = player.getItemInHand(hand);
         if (held.is(Items.VILLAGER_SPAWN_EGG) || !isAlive() || isBaby()) return InteractionResult.PASS;
+        if (isSleeping()) {
+            if (!level().isClientSide && player instanceof ServerPlayer sp) {
+                sp.displayClientMessage(Component.translatable("msg.chroniclecaravans.asleep", region.caravanName().withStyle(region.color)), true);
+            }
+            return InteractionResult.sidedSuccess(level().isClientSide);
+        }
         if (!level().isClientSide && player instanceof ServerPlayer sp) openFor(sp);
         return InteractionResult.sidedSuccess(level().isClientSide);
     }
@@ -290,8 +345,12 @@ public class CaravanMaster extends WanderingTrader {
         lifeTicks++;
         if (scoldCooldown > 0) scoldCooldown--;
         if (tickCount % 10 == 0) updateRoadSpeed(level);
-        recordTrail();
-        layoutTrain(level);
+        if (park < PARK_OUT) {
+            recordTrail();
+            layoutTrain(level);
+        } else {
+            tickParked(level);
+        }
         if (tickCount % 40 == 0) {
             setDespawnDelay(6000);
             tendTrain(level);
@@ -346,15 +405,14 @@ public class CaravanMaster extends WanderingTrader {
 
     /** Sent to a stop by the guilds (a stop waits for a caravan, or someone hired one). */
     public void redirect(ServerLevel level, BlockPos stop) {
-        if (state == State.LODGING) return;
-        if (state == State.CAMPING) {
-            // Breaks camp when the weather (or the night) allows, then goes there
-            if (toInn) resumeTarget = stop;
-            else target = stop;
+        if (toInn) {
+            // At the inn (or on its way, or camping on its way): goes there in the morning
+            resumeTarget = stop;
             return;
         }
-        if (toInn) {
-            resumeTarget = stop;
+        if (state == State.CAMPING) {
+            // Breaks camp when the weather (or the night) allows, then goes there
+            target = stop;
             return;
         }
         target = stop;
@@ -367,7 +425,10 @@ public class CaravanMaster extends WanderingTrader {
 
     /** Free for another job: on the road between two stops, about to leave a stop, or leaving the area. */
     public boolean available() {
-        return !toInn && !ambushActive && cargo.isEmpty() && (state == State.TRAVELING || state == State.LEAVING || (state == State.HALTED && haltTicks < 600 && !serving()));
+        if (ambushActive || !cargo.isEmpty() || park == PARK_ENTRY || park == PARK_LINE || park == PARK_OUT) return false;
+        // Resting at an inn (or on the way to one) with nowhere to go yet: it will come in the morning
+        if (toInn) return resumeTarget == null;
+        return state == State.TRAVELING || state == State.LEAVING || (state == State.HALTED && haltTicks < 600 && !serving());
     }
 
     // ------------------------------------------------------------------ night and inns
@@ -392,7 +453,7 @@ public class CaravanMaster extends WanderingTrader {
             lodgedTonight = false;
             if (state == State.LODGING) leaveInn(level);
         }
-        if (state == State.TRAVELING && storm && !ambushActive) {
+        if (state == State.TRAVELING && storm && !ambushActive && !toInn && park == PARK_NONE) {
             startCamp(level, CAMP_STORM);
             return;
         }
@@ -410,13 +471,18 @@ public class CaravanMaster extends WanderingTrader {
         }
         if (inn == null) {
             // No inn within reach: the caravan makes camp for the night
-            if (state == State.TRAVELING && CCConfig.NIGHT_CAMPS.get()) startCamp(level, CAMP_NIGHT);
+            if (state == State.TRAVELING && CCConfig.NIGHT_CAMPS.get() && park == PARK_NONE) startCamp(level, CAMP_NIGHT);
             return;
         }
-        resumeTarget = state == State.HALTED ? null : target;
+        resumeTarget = state == State.HALTED || state == State.LEAVING ? null : target;
+        if (park == PARK_ENTRY || park == PARK_LINE) {
+            park = PARK_NONE;
+            parkPost = null;
+        }
         target = inn.pos;
         toInn = true;
         state = State.TRAVELING;
+        parkFailed = false;
         announce(level, Component.translatable("msg.chroniclecaravans.to_inn", region.caravanName().withStyle(region.color), inn.displayName()), inn.owner);
     }
 
@@ -432,6 +498,7 @@ public class CaravanMaster extends WanderingTrader {
 
     /** Morning: the caravan pays the innkeeper, restocks and goes on. */
     private void leaveInn(ServerLevel level) {
+        if (isSleeping()) stopSleeping();
         CaravanData data = CaravanData.get(level);
         CaravanData.Inn inn = target == null ? null : data.inn(target);
         if (state == State.LODGING) {
@@ -501,6 +568,367 @@ public class CaravanMaster extends WanderingTrader {
 
     public BlockPos campfire() {
         return campfire;
+    }
+
+    // ------------------------------------------------------------------ parking
+
+    /** Length of the train behind the master (blocks), from his heels to the tail of the last llama, plus a margin. */
+    private double trainLength() {
+        boolean withWagon = wagonId != null;
+        if (llamas.isEmpty()) return withWagon ? 1.6 + 2 * AXLE_HALF + 2.0 : 0;
+        double d = 0;
+        for (int i = 0; i < llamas.size(); i++) {
+            d += i == 0 ? DRAFT_GAP : (i == 1 && withWagon) ? AFTER_WAGON + CaravanWagon.REAR_HITCH : PACK_GAP;
+            if (i == 0 && withWagon) d += WAGON_GAP;
+        }
+        return d + 1.5;
+    }
+
+    /** This caravan parks its train before going on foot: always at an inn, at a milestone when another caravan holds the main spot. */
+    private boolean wantsParking(ServerLevel level) {
+        if (!CCConfig.PARKING.get() || (llamas.isEmpty() && wagonId == null)) return false;
+        if (toInn) return true;
+        if (target == null || CaravanData.get(level).stop(target) == null) return false;
+        for (CaravanMaster m : CaravanSpawner.caravans(level)) {
+            if (m != this && target.equals(m.currentStop()) && m.park == PARK_NONE) return true;
+        }
+        return false;
+    }
+
+    /** Hitching posts around {@code center} that no other caravan uses. */
+    private List<BlockPos> freePosts(ServerLevel level, BlockPos center) {
+        List<BlockPos> out = new ArrayList<>(CaravanData.get(level).postsNear(level, center, com.chroniclecaravans.block.HitchingPostBlock.RANGE));
+        for (CaravanMaster m : CaravanSpawner.caravans(level)) if (m != this && m.park != PARK_NONE && m.parkPost != null) out.remove(m.parkPost);
+        out.removeIf(p -> !level.isLoaded(p));
+        return out;
+    }
+
+    /** Finds a strip for the train: at a free hitching post near the stop (or the inn), else (inn only) on open ground off the road. */
+    private boolean planParking(ServerLevel level) {
+        BlockPos center = target;
+        double length = trainLength() + 1.0;
+        // Never on top of another train (parked, or halted at the milestone)
+        List<Vec3> taken = new ArrayList<>();
+        for (CaravanMaster m : CaravanSpawner.caravans(level)) {
+            if (m == this || m.distanceToSqr(this) > 64 * 64) continue;
+            taken.add(m.position());
+            CaravanWagon w = m.wagon(level);
+            if (w != null) taken.add(w.position());
+            for (TraderLlama l : m.loadedLlamas(level)) taken.add(l.position());
+        }
+        obstacles = taken;
+        for (BlockPos post : freePosts(level, center)) {
+            for (Direction side : Direction.Plane.HORIZONTAL) {
+                Vec3 head = standOn(level, post.getX() + side.getStepX(), post.getZ() + side.getStepZ(), post.getY());
+                if (head == null) continue;
+                if (planFrom(level, head, center, length, false, false, side.getStepX(), side.getStepZ())) {
+                    parkPost = post;
+                    return true;
+                }
+            }
+        }
+        if (!toInn) return false;
+        // Open ground around the inn: the closest strip that is off the road and under the open sky
+        for (int r = 5; r <= 16; r++) {
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dz = -r; dz <= r; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != r || ((dx + dz) & 1) != 0) continue;
+                    Vec3 head = standOn(level, center.getX() + dx, center.getZ() + dz, center.getY());
+                    if (head == null) continue;
+                    if (planFrom(level, head, center, length, true, true, 0, 0)) {
+                        parkPost = null;
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Other trains, while a parking strip is being looked for. */
+    private List<Vec3> obstacles = List.of();
+
+    /** Tries the eight directions from {@code head} (away from the centre first); {@code sx, sz}: only directions not towards the post. */
+    private boolean planFrom(ServerLevel level, Vec3 head, BlockPos center, double length, boolean offRoad, boolean openSky, int sx, int sz) {
+        List<double[]> dirs = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            double a = i * Math.PI / 4;
+            double bx = Math.round(Math.cos(a) * 1000) / 1000.0, bz = Math.round(Math.sin(a) * 1000) / 1000.0;
+            if (bx * sx + bz * sz < -0.01) continue;
+            double ax = head.x - (center.getX() + 0.5), az = head.z - (center.getZ() + 0.5);
+            dirs.add(new double[] {bx, bz, -(bx * ax + bz * az)});
+        }
+        dirs.sort((u, v) -> Double.compare(u[2], v[2]));
+        for (double[] d : dirs) {
+            if (!clearStrip(level, head, d[0], d[1], length + 1.0, offRoad, openSky) || crowded(head, d[0], d[1], length)) continue;
+            parkHead = head;
+            parkEntry = new Vec3(head.x + d[0] * length, head.y, head.z + d[1] * length);
+            return true;
+        }
+        return false;
+    }
+
+    /** Another train stands on (or right next to) the strip. */
+    private boolean crowded(Vec3 head, double bx, double bz, double length) {
+        for (double s = 0; s <= length; s += 1.0) {
+            double x = head.x + bx * s, z = head.z + bz * s;
+            for (Vec3 o : obstacles) if ((o.x - x) * (o.x - x) + (o.z - z) * (o.z - z) < 2.5 * 2.5) return true;
+        }
+        return false;
+    }
+
+    /**
+     * A strip of ground three blocks wide from {@code head} along (bx, bz): firm, dry, gently sloped, with room for
+     * the wagon's height, never on a milestone, a post or a bed; off the roads and under the sky if asked.
+     */
+    private static boolean clearStrip(ServerLevel level, Vec3 head, double bx, double bz, double length, boolean offRoad, boolean openSky) {
+        double y = head.y;
+        for (double s = 0.5; s <= length; s += 0.75) {
+            double cx = head.x + bx * s, cz = head.z + bz * s;
+            Vec3 c = standOn(level, Mth.floor(cx), Mth.floor(cz), Mth.floor(y));
+            if (c == null || Math.abs(c.y - y) > 1.01) return false;
+            y = c.y;
+            BlockPos ground = BlockPos.containing(cx, y - 0.5, cz);
+            if (offRoad && level.getBlockState(ground).is(ChronicleCaravans.ROADS)) return false;
+            BlockPos top = BlockPos.containing(cx, y + 2.2, cz);
+            if (!level.getBlockState(top).getCollisionShape(level, top).isEmpty()) return false;
+            if (openSky && !level.canSeeSky(BlockPos.containing(cx, y, cz))) return false;
+            for (int side = -1; side <= 1; side += 2) {
+                double px = cx - bz * side, pz = cz + bx * side;
+                Vec3 q = standOn(level, Mth.floor(px), Mth.floor(pz), Mth.floor(y));
+                if (q == null || Math.abs(q.y - y) > 1.01) return false;
+            }
+        }
+        return true;
+    }
+
+    /** Where a mob stands in column (x, z) near height {@code refY}: firm ground below, two free blocks above. */
+    private static Vec3 standOn(ServerLevel level, int x, int z, int refY) {
+        BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
+        if (!level.isLoaded(p.set(x, refY, z))) return null;
+        for (int y = refY + 1; y >= refY - 1; y--) {
+            p.set(x, y - 1, z);
+            BlockState ground = level.getBlockState(p);
+            VoxelShape shape = ground.getCollisionShape(level, p);
+            if (shape.isEmpty() || shape.max(Direction.Axis.Y) < 0.5 || !level.getFluidState(p).isEmpty()) continue;
+            if (ground.is(BlockTags.BEDS) || ground.is(ChronicleCaravans.MILESTONE.get()) || ground.is(ChronicleCaravans.HITCHING_POST.get())
+                    || ground.is(BlockTags.FENCES) || ground.is(BlockTags.WALLS)) return null;
+            p.set(x, y, z);
+            if (!level.getBlockState(p).getCollisionShape(level, p).isEmpty() || !level.getFluidState(p).isEmpty()) continue;
+            p.set(x, y + 1, z);
+            if (!level.getBlockState(p).getCollisionShape(level, p).isEmpty()) continue;
+            return new Vec3(x + 0.5, y - 1 + shape.max(Direction.Axis.Y), z + 0.5);
+        }
+        return null;
+    }
+
+    /** Walking to the strip, then along it: the train lines up behind the master on its way. */
+    private void tickParking(ServerLevel level, TravelGoal goal) {
+        if (target == null || parkHead == null || parkEntry == null || parkHead.distanceToSqr(Vec3.atCenterOf(target)) > 32 * 32) {
+            // Going elsewhere now (night, a broken milestone): no parking here
+            park = PARK_NONE;
+            parkPost = null;
+            return;
+        }
+        parkTicks++;
+        Vec3 dest = park == PARK_ENTRY ? parkEntry : parkHead;
+        double dx = dest.x - getX(), dz = dest.z - getZ();
+        double d2 = dx * dx + dz * dz;
+        if (park == PARK_ENTRY && d2 <= 2.25) {
+            park = PARK_LINE;
+            parkTicks = 0;
+            getNavigation().moveTo(parkHead.x, parkHead.y, parkHead.z, WALK_SPEED);
+            return;
+        }
+        if (park == PARK_LINE && (d2 <= 0.36 || (getNavigation().isDone() && d2 <= 2.5))) {
+            parkTrain(level, true);
+            return;
+        }
+        if (parkTicks > 500) {
+            // Could not get there: the train stays where it is
+            parkTrain(level, false);
+            return;
+        }
+        if (getNavigation().isDone() || parkTicks % 60 == 0) getNavigation().moveTo(dest.x, dest.y, dest.z, WALK_SPEED);
+    }
+
+    /** The train stops; the draft llama is tied to the post (or the wagon); the master goes on foot. */
+    private void parkTrain(ServerLevel level, boolean onStrip) {
+        getNavigation().stop();
+        if (onStrip && parkHead != null && parkEntry != null) {
+            // The master walked the strip straight: square the train up on it
+            Vec3 back = parkEntry.subtract(parkHead).normalize();
+            trail.clear();
+            trail.addFirst(position());
+            for (double s = 0.5; s <= TRAIL_LENGTH; s += 0.5) {
+                Vec3 q = position().add(back.x * s, 0, back.z * s);
+                trail.addLast(new Vec3(q.x, groundAt(level, q.x, q.z, getY()), q.z));
+            }
+            layoutTrain(level);
+        } else {
+            parkPost = null;
+        }
+        parkHead = position();
+        park = PARK_OUT;
+        parkTicks = 0;
+        tendTrain(level);
+        if (toInn) {
+            arriveAtInn(level);
+            footSpot = findBed(level, target);
+        } else {
+            arrive(level);
+            footSpot = target == null ? null : CaravanSpawner.findGround(level, target, 2, 4, random);
+        }
+        if (footSpot == null) park = PARK_STAY;
+    }
+
+    /** What the draft llama is tied to while the train is parked: the post (with a lead knot), else the wagon. */
+    private Entity parkedHolder(ServerLevel level) {
+        if (parkPost != null && level.isLoaded(parkPost) && level.getBlockState(parkPost).is(ChronicleCaravans.HITCHING_POST.get())) {
+            return LeashFenceKnotEntity.getOrCreateKnot(level, parkPost);
+        }
+        return wagon(level);
+    }
+
+    /** Takes the lead knot off the post when nothing else is tied there. */
+    private void releaseKnot(ServerLevel level) {
+        if (parkPost == null || !level.isLoaded(parkPost)) return;
+        for (LeashFenceKnotEntity knot : level.getEntitiesOfClass(LeashFenceKnotEntity.class, new AABB(parkPost).inflate(0.5))) {
+            boolean used = false;
+            for (Mob mob : level.getEntitiesOfClass(Mob.class, new AABB(parkPost).inflate(12))) {
+                if (mob.getLeashHolder() == knot && !llamas.contains(mob.getUUID())) used = true;
+            }
+            if (!used) knot.discard();
+        }
+    }
+
+    /** A free bed at the inn (the head part), closest to the sign. */
+    private BlockPos findBed(ServerLevel level, BlockPos inn) {
+        if (inn == null) return null;
+        List<BlockPos> taken = new ArrayList<>();
+        for (CaravanMaster m : CaravanSpawner.caravans(level)) if (m != this && m.footSpot != null) taken.add(m.footSpot);
+        BlockPos best = null;
+        int r = InnSignBlock.BED_RANGE;
+        for (BlockPos p : BlockPos.betweenClosed(inn.offset(-r, -3, -r), inn.offset(r, 3, r))) {
+            BlockState b = level.getBlockState(p);
+            if (!(b.getBlock() instanceof BedBlock) || b.getValue(BedBlock.PART) != BedPart.HEAD || b.getValue(BedBlock.OCCUPIED)) continue;
+            if (taken.contains(p)) continue;
+            if (best == null || p.distSqr(inn) < best.distSqr(inn)) best = p.immutable();
+        }
+        return best;
+    }
+
+    /** Every tick while parked: the train is held, and the master goes back to it when it is time to go on. */
+    private void tickParked(ServerLevel level) {
+        parkTicks++;
+        if (tickCount % 20 == 0) {
+            CaravanWagon wagon = wagon(level);
+            if (wagon != null) wagon.hold();
+        }
+        if ((state == State.TRAVELING || state == State.LEAVING) && park != PARK_BACK) {
+            if (isSleeping()) stopSleeping();
+            park = PARK_BACK;
+            parkTicks = 0;
+            getNavigation().stop();
+        }
+        if (park == PARK_STAY && state == State.LODGING && tickCount % 100 == 0) goToBed(level);
+    }
+
+    /** At night, in his bed at the inn (again, if something woke him up). */
+    private void goToBed(ServerLevel level) {
+        if (isSleeping() || footSpot == null || !Compat.isNight(level)) return;
+        BlockState b = level.getBlockState(footSpot);
+        if (!(b.getBlock() instanceof BedBlock) || b.getValue(BedBlock.OCCUPIED)) return;
+        if (distanceToSqr(Vec3.atCenterOf(footSpot)) > 9) return;
+        startSleeping(footSpot);
+    }
+
+    /** The master reached his bed (or his spot by the milestone), or came back to his train. */
+    private void footArrived(ServerLevel level) {
+        getNavigation().stop();
+        if (park == PARK_BACK) {
+            unpark(level);
+            return;
+        }
+        park = PARK_STAY;
+        parkTicks = 0;
+        if (state == State.LODGING) goToBed(level);
+    }
+
+    /** Back at the head of the train: it follows him again. */
+    private void unpark(ServerLevel level) {
+        park = PARK_NONE;
+        footSpot = null;
+        parkHead = parkEntry = null;
+        parkTicks = 0;
+        parkFailed = false;
+        // Tie the draft llama to the master first: a knot taken away from under a lead would snap it
+        tendTrain(level);
+        releaseKnot(level);
+        parkPost = null;
+    }
+
+    /** Test hook: the caravan ends its halt now. */
+    public void hurryDeparture() {
+        if (state == State.HALTED) haltTicks = Math.min(haltTicks, 1);
+    }
+
+    /** Lying in bed: no walking, no looking around. */
+    @Override
+    protected boolean isImmobile() {
+        return super.isImmobile() || isSleeping();
+    }
+
+    /** On foot while the train is parked: to the bed (or the milestone), then back to the train. Doors open for him. */
+    private class FootGoal extends Goal {
+        FootGoal() {
+            setFlags(EnumSet.of(Flag.MOVE));
+        }
+
+        @Override
+        public boolean canUse() {
+            return (park == PARK_OUT || park == PARK_BACK) && !serving() && !isSleeping();
+        }
+
+        @Override
+        public boolean requiresUpdateEveryTick() {
+            return true;
+        }
+
+        @Override
+        public void start() {
+            ((RoadNavigation) getNavigation()).setCanOpenDoors(true);
+        }
+
+        @Override
+        public void stop() {
+            getNavigation().stop();
+            ((RoadNavigation) getNavigation()).setCanOpenDoors(false);
+        }
+
+        @Override
+        public void tick() {
+            if (!(level() instanceof ServerLevel level)) return;
+            Vec3 dest = park == PARK_BACK ? parkHead : footSpot == null ? null : Vec3.atBottomCenterOf(footSpot);
+            if (dest == null) {
+                footArrived(level);
+                return;
+            }
+            double dx = dest.x - getX(), dz = dest.z - getZ(), dy = dest.y - getY();
+            double d2 = dx * dx + dz * dz;
+            double reach = park == PARK_BACK ? 1.0 : footSpot != null && level.getBlockState(footSpot).getBlock() instanceof BedBlock ? 4.0 : 2.25;
+            if (d2 <= reach && Math.abs(dy) < 2.5) {
+                footArrived(level);
+                return;
+            }
+            if (parkTicks > 600) {
+                // Lost his way: he finds it in the end
+                teleportTo(dest.x, dest.y, dest.z);
+                footArrived(level);
+                return;
+            }
+            if (getNavigation().isDone() || parkTicks % 40 == 0) getNavigation().moveTo(dest.x, dest.y, dest.z, WALK_SPEED);
+        }
     }
 
     // ------------------------------------------------------------------ cargo
@@ -730,8 +1158,13 @@ public class CaravanMaster extends WanderingTrader {
             }
             llama.setNoAi(true);
             llama.setDespawnDelay(6000);
-            Entity expected = prev == this ? this : prev;
-            if (holder != expected) llama.setLeashedTo(expected, true);
+            Entity expected = prev != this ? prev : park >= PARK_OUT ? parkedHolder(level) : this;
+            if (expected == null) {
+                // Parked with nothing to tie it to: no lead (it would snap when the master walks away)
+                if (holder != null) Compat.unleash(llama);
+            } else if (holder != expected) {
+                llama.setLeashedTo(expected, true);
+            }
             prev = (prev == this && wagon != null) ? wagon : llama;
         }
     }
@@ -779,7 +1212,9 @@ public class CaravanMaster extends WanderingTrader {
         }
         long now = level.getGameTime();
         long interval = CCConfig.VISIT_INTERVAL.get() * 20L;
-        stop.nextVisit = now + (long) (interval * (0.75 + random.nextDouble() * 0.5));
+        // A relay takes several caravans: they come 3, 6 or 10 times as often (tiers 2, 3, 4)
+        int cap = CaravanSpawner.capacity(level, stop);
+        stop.nextVisit = now + (long) (interval * (0.75 + random.nextDouble() * 0.5) / (cap * (cap + 1) / 2.0));
         stop.lastServed = now;
         stop.hired = false;
         data.setDirty();
@@ -807,8 +1242,9 @@ public class CaravanMaster extends WanderingTrader {
             for (CaravanData.Stop s : options) {
                 if (pass == 0 && visited.contains(s.pos)) continue;
                 if (pass == 1 && !visited.isEmpty() && s.pos.equals(visited.get(visited.size() - 1))) continue;
-                boolean taken = false;
-                for (CaravanMaster m : others) if (m != this && s.pos.equals(m.target) && m.state != State.LEAVING) taken = true;
+                int coming = 0;
+                for (CaravanMaster m : others) if (m != this && s.pos.equals(m.destination())) coming++;
+                boolean taken = coming >= CaravanSpawner.capacity(level, s);
                 double score = Math.sqrt(s.pos.distSqr(blockPosition())) / CCConfig.LINK_RANGE.get() * 10.0;
                 if (now >= s.nextVisit) score -= 8;
                 if (s.hired) score -= 20;
@@ -877,6 +1313,8 @@ public class CaravanMaster extends WanderingTrader {
         }
         dismissGuards(level);
         removeCampfire(level);
+        if (isSleeping()) stopSleeping();
+        releaseKnot(level);
         Logistics.store(level, blockPosition(), cargo);
         if (effects) {
             level.sendParticles(ParticleTypes.POOF, getX(), getY() + 1, getZ(), 16, 0.3, 0.6, 0.3, 0.02);
@@ -974,7 +1412,7 @@ public class CaravanMaster extends WanderingTrader {
 
         @Override
         public boolean canUse() {
-            return (state == State.TRAVELING || state == State.LEAVING) && target != null && !serving();
+            return (state == State.TRAVELING || state == State.LEAVING) && target != null && !serving() && park < PARK_OUT;
         }
 
         @Override
@@ -999,10 +1437,24 @@ public class CaravanMaster extends WanderingTrader {
         @Override
         public void tick() {
             if (!(level() instanceof ServerLevel level) || target == null) return;
+            if (park == PARK_ENTRY || park == PARK_LINE) {
+                tickParking(level, this);
+                return;
+            }
             double d2 = distanceToSqr(Vec3.atBottomCenterOf(target));
+            if (state != State.LEAVING && park == PARK_NONE && !parkFailed && d2 <= 24 * 24 && wantsParking(level)) {
+                if (planParking(level)) {
+                    park = PARK_ENTRY;
+                    parkTicks = 0;
+                    getNavigation().stop();
+                    return;
+                }
+                parkFailed = true;
+            }
             if (d2 <= (state == State.LEAVING ? 16.0 : toInn ? 64.0 : 20.25)) {
                 getNavigation().stop();
                 if (state == State.LEAVING) vanish(level, true);
+                else if (toInn && CCConfig.PARKING.get() && (!llamas.isEmpty() || wagonId != null)) parkTrain(level, false);
                 else if (toInn) arriveAtInn(level);
                 else arrive(level);
                 return;
@@ -1033,7 +1485,7 @@ public class CaravanMaster extends WanderingTrader {
     // ------------------------------------------------------------------ ambush
 
     private void maybeAmbush(ServerLevel level) {
-        if (ambushDone || ambushActive || state == State.LEAVING || state == State.LODGING || !CCConfig.AMBUSH_ENABLED.get()) return;
+        if (ambushDone || ambushActive || state == State.LEAVING || state == State.LODGING || park != PARK_NONE || !CCConfig.AMBUSH_ENABLED.get()) return;
         if (level.getDifficulty() == Difficulty.PEACEFUL || lifeTicks < 600) return;
         if (level.getNearestPlayer(this, 48) == null) return;
         // Bandits like the dark, and stay away from an escort
@@ -1129,6 +1581,7 @@ public class CaravanMaster extends WanderingTrader {
         if (level() instanceof ServerLevel level) {
             breakTrain(level);
             removeCampfire(level);
+            releaseKnot(level);
             // The cargo falls on the road
             Logistics.spill(level, blockPosition(), cargo);
             CaravanData.get(level).forget(getUUID());
@@ -1194,6 +1647,27 @@ public class CaravanMaster extends WanderingTrader {
         tag.put("Cargo", Parcel.saveAll(cargo));
         tag.putInt("CampReason", campReason);
         if (campfire != null) tag.putLong("Campfire", campfire.asLong());
+        tag.putInt("Park", park);
+        tag.putInt("ParkTicks", parkTicks);
+        putVec(tag, "ParkHead", parkHead);
+        putVec(tag, "ParkEntry", parkEntry);
+        if (parkPost != null) tag.putLong("ParkPost", parkPost.asLong());
+        if (footSpot != null) tag.putLong("FootSpot", footSpot.asLong());
+    }
+
+    private static void putVec(CompoundTag tag, String key, Vec3 v) {
+        if (v == null) return;
+        CompoundTag t = new CompoundTag();
+        t.putDouble("X", v.x);
+        t.putDouble("Y", v.y);
+        t.putDouble("Z", v.z);
+        tag.put(key, t);
+    }
+
+    private static Vec3 getVec(CompoundTag tag, String key) {
+        if (!tag.contains(key)) return null;
+        CompoundTag t = Nbt.getCompound(tag, key);
+        return new Vec3(Nbt.getDouble(t, "X"), Nbt.getDouble(t, "Y"), Nbt.getDouble(t, "Z"));
     }
 
     private void readCaravan(CompoundTag tag) {
@@ -1226,5 +1700,14 @@ public class CaravanMaster extends WanderingTrader {
         Parcel.loadAll(Nbt.getList(tag, "Cargo"), cargo);
         campReason = Nbt.getInt(tag, "CampReason");
         campfire = tag.contains("Campfire") ? BlockPos.of(Nbt.getLong(tag, "Campfire")) : null;
+        park = Nbt.getInt(tag, "Park");
+        parkTicks = Nbt.getInt(tag, "ParkTicks");
+        parkHead = getVec(tag, "ParkHead");
+        parkEntry = getVec(tag, "ParkEntry");
+        parkPost = tag.contains("ParkPost") ? BlockPos.of(Nbt.getLong(tag, "ParkPost")) : null;
+        footSpot = tag.contains("FootSpot") ? BlockPos.of(Nbt.getLong(tag, "FootSpot")) : null;
+        // A broken save never leaves a train parked for good
+        if (park != PARK_NONE && parkHead == null) park = PARK_NONE;
+        if ((park == PARK_ENTRY || park == PARK_LINE) && parkEntry == null) park = PARK_NONE;
     }
 }

@@ -49,6 +49,11 @@ LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1280x720x24" timeout 1500 \
   --jvm-arg=-Xmx3G,-Dchroniclecaravans.clienttest=true > "$OUT/clienttest.log" 2>&1
 echo "client exit $?"
 grep -E "CLIENTTEST|ChronicleCaravans|Exception|ERROR" "$OUT/clienttest.log" | head -100
+# The console capture sometimes stops early: the game's own log has the result too
+if ! grep -q "CLIENTTEST\] RESULT" "$OUT/clienttest.log" && [ -f client/logs/latest.log ]; then
+  echo "(console log cut short: CLIENTTEST lines from client/logs/latest.log)" >> "$OUT/clienttest.log"
+  grep -h "CLIENTTEST" client/logs/latest.log >> "$OUT/clienttest.log"
+fi
 grep -q "CLIENTTEST\] RESULT" "$OUT/clienttest.log" || tail -80 "$OUT/clienttest.log"
 cp client/screenshots/*.png "$OUT/screenshots/" 2>/dev/null || true
 cp client/crash-reports/*.txt "$OUT/" 2>/dev/null || true

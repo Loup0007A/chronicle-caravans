@@ -14,7 +14,7 @@ Living trade caravans travel between villages and the milestones you place, foll
 
 Place a **Caravan Milestone** at your base. A few minutes later, a caravan appears on the horizon: a caravan master leading a draft llama hitched to a **covered wagon**, pack llamas trailing behind, loaded with goods from a far-away region. It walks to your milestone, halts to trade, then sets off for the next one.
 
-Placing your first milestone also unlocks the mod's other recipes in your recipe book: the atlas, the inn sign, the loading dock and the trading post.
+Placing your first milestone also unlocks the mod's other recipes in your recipe book: the atlas, the inn sign, the loading dock, the trading post, the hitching post and the relay charter.
 
 Place a second milestone, build a road between the two, and you have a **trade route**: caravans follow your road, and move faster on it.
 
@@ -42,7 +42,8 @@ Every village bell is a caravan stop: caravans travel between villages **on thei
 ### ✦ Road crews, escorts and inns
 - **Road crews**: from a stop, pay builders who lay the road to the next stop for you — dirt path, plank bridges over rivers, trees cleared.
 - **Escorts**: hire guards who walk with a caravan and fight off monsters and bandits.
-- **Inns**: put up an **Inn Sign** near a bed. At nightfall caravans sleep at your inn, safe from bandits, and pay you in the morning.
+- **Inns**: put up an **Inn Sign** near a bed. At nightfall caravans come to your inn: the master **parks his train off the road** (or at a hitching post), walks in and **sleeps in a bed**, safe from bandits. In the morning he walks back to his train and pays you.
+- **Relays**: use a **Relay Charter** on a milestone to upgrade it, up to tier 4. Place a **Hitching Post** around it for each extra caravan: when the main spot is taken, the next caravan parks its train at a post, ties its llama and walks to the milestone. A tier 4 relay hosts four caravans at once, and they come much more often. The milestone grows a gold collar and guild pennants.
 
 ### ✦ A living world
 - **Supply and demand**: sell a lot of one good and the caravans pay less for it, buy a lot and prices rise; the market calms down day after day. Every region has its **news of the day**: a shortage paid 50% more, a surplus sold 25% cheaper.

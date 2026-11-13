@@ -1,7 +1,33 @@
 {
-  "variants": {
-    "": {
-      "model": "chroniclecaravans:block/milestone"
+  "multipart": [
+    {
+      "apply": {
+        "model": "chroniclecaravans:block/milestone"
+      }
+    },
+    {
+      "when": {
+        "tier": "2|3|4"
+      },
+      "apply": {
+        "model": "chroniclecaravans:block/milestone_tier2"
+      }
+    },
+    {
+      "when": {
+        "tier": "3|4"
+      },
+      "apply": {
+        "model": "chroniclecaravans:block/milestone_tier3"
+      }
+    },
+    {
+      "when": {
+        "tier": "4"
+      },
+      "apply": {
+        "model": "chroniclecaravans:block/milestone_tier4"
+      }
     }
-  }
+  ]
 }

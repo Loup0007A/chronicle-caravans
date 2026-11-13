@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0
+
+- **Relays**: a **Relay Charter** (paper + emerald block + gold ingot + honeycomb) used on a milestone raises it one tier, up to tier 4. A tier 2, 3 or 4 relay takes 2, 3 or 4 caravans at once, and caravans come 3, 6 or 10 times as often. Each caravan beyond the first needs a **Hitching Post** (wooden fence + iron ingot) within 16 blocks. The milestone shows its tier: a gold collar, then guild pennants. Silk Touch keeps the tier.
+- **Hitching posts and parking**: when the main spot of a relay is taken, a caravan parks its train at a free hitching post, ties its draft llama to it and walks to the milestone to trade. When it leaves, it walks back to its train first.
+- **Inns, for real**: at an inn, the caravan parks its train (at a hitching post near the inn, or on open ground off the road), then the master walks to a free bed and sleeps in it. In the morning he wakes up, walks back to his train and goes on. Doors open for him on the way. Talking to a sleeping master tells you to come back in the morning.
+- **Fix: a sleeping caravan was forgotten**: a caravan at an inn (or on its way to one, or camping) still counts for the stop it serves, so no other caravan is sent there in its place. At night, no new caravan sets out from afar: the caravans of the area sleep at the inns or camp. A caravan heading to its inn no longer stops to camp in a thunderstorm.
+- Placing a milestone also unlocks the Hitching Post and the Relay Charter recipes.
+
 ## 1.2.1
 
 - **Recipes unlock when you place your first milestone**: the Caravan Atlas, the Inn Sign, the Loading Dock and the Trading Post appear in the recipe book as soon as you place a Caravan Milestone. The milestone itself is unlocked by picking up an emerald.

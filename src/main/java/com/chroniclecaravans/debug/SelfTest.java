@@ -52,6 +52,7 @@ import net.minecraft.world.level.GameRules;
 //#endif
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -86,6 +87,9 @@ public final class SelfTest {
     private static BlockPos hamlet, outDock, inDock, hopper, postPos, thirdFire;
     private static Item postBought;
     private static CaravanMaster third;
+    /** Inn bed (head part), hitching posts of the relay, the caravan that parks there, the one shown at the inn to the viewer. */
+    private static BlockPos bedHead, postA, postB;
+    private static CaravanMaster visitor, guest, relayGuest;
     // The viewer's tour of the new screens: 0 none, 1 going to the dock, 2 dock open, 3 going to the post, 4 post open
     private static int menuStep, menuTick, atlasTick;
     private static BlockPos menuFocus;
@@ -172,12 +176,18 @@ public final class SelfTest {
                 check(close == guards.size(), "guards stay with the caravan");
             }
             if (tick == 1080) afterNight(level);
+            if (tick == 1085) nightDispatch(level);
             if (tick == 1090) redstoneCall(level);
             if (tick == 1100) command(level, "weather thunder 100000");
             if (tick == 1220) stormCaravan(level);
             if (tick == 1340) stormCheck(level);
             if (tick == 1460) afterStorm(level);
-            if (tick == 1480) {
+            if (tick == 1470) innSleep(level);
+            if (tick == 1480) relay(level);
+            if (tick == 1800) innMorning(level);
+            if (tick == 1840) relayCheck(level);
+            if (tick == 2020) relayLeft(level);
+            if (tick == 2040) {
                 log("RESULT: " + (failures.isEmpty() ? "OK" : "FAIL " + failures));
                 log("READY");
             }
@@ -662,6 +672,7 @@ public final class SelfTest {
         BlockPos bed = innPos.offset(2, 0, 0);
         level.setBlock(bed, net.minecraft.world.level.block.Blocks.RED_BED.defaultBlockState(), 3);
         level.setBlock(bed.north(), net.minecraft.world.level.block.Blocks.RED_BED.defaultBlockState().setValue(BedBlock.PART, BedPart.HEAD), 3);
+        bedHead = bed.north();
         ChronicleCaravans.INN_SIGN.get().setPlacedBy(level, innPos, level.getBlockState(innPos), null, new ItemStack(ChronicleCaravans.INN_SIGN_ITEM.get()));
         check(CaravanData.get(level).inn(innPos) != null, "inn registered");
         check(InnSignBlock.open(level, innPos), "an inn with a bed is open");
@@ -669,17 +680,124 @@ public final class SelfTest {
     }
 
     private static void afterNight(ServerLevel level) {
-        command(level, "time set 1000");
         boolean inn = second != null && second.isAlive() && (second.headingToInn() || second.state() == CaravanMaster.State.LODGING);
-        log("second caravan: " + (second == null ? "none" : second.state() + " target=" + second.target() + " inn=" + second.headingToInn()));
+        log("second caravan: " + (second == null ? "none" : second.state() + " target=" + second.target() + " inn=" + second.headingToInn()
+                + " serves=" + second.destination()));
         check(inn, "at night a caravan heads to the inn");
-        if (second != null) second.vanish(level);
+    }
+
+    /** At night: a caravan resting on its way still counts for its stop, and no new caravan sets out from afar. */
+    private static void nightDispatch(ServerLevel level) {
+        if (second == null || stopB == null) return;
+        CaravanData data = CaravanData.get(level);
+        int before = CaravanSpawner.caravans(level).size();
+        CaravanData.Stop b = data.stop(stopB);
+        b.nextVisit = level.getGameTime();
+        CaravanMaster sent = CaravanSpawner.dispatch(level, data, b, CaravanSpawner.caravans(level));
+        log("night dispatch to B: " + (sent == null ? "none" : sent.region()) + " caravans " + before + " -> " + CaravanSpawner.caravans(level).size());
+        check(sent == second && CaravanSpawner.caravans(level).size() == before, "a caravan resting at the inn still serves its stop: no other one comes");
+        BlockPos c = stop.offset(-12, 0, -10);
+        level.setBlockAndUpdate(c, ChronicleCaravans.MILESTONE.get().defaultBlockState());
+        CaravanData.Stop sc = data.addStop(c, null, "SelfTest", "C", level.getGameTime());
+        long spawnWas = data.nextSpawn;
+        data.nextSpawn = 0;
+        CaravanMaster fresh = CaravanSpawner.dispatch(level, data, sc, CaravanSpawner.caravans(level));
+        log("night dispatch to C: " + (fresh == null ? "none" : fresh.region()) + " caravans " + before + " -> " + CaravanSpawner.caravans(level).size());
+        check(fresh == null && CaravanSpawner.caravans(level).size() == before, "no new caravan sets out at night");
+        data.nextSpawn = spawnWas;
+        data.removeStopAndRoutes(c);
+        level.setBlockAndUpdate(c, Blocks.AIR.defaultBlockState());
+    }
+
+    /** Deep in the night: the train is parked off the road near the inn and the master sleeps in the bed. */
+    private static void innSleep(ServerLevel level) {
+        if (second == null) return;
+        CaravanWagon w = second.wagon(level);
+        BlockPos under = w == null ? null : BlockPos.containing(w.getX(), w.getY() - 0.3, w.getZ());
+        log("inn: state=" + second.state() + " parked=" + second.parked() + " sleeping=" + second.isSleeping() + " bed=" + second.footSpot()
+                + " post=" + second.parkPost() + " head=" + second.parkHead() + " master=" + second.blockPosition()
+                + " wagon=" + (w == null ? "none" : w.blockPosition() + " on " + level.getBlockState(under).getBlock()));
+        check(second.isAlive() && second.state() == CaravanMaster.State.LODGING, "the caravan lodges at the inn");
+        check(second.parked(), "its train is parked for the night");
+        check(w != null && !level.getBlockState(under).is(ChronicleCaravans.ROADS) && w.distanceToSqr(innPos.getX() + 0.5, innPos.getY(), innPos.getZ() + 0.5) < 22 * 22,
+                "the wagon is parked off the road, near the inn");
+        check(second.isSleeping() && bedHead.equals(second.getSleepingPos().orElse(null)), "the caravan master sleeps in the inn's bed");
+        BlockState bed = level.getBlockState(bedHead);
+        check(bed.getBlock() instanceof BedBlock && bed.getValue(BedBlock.OCCUPIED), "the bed is taken");
+        check(w != null && w.distanceTo(second) > 3, "the train waits where it is parked");
+        command(level, "time set 1000");
+    }
+
+    /** Morning: he wakes up, walks back to his train and goes on. */
+    private static void innMorning(ServerLevel level) {
+        if (second != null) {
+            CaravanWagon w = second.wagon(level);
+            log("morning: state=" + second.state() + " parked=" + second.parked() + " sleeping=" + second.isSleeping() + " master=" + second.blockPosition()
+                    + " wagon=" + (w == null ? "none" : w.blockPosition()));
+            check(second.isAlive() && !second.isSleeping(), "the master wakes up in the morning");
+            check(!second.parked() && second.state() != CaravanMaster.State.LODGING, "he goes back to his train and leaves the inn");
+            check(w != null && w.distanceTo(second) < 9, "the train follows him again");
+            BlockState bed = level.getBlockState(bedHead);
+            check(bed.getBlock() instanceof BedBlock && !bed.getValue(BedBlock.OCCUPIED), "the bed is free again");
+            second.vanish(level);
+        }
         CaravanData data = CaravanData.get(level);
         if (stopB != null) {
             data.removeStopAndRoutes(stopB);
-            level.setBlockAndUpdate(stopB, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+            level.setBlockAndUpdate(stopB, Blocks.AIR.defaultBlockState());
         }
         data.nextSpawn = 0;
+    }
+
+    private static BlockPos placePost(ServerLevel level, BlockPos pos) {
+        level.setBlockAndUpdate(pos, ChronicleCaravans.HITCHING_POST.get().defaultBlockState());
+        ChronicleCaravans.HITCHING_POST.get().setPlacedBy(level, pos, level.getBlockState(pos), null, new ItemStack(ChronicleCaravans.HITCHING_POST_ITEM.get()));
+        return pos;
+    }
+
+    /** Relay charters raise the milestone (with enough hitching posts); a second caravan comes while the first is halted. */
+    private static void relay(ServerLevel level) {
+        CaravanData data = CaravanData.get(level);
+        CaravanData.Stop s = data.stop(stop);
+        check(MilestoneBlock.upgrade(level, stop) == MilestoneBlock.NEEDS_POSTS, "a relay charter needs a hitching post first");
+        postA = placePost(level, stop.offset(6, 0, -6));
+        check(data.posts().contains(postA), "hitching post registered");
+        check(MilestoneBlock.upgrade(level, stop) == MilestoneBlock.UPGRADED && s.tier == 2, "a relay charter raises the milestone to tier 2");
+        check(CaravanSpawner.capacity(level, s) == 2, "a tier 2 relay takes two caravans at once");
+        check(MilestoneBlock.upgrade(level, stop) == MilestoneBlock.NEEDS_POSTS, "tier 3 needs a second hitching post");
+        postB = placePost(level, stop.offset(20, 0, -6));
+        check(MilestoneBlock.upgrade(level, stop) == MilestoneBlock.UPGRADED && CaravanSpawner.capacity(level, s) == 3, "with two posts, tier 3: three caravans at once");
+        check(level.getBlockState(stop).getValue(MilestoneBlock.TIER) == 3, "the milestone shows its tier");
+        check(Nbt.getInt(MilestoneBlock.snapshot(level, stop), "Tier") == 3, "Silk Touch keeps the tier");
+        check(master != null && master.isAlive() && stop.equals(master.currentStop()) && !CaravanSpawner.full(level, s), "the relay has room beside the halted caravan");
+        visitor = CaravanSpawner.spawnCaravanAt(level, stop.offset(26, 0, 0), stop, Region.STEPPE);
+    }
+
+    private static void relayCheck(ServerLevel level) {
+        if (visitor == null) return;
+        CaravanWagon w = visitor.wagon(level);
+        Entity draft = visitor.llamaIds().isEmpty() ? null : level.getEntity(visitor.llamaIds().get(0));
+        Entity holder = draft instanceof TraderLlama l ? l.getLeashHolder() : null;
+        log("relay: visitor state=" + visitor.state() + " parked=" + visitor.parked() + " post=" + visitor.parkPost() + " head=" + visitor.parkHead()
+                + " master=" + visitor.blockPosition() + " wagon=" + (w == null ? "none" : w.blockPosition()) + " draft tied to " + (holder == null ? "nothing" : holder.getType()));
+        check(visitor.isAlive() && visitor.parked() && postA.equals(visitor.parkPost()), "the second caravan parks at a hitching post (the main spot is taken)");
+        check(stop.equals(visitor.currentStop()), "it halts at the relay too");
+        check(visitor.distanceToSqr(stop.getX() + 0.5, stop.getY(), stop.getZ() + 0.5) < 6 * 6, "its master walks to the milestone");
+        check(w != null && w.distanceToSqr(postA.getX() + 0.5, postA.getY(), postA.getZ() + 0.5) < 9 * 9, "its wagon waits by the post");
+        check(holder instanceof net.minecraft.world.entity.decoration.LeashFenceKnotEntity, "the draft llama is tied to the post");
+        check(CaravanSpawner.serving(CaravanSpawner.caravans(level), stop).size() >= 2 && CaravanSpawner.signal(level, stop) == 15, "the relay serves two caravans at once");
+        visitor.hurryDeparture();
+    }
+
+    private static void relayLeft(ServerLevel level) {
+        if (visitor == null) return;
+        CaravanWagon w = visitor.wagon(level);
+        int knots = level.getEntitiesOfClass(net.minecraft.world.entity.decoration.LeashFenceKnotEntity.class, new net.minecraft.world.phys.AABB(postA).inflate(1)).size();
+        log("relay: after the halt state=" + visitor.state() + " parked=" + visitor.parked() + " alive=" + visitor.isAlive() + " knots=" + knots);
+        check(!visitor.isAlive() || !visitor.parked(), "the caravan goes back to its train when it leaves");
+        check(!visitor.isAlive() || (w != null && w.distanceTo(visitor) < 9), "its train follows it again");
+        check(knots == 0, "the lead knot is taken off the post");
+        if (visitor.isAlive()) visitor.vanish(level);
     }
 
     private static void clearBandits(ServerLevel level) {
@@ -718,7 +836,7 @@ public final class SelfTest {
         net.minecraft.advancements.CriteriaTriggers.PLACED_BLOCK.trigger(viewer, stop, placed);
         //#endif
         check(viewer.getAdvancements().getOrStartProgress(adv).isDone(), "placing a milestone unlocks the recipes");
-        for (String r : new String[] {"caravan_atlas", "inn_sign", "loading_dock", "trading_post"}) {
+        for (String r : new String[] {"caravan_atlas", "inn_sign", "loading_dock", "trading_post", "hitching_post", "relay_charter"}) {
             //#if mc26
             //$$ boolean known = viewer.getRecipeBook().contains(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.RECIPE, ChronicleCaravans.id(r)));
             //#else
@@ -778,11 +896,48 @@ public final class SelfTest {
                 viewer.openMenu(post);
             }
         }
+        // A second caravan comes to the relay while the first one is halted: it parks at a hitching post
+        if (t == 1300 && postA != null) {
+            relayGuest = CaravanSpawner.spawnCaravanAt(level, stop.offset(26, 0, 0), stop, Region.STEPPE);
+            log("a second caravan comes to the relay");
+        }
+        // Last: a night at the inn (the train parked, then the master in bed)
+        if (menuStep == 4 && t > menuTick + 20 && !(viewer.containerMenu instanceof com.chroniclecaravans.menu.TradingPostMenu) && bedHead != null) {
+            menuStep = 5;
+            menuTick = t;
+            menuFocus = null;
+            if (relayGuest != null && relayGuest.isAlive()) relayGuest.vanish(level, false);
+            command(level, "time set 14000");
+            command(level, "effect give @a minecraft:night_vision 120 0 true");
+            guest = CaravanSpawner.spawnCaravanAt(level, stop.offset(6, 0, 13), null, Region.WOODS);
+            log("night falls on the inn for the viewer");
+        }
+        if (menuStep == 5 && guest != null && t % 100 == 0) {
+            log("inn guest: state=" + guest.state() + " parked=" + guest.parked() + " sleeping=" + guest.isSleeping() + " at " + guest.blockPosition());
+        }
         if (t % 5 != 0) return;
         double x, y, z, lx, ly, lz;
-        if (menuStep > 0 && menuFocus != null) {
+        if (menuStep == 5 && guest != null && guest.isAlive()) {
+            Entity w = guest.wagon(level);
+            if (guest.isSleeping()) {
+                // Close-up of the bed
+                x = bedHead.getX() + 3.2; y = bedHead.getY() + 2.4; z = bedHead.getZ() + 3.4;
+                lx = bedHead.getX() + 0.5; ly = bedHead.getY() + 0.3; lz = bedHead.getZ() + 0.8;
+            } else if (guest.parked() && w != null) {
+                // The parked train, with the inn behind it
+                x = (w.getX() + innPos.getX()) / 2 + 7; y = w.getY() + 6; z = (w.getZ() + innPos.getZ()) / 2 + 9;
+                lx = (w.getX() + innPos.getX()) / 2; ly = w.getY() + 0.5; lz = (w.getZ() + innPos.getZ()) / 2;
+            } else {
+                x = guest.getX() + 5; y = guest.getY() + 6; z = guest.getZ() + 9;
+                lx = guest.getX(); ly = guest.getY() + 0.5; lz = guest.getZ();
+            }
+        } else if (menuStep > 0 && menuFocus != null) {
             x = menuFocus.getX() + 3.0; y = menuFocus.getY() + 2.0; z = menuFocus.getZ() + 4.0;
             lx = menuFocus.getX() + 0.5; ly = menuFocus.getY() + 0.5; lz = menuFocus.getZ() + 0.5;
+        } else if (t >= 1740 && t < 1890 && postA != null) {
+            // The relay: the milestone with its pennants, the hitching posts, the second caravan's train parked by a post
+            x = stop.getX() + 15; y = stop.getY() + 7; z = stop.getZ() + 7;
+            lx = stop.getX() + 7; ly = stop.getY() + 0.5; lz = stop.getZ() - 4;
         } else if (t < 60 || master == null || !master.isAlive()) {
             x = stop.getX() + 8; y = stop.getY() + 4; z = stop.getZ() + 9;
             lx = stop.getX() + 14; ly = stop.getY() + 1; lz = stop.getZ();

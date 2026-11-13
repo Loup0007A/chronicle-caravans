@@ -28,7 +28,7 @@
   "msg.chroniclecaravans.stop_next": "Next caravan expected in about %s min.",
   "msg.chroniclecaravans.rep": "Guild: %s · %s/%s xp to the next level",
   "msg.chroniclecaravans.rep_disabled": "Reputation is disabled on this server: every caravan shows its full stock.",
-  "msg.chroniclecaravans.stop_hint": "Tip: use an Emerald Block on the milestone to hire a caravan right away. Hold [W] over the milestone in your inventory for the guide.",
+  "msg.chroniclecaravans.stop_hint": "Tip: use an Emerald Block on the milestone to hire a caravan right away, or a Relay Charter to upgrade it. Hold [W] over the milestone in your inventory for the guide.",
   "msg.chroniclecaravans.hire_cooldown": "The guild needs %s more min before sending another hired caravan.",
   "msg.chroniclecaravans.hired": "A caravan has been hired for %s. It will arrive shortly.",
   "msg.chroniclecaravans.arrived": "The %s has arrived at %s.",
@@ -310,5 +310,17 @@
   "guide.chroniclecaravans.automation.call": "A redstone pulse on a milestone calls a caravan, paid with an emerald block from a chest or barrel beside it.",
   "guide.chroniclecaravans.automation.comparator": "A comparator reads the milestone: 15 while a caravan halts there, 1 to 7 while one is on its way.",
   "guide.chroniclecaravans.automation.post": "The Trading Post deals on its own with halted caravans: it sells what they ask for, then buys what its orders show. Hoppers fill and empty it.",
-  "gui.chroniclecaravans.dock.at": "Stop: %s"
+  "gui.chroniclecaravans.dock.at": "Stop: %s",
+  "block.chroniclecaravans.hitching_post": "Hitching Post",
+  "item.chroniclecaravans.relay_charter": "Relay Charter",
+  "item.chroniclecaravans.milestone.tier": "Relay tier %s",
+  "msg.chroniclecaravans.relay_upgraded": "%s is now a tier %s relay: %s caravan(s) at once with its hitching posts.",
+  "msg.chroniclecaravans.relay_max": "This milestone is already at the highest tier.",
+  "msg.chroniclecaravans.relay_posts": "Needs %s Hitching Post(s) within %s blocks first: one per caravan beyond the first.",
+  "msg.chroniclecaravans.relay_disabled": "Relays are turned off on this server.",
+  "msg.chroniclecaravans.stop_relay": "Relay tier %s: %s caravan(s) at once (%s hitching post(s) nearby).",
+  "msg.chroniclecaravans.post_stop": "Hitching post for %s: %s post(s) around it, tier %s, %s caravan(s) at once.",
+  "msg.chroniclecaravans.post_inn": "Hitching post for %s: caravans park their train here for the night.",
+  "msg.chroniclecaravans.post_alone": "No milestone or inn within %s blocks: this post is not used yet.",
+  "msg.chroniclecaravans.asleep": "The %s is asleep. Come back in the morning."
 }

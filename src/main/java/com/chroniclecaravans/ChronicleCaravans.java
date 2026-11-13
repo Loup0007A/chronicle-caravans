@@ -2,6 +2,7 @@ package com.chroniclecaravans;
 
 import com.chroniclecaravans.block.DockBlock;
 import com.chroniclecaravans.block.DockBlockEntity;
+import com.chroniclecaravans.block.HitchingPostBlock;
 import com.chroniclecaravans.block.InnSignBlock;
 import com.chroniclecaravans.block.TradingPostBlock;
 import com.chroniclecaravans.block.TradingPostBlockEntity;
@@ -27,6 +28,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
@@ -50,7 +52,6 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 //$$ import net.minecraftforge.registries.DeferredRegister;
 //$$ import net.minecraftforge.registries.ForgeRegistries;
 //$$ import net.minecraftforge.registries.RegistryObject;
-//$$ import net.minecraft.world.item.Item;
 //#endif
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -146,6 +147,9 @@ public class ChronicleCaravans {
     public static final DeferredBlock<TradingPostBlock> POST = BLOCKS.registerBlock("trading_post", TradingPostBlock::new, STALL_PROPS);
     public static final DeferredItem<BlockItem> POST_ITEM = ITEMS.registerSimpleBlockItem("trading_post", POST);
     public static final DeferredItem<ParcelItem> PARCEL = ITEMS.registerItem("caravan_parcel", ParcelItem::new, SINGLE);
+    public static final DeferredBlock<HitchingPostBlock> HITCHING_POST = BLOCKS.registerBlock("hitching_post", HitchingPostBlock::new, INN_PROPS);
+    public static final DeferredItem<BlockItem> HITCHING_POST_ITEM = ITEMS.registerSimpleBlockItem("hitching_post", HITCHING_POST);
+    public static final DeferredItem<Item> CHARTER = ITEMS.registerSimpleItem("relay_charter");
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, MODID);
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<DockBlockEntity>> DOCK_BE = BLOCK_ENTITIES.register("loading_dock",
             () -> beType(DockBlockEntity::new, DOCK.get()));
@@ -185,6 +189,9 @@ public class ChronicleCaravans {
     //$$ public static final RegistryObject<TradingPostBlock> POST = BLOCKS.register("trading_post", () -> new TradingPostBlock(stallProps()));
     //$$ public static final RegistryObject<BlockItem> POST_ITEM = ITEMS.register("trading_post", () -> new BlockItem(POST.get(), new Item.Properties()));
     //$$ public static final RegistryObject<ParcelItem> PARCEL = ITEMS.register("caravan_parcel", () -> new ParcelItem(new Item.Properties().stacksTo(1)));
+    //$$ public static final RegistryObject<HitchingPostBlock> HITCHING_POST = BLOCKS.register("hitching_post", () -> new HitchingPostBlock(innProps()));
+    //$$ public static final RegistryObject<BlockItem> HITCHING_POST_ITEM = ITEMS.register("hitching_post", () -> new BlockItem(HITCHING_POST.get(), new Item.Properties()));
+    //$$ public static final RegistryObject<Item> CHARTER = ITEMS.register("relay_charter", () -> new Item(new Item.Properties()));
     //$$ public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, MODID);
     //$$ public static final RegistryObject<BlockEntityType<DockBlockEntity>> DOCK_BE = BLOCK_ENTITIES.register("loading_dock",
     //$$         () -> beType(DockBlockEntity::new, DOCK.get()));
@@ -284,8 +291,12 @@ public class ChronicleCaravans {
             e.accept(INN_SIGN_ITEM.get());
             e.accept(DOCK_ITEM.get());
             e.accept(POST_ITEM.get());
+            e.accept(HITCHING_POST_ITEM.get());
         }
-        if (e.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) e.accept(ATLAS.get());
+        if (e.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
+            e.accept(ATLAS.get());
+            e.accept(CHARTER.get());
+        }
     }
 
     public static ResourceLocation id(String path) {

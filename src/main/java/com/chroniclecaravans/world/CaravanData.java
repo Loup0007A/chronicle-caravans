@@ -60,6 +60,8 @@ public class CaravanData extends SavedData {
         public long lastServed;
         /** Someone paid for a caravan: the first free one comes. */
         public boolean hired;
+        /** Relay tier (relay charters): how many caravans the milestone takes at once, with enough hitching posts. */
+        public int tier = 1;
 
         Stop(BlockPos pos) {
             this.pos = pos;
@@ -131,6 +133,8 @@ public class CaravanData extends SavedData {
     private final Map<BlockPos, List<Parcel>> depots = new LinkedHashMap<>();
     /** Loading docks (checked against the world when used). */
     private final Set<BlockPos> docks = new LinkedHashSet<>();
+    /** Hitching posts: where caravans park their trains (checked against the world when used). */
+    private final Set<BlockPos> posts = new LinkedHashSet<>();
     /** Game time before which no new caravan appears. */
     public long nextSpawn;
 
@@ -331,6 +335,30 @@ public class CaravanData extends SavedData {
         if (docks.remove(pos)) setDirty();
     }
 
+    public Set<BlockPos> posts() {
+        return posts;
+    }
+
+    public void addPost(BlockPos pos) {
+        if (posts.add(pos.immutable())) setDirty();
+    }
+
+    public void removePost(BlockPos pos) {
+        if (posts.remove(pos)) setDirty();
+    }
+
+    /** The hitching posts within {@code range} of {@code center} that are still there (loaded ones only), closest first. */
+    public List<BlockPos> postsNear(net.minecraft.server.level.ServerLevel level, BlockPos center, int range) {
+        List<BlockPos> out = new ArrayList<>();
+        for (BlockPos p : posts) {
+            if (Math.abs(p.getX() - center.getX()) > range || Math.abs(p.getZ() - center.getZ()) > range || Math.abs(p.getY() - center.getY()) > 8) continue;
+            if (level.isLoaded(p) && !level.getBlockState(p).is(com.chroniclecaravans.ChronicleCaravans.HITCHING_POST.get())) continue;
+            out.add(p);
+        }
+        out.sort((a, b) -> Double.compare(a.distSqr(center), b.distSqr(center)));
+        return out;
+    }
+
     public boolean knows(UUID id) {
         return caravans.containsKey(id);
     }
@@ -448,6 +476,7 @@ public class CaravanData extends SavedData {
             s.lastServed = Nbt.getLong(t, "LastServed");
             s.village = Nbt.getBoolean(t, "Village");
             s.hired = Nbt.getBoolean(t, "Hired");
+            s.tier = Math.max(1, Nbt.getInt(t, "Tier"));
             d.stops.put(s.pos, s);
         }
         list = Nbt.getList(tag, "Inns");
@@ -492,6 +521,7 @@ public class CaravanData extends SavedData {
             if (!parcels.isEmpty()) d.depots.put(BlockPos.of(Nbt.getLong(t, "Stop")), parcels);
         }
         for (long l : Nbt.getLongArray(tag, "Docks")) d.docks.add(BlockPos.of(l));
+        for (long l : Nbt.getLongArray(tag, "Posts")) d.posts.add(BlockPos.of(l));
         CompoundTag prof = Nbt.getCompound(tag, "Guild");
         for (String k : Nbt.keys(prof)) {
             try {
@@ -549,6 +579,7 @@ public class CaravanData extends SavedData {
             t.putLong("LastServed", s.lastServed);
             if (s.village) t.putBoolean("Village", true);
             if (s.hired) t.putBoolean("Hired", true);
+            if (s.tier > 1) t.putInt("Tier", s.tier);
             list.add(t);
         }
         tag.put("Stops", list);
@@ -605,6 +636,7 @@ public class CaravanData extends SavedData {
         }
         tag.put("Depots", list);
         tag.putLongArray("Docks", docks.stream().mapToLong(BlockPos::asLong).toArray());
+        tag.putLongArray("Posts", posts.stream().mapToLong(BlockPos::asLong).toArray());
         CompoundTag prof = new CompoundTag();
         profiles.forEach((k, p) -> {
             CompoundTag t = new CompoundTag();
