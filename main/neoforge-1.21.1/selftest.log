@@ -1,0 +1,323 @@
+[32m[08:46:21.638] [main/INFO] [Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeserver, --fml.neoForgeVersion, 21.1.265, --fml.fmlVersion, 4.0.45, --fml.mcVersion, 1.21.1, --fml.neoFormVersion, 20240808.144430, nogui] 
+[m[32m[08:46:21.640] [main/INFO] [Launcher/MODLAUNCHER]: JVM identified as Eclipse Adoptium OpenJDK 64-Bit Server VM 21.0.13+9-LTS 
+[m[32m[08:46:21.641] [main/INFO] [Launcher/MODLAUNCHER]: ModLauncher 11.0.5+main.901c6ea8 starting: java version 21.0.13 by Eclipse Adoptium; OS Linux arch amd64 version 7.0.0-1019-azure 
+[m[32m[08:46:21.714] [main/INFO] [loading.ImmediateWindowHandler/]: ImmediateWindowProvider not loading because launch target is forgeserver 
+[m[32m[08:46:21.744] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=union:/home/runner/work/chronicle-caravans/chronicle-caravans/ci-work/neoforge-1.21.1/srv/libraries/net/fabricmc/sponge-mixin/0.16.4+mixin.0.8.7/sponge-mixin-0.16.4+mixin.0.8.7.jar%2373!/ Service=ModLauncher Env=SERVER 
+[m[32m[08:46:21.935] [main/INFO] [loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "server-1.21.1-20240808.144430-srg.jar" [locator: production server provider +net.neoforged:neoforge:21.1.265:server] 
+[m[32m[08:46:21.951] [main/INFO] [loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "neoforge-21.1.265-universal.jar" [locator: PathBasedLocator[name=neoforge, paths=[libraries/net/neoforged/neoforge/21.1.265/neoforge-21.1.265-universal.jar]], reader: mod manifest] 
+[m[32m[08:46:21.956] [main/INFO] [loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "chroniclecaravans-1.4.1-neoforge-1.21.1.jar" [locator: {mods folder locator at /home/runner/work/chronicle-caravans/chronicle-caravans/ci-work/neoforge-1.21.1/srv/mods}, reader: mod manifest] 
+[m[32m[08:46:22.015] [main/INFO] [loading.moddiscovery.locators.JarInJarDependencyLocator/]: Found 2 dependencies adding them to mods collection 
+[m[32m[08:46:22.015] [main/INFO] [loading.moddiscovery.ModDiscoverer/SCAN]: Found gamelibrary file "mixinextras-neoforge-0.5.5.jar" [parent: neoforge-21.1.265-universal.jar, locator: jarinjar, reader: mod manifest] 
+[m[32m[08:46:22.015] [main/INFO] [loading.moddiscovery.ModDiscoverer/SCAN]: Found library file "net.neoforged.neoforge-coremods-21.1.265.jar" [parent: neoforge-21.1.265-universal.jar, locator: jarinjar, reader: mod manifest] 
+[m[32m[08:46:22.016] [main/INFO] [loading.moddiscovery.ModDiscoverer/]: 
+     Mod List:
+		Name Version (Mod Id)
+
+		Chronicle Caravans 1.4.1 (chroniclecaravans)
+		Minecraft 1.21.1 (minecraft)
+		NeoForge 21.1.265 (neoforge) 
+[m[32m[08:46:22.380] [main/INFO] [LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeserver' with arguments [nogui] 
+[mWARN StatusConsoleListener Advanced terminal features are not available in this environment
+[08:46:23] [main/INFO] [MixinExtras|Service/]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.5).
+[08:46:26] [modloading-worker-0/INFO] [ne.ne.ne.co.NeoForgeMod/NEOFORGE-MOD]: NeoForge mod loading, version 21.1.265, for MC 1.21.1
+[08:46:27] [main/INFO] [mojang/YggdrasilAuthenticationService]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[08:46:27] [main/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/home/runner/work/chronicle-caravans/chronicle-caravans/ci-work/neoforge-1.21.1/srv/libraries/net/minecraft/server/1.21.1-20240808.144430/server-1.21.1-20240808.144430-srg.jar%23118!/assets/.mcassetsroot' uses unexpected schema
+[08:46:27] [main/WARN] [minecraft/VanillaPackResourcesBuilder]: Assets URL 'union:/home/runner/work/chronicle-caravans/chronicle-caravans/ci-work/neoforge-1.21.1/srv/libraries/net/minecraft/server/1.21.1-20240808.144430/server-1.21.1-20240808.144430-srg.jar%23118!/data/.mcassetsroot' uses unexpected schema
+[08:46:27] [main/INFO] [minecraft/Main]: No existing world data, creating new world
+[08:46:28] [main/INFO] [minecraft/RecipeManager]: Loaded 1297 recipes
+[08:46:28] [main/INFO] [minecraft/AdvancementTree]: Loaded 1401 advancements
+[08:46:28] [Server thread/INFO] [minecraft/DedicatedServer]: Starting minecraft server version 1.21.1
+[08:46:28] [Server thread/INFO] [minecraft/DedicatedServer]: Loading properties
+[08:46:28] [Server thread/INFO] [minecraft/DedicatedServer]: Default game type: CREATIVE
+[08:46:28] [Server thread/INFO] [minecraft/MinecraftServer]: Generating keypair
+[08:46:28] [Server thread/INFO] [minecraft/DedicatedServer]: Starting Minecraft server on *:25565
+[08:46:28] [Server thread/INFO] [minecraft/ServerConnectionListener]: Using epoll channel type
+[08:46:28] [Server thread/WARN] [minecraft/DedicatedServer]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[08:46:28] [Server thread/WARN] [minecraft/DedicatedServer]: The server will make no attempt to authenticate usernames. Beware.
+[08:46:28] [Server thread/WARN] [minecraft/DedicatedServer]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[08:46:28] [Server thread/WARN] [minecraft/DedicatedServer]: To change this, set "online-mode" to "true" in the server.properties file.
+[08:46:29] [Server thread/INFO] [minecraft/DedicatedServer]: Preparing level "world"
+[08:46:32] [Server thread/INFO] [minecraft/MinecraftServer]: Preparing start region for dimension minecraft:overworld
+[08:46:32] [Worker-Main-3/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 2%
+[08:46:32] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 2%
+[08:46:33] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 2%
+[08:46:33] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 18%
+[08:46:34] [Worker-Main-1/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 18%
+[08:46:34] [Worker-Main-2/INFO] [minecraft/LoggerChunkProgressListener]: Preparing spawn area: 51%
+[08:46:35] [Server thread/INFO] [minecraft/LoggerChunkProgressListener]: Time elapsed: 3034 ms
+[08:46:35] [Server thread/INFO] [minecraft/DedicatedServer]: Done (6.393s)! For help, type "help"
+[08:46:35] [Server thread/INFO] [ne.ne.ne.se.pe.PermissionAPI/]: Successfully initialized permission handler neoforge:default_handler
+[08:46:38] [Server thread/WARN] [minecraft/MinecraftServer]: Can't keep up! Is the server overloaded? Running 2828ms or 56 ticks behind
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   milestone registered
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   guild level thresholds
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   guild levels add up
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   reputation grows slower (level 6 needs 150 xp)
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a skill needs its parent
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a skill can be learnt
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a second skill can be learnt
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a high skill needs a high level
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   one point per level
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   no more points than levels
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] title of a level 3 trader: Merchant
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   title follows the skills
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   haggler gives a discount
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a broken milestone gives its lantern
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   silk touch keeps the milestone and its schedule
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   kept milestones do not stack
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   breaking forgets the stop
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] schedule after replacing: 12345 (was 12345)
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the schedule survives breaking and placing
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the name survives too
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] village scan added 1 at BlockPos{x=32, y=72, z=-312}
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   village bell registered as a stop
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   village not registered twice
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   arrival point prefers the road
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   caravan spawned
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   caravan registered with the guilds
+[08:46:43] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   caravan master is not knocked back
+[08:46:44] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   road crew hired
+[08:47:13] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] road columns built=33/33 crews left=0
+[08:47:13] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the road crew built the road
+[08:47:13] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the road crew went home
+[08:47:13] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the road is recorded as built
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] state=HALTED distance=4.3 pos=BlockPos{x=36, y=63, z=-256}
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   master alive
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   caravan reached the milestone and halted
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] llamas=2 following=2
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   draft llama and at least one pack llama
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   llamas followed the master
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   wagon exists
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] wagon gap=5.25 yaw=90 y=63.94 master y=63.94
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   wagon hitched at the right distance
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   wagon stayed on the road
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   wagon has the caravan's region
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] wagon pitch=0.0 ground=64
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   wagon slope stays gentle
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   wagon stands on the ground
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   wagon is solid
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the master is not blocked by his own wagon
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   draft llama led by the master
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   train members are moved by the master
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   pack llama tied to the wagon
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   stock has offers (16)
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] offers=16 requests=3 treasures=2 locked=7
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the caravan asks for goods
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the caravan carries treasures
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   some offers need a guild level or a skill
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a basic offer exists
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   buying gives the goods
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   buying takes the price
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   buying uses the stock
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   skills lower the price
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   no emeralds, no deal
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a comparator reads 15 while a caravan halts
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the market has a request and a good to price
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] market: request 1.00 -> 0.64, good 1.00 -> 1.30
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   selling a lot lowers what the caravans pay
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   buying a lot raises the prices
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the market calms down over the days
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the shortage of the day is a requested good
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the surplus of the day is a good of the region
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a shortage pays more
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] freight route to a far stop: 2 legs, first stop BlockPos{x=272, y=64, z=-256}
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   parcels travel over several legs
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the freight fee grows with the legs
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a dock named after a stop sends
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   an unnamed dock receives
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a dock belongs to the closest milestone
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] dock shipped=1 fee=2 emeralds left=1 waiting parcels=1
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the dock hands its goods to the guild
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the dock pays the freight
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   waiting parcels choose the caravan's next stop
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the freight tab shows which parcels leave with this caravan
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the caravan loads the parcel
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a package on the wagon's roof shows the parcel on board
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the parcel is delivered at its stop
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the roof is empty once the parcel is delivered
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the goods land in the receiving dock
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a player's parcel arrives as a parcel
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the parcel holds what was sent
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the caravan has a request and a good for the trading post
+[08:47:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] trading post: sells 16 minecraft:oak_log, orders minecraft:sandstone
+[08:47:19] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   ambush started with several bandits
+[08:47:20] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   second caravan spawned
+[08:47:20] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] dispatch: sent=COAST caravans 2 -> 2
+[08:47:20] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a free caravan is sent to the waiting stop
+[08:47:20] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   no new caravan appears when one is free
+[08:47:20] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the free caravan heads to the stop
+[08:47:20] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] comparator at the waiting stop: 6
+[08:47:20] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a comparator tells that a caravan is on its way
+[08:47:20] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   inn registered
+[08:47:20] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   an inn with a bed is open
+[08:47:21] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] hopper under the receiving dock holds 8 items
+[08:47:21] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a hopper empties the receiving dock
+[08:47:23] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] bandits left=4
+[08:47:23] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] trading post: deals=2 status=5 output 4 emeralds, 32 goods, comparator 1
+[08:47:23] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the trading post sells what the caravan asks for
+[08:47:23] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the trading post buys what its orders ask for
+[08:47:23] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a comparator reads the trading post
+[08:47:25] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=0 state=TRAVELING at (45.9 64.0 -243.5) status, target BlockPos{x=24, y=64, z=-248} failed=false | goals: TravelGoal nav done=false
+[08:47:25] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a redstone signal pauses the trading post
+[08:47:25] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=0 state=TRAVELING at (45.9 64.0 -243.5) strip (29.5, 64.0, -244.5) <- (42.8, 64.0, -244.5) post null | goals: TravelGoal nav done=false
+[08:47:25] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=0 state=TRAVELING at (45.9 64.0 -243.5) phase -> 1 | goals: TravelGoal nav done=false
+[08:47:26] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=1 state=TRAVELING at (44.2 64.0 -244.0) phase -> 2 | goals: TravelGoal nav done=true
+[08:47:28] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] guards=2 close=2
+[08:47:28] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   escort guards hired
+[08:47:28] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   guards stay with the caravan
+[08:47:30] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=2 state=TRAVELING at (34.7 64.0 -244.2) status, target BlockPos{x=24, y=64, z=-248} failed=false | goals: TravelGoal nav done=true
+[08:47:31] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=2 state=TRAVELING at (32.8 64.0 -244.3) parking towards (29.5, 64.0, -244.5) | goals: TravelGoal nav done=true
+[08:47:32] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] second caravan: TRAVELING target=BlockPos{x=24, y=64, z=-248} inn=true serves=BlockPos{x=20, y=64, z=-242}
+[08:47:32] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   at night a caravan heads to the inn
+[08:47:32] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=2 state=TRAVELING at (30.0 64.0 -244.4) parks the train, on the strip: true | goals: TravelGoal nav done=true
+[08:47:32] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=2 state=TRAVELING at (30.0 64.0 -244.4) phase -> 3 | goals: TravelGoal nav done=true
+[08:47:32] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] night dispatch to B: COAST caravans 2 -> 2
+[08:47:32] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a caravan resting at the inn still serves its stop: no other one comes
+[08:47:32] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] night dispatch to C: none caravans 2 -> 2
+[08:47:32] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   no new caravan sets out at night
+[08:47:32] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   no caravan expected: the comparator reads 0
+[08:47:32] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] redstone call: powered=true emerald blocks left=1 hired=true
+[08:47:32] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the milestone notices a redstone signal
+[08:47:32] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a redstone pulse calls a caravan, paid from the chest
+[08:47:33] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=3 state=LODGING at (27.9 64.0 -246.7) arrived on foot | goals: FootGoal nav done=true
+[08:47:33] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=3 state=LODGING at (27.9 64.0 -246.7) phase -> 4 | goals: FootGoal nav done=true
+[08:47:35] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=4 state=LODGING at (26.5 64.6 -248.5) status, target BlockPos{x=24, y=64, z=-248} failed=false | goals: FootGoal nav done=true
+[08:47:38] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=4 state=LODGING at (26.5 64.6 -248.5) parked, foot BlockPos{x=26, y=64, z=-249} bed null sleeping true | goals: FootGoal nav done=true
+[08:47:39] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] storm caravan spawned=true thundering=true
+[08:47:40] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=4 state=LODGING at (26.5 64.6 -248.5) status, target BlockPos{x=24, y=64, z=-248} failed=false | goals: FootGoal nav done=true
+[08:47:43] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=4 state=LODGING at (26.5 64.6 -248.5) parked, foot BlockPos{x=26, y=64, z=-249} bed null sleeping true | goals: FootGoal nav done=true
+[08:47:45] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=4 state=LODGING at (26.5 64.6 -248.5) status, target BlockPos{x=24, y=64, z=-248} failed=false | goals: FootGoal nav done=true
+[08:47:45] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] storm: thundering=true caravan CAMPING reason=1 campfire=BlockPos{x=71, y=64, z=-252} speed=0.433
+[08:47:45] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a caravan caught in a thunderstorm makes camp
+[08:47:45] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the camp has a campfire
+[08:47:48] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=4 state=LODGING at (26.5 64.6 -248.5) parked, foot BlockPos{x=26, y=64, z=-249} bed null sleeping true | goals: FootGoal nav done=true
+[08:47:50] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=4 state=LODGING at (26.5 64.6 -248.5) status, target BlockPos{x=24, y=64, z=-248} failed=false | goals: FootGoal nav done=true
+[08:47:51] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] after the storm: TRAVELING thundering=false
+[08:47:51] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the caravan breaks camp after the storm
+[08:47:51] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the campfire is put out
+[08:47:53] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=4 state=LODGING at (26.5 64.6 -248.5) parked, foot BlockPos{x=26, y=64, z=-249} bed null sleeping true | goals: FootGoal nav done=true
+[08:47:55] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=4 state=LODGING at (26.5 64.6 -248.5) status, target BlockPos{x=24, y=64, z=-248} failed=false | goals: FootGoal nav done=true
+[08:47:56] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] inn: state=LODGING parked=true sleeping=true bed=BlockPos{x=26, y=64, z=-249} post=null head=(30.03787186891733, 64.0, -244.43417007776944) master=BlockPos{x=26, y=64, z=-249} wagon=BlockPos{x=35, y=64, z=-245} on Block{minecraft:grass_block}
+[08:47:56] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the caravan lodges at the inn
+[08:47:56] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   its train is parked for the night
+[08:47:56] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the wagon is parked off the road, near the inn
+[08:47:56] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the caravan master sleeps in the inn's bed
+[08:47:56] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the bed is taken
+[08:47:56] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the train waits where it is parked
+[08:47:56] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a relay charter needs a hitching post first
+[08:47:56] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   hitching post registered
+[08:47:56] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a relay charter raises the milestone to tier 2
+[08:47:56] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   a tier 2 relay takes two caravans at once
+[08:47:56] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   tier 3 needs a second hitching post
+[08:47:56] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   with two posts, tier 3: three caravans at once
+[08:47:56] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the milestone shows its tier
+[08:47:56] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   Silk Touch keeps the tier
+[08:47:56] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the relay has room beside the halted caravan
+[08:47:58] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1a17a55f park=0 state=TRAVELING at (56.5 63.9 -255.5) strip (38.5, 64.0, -260.5) <- (49.6, 64.0, -260.5) post BlockPos{x=38, y=64, z=-262} | goals: TravelGoal nav done=false
+[08:47:58] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1a17a55f park=0 state=TRAVELING at (56.5 63.9 -255.5) phase -> 1 | goals: TravelGoal nav done=false
+[08:47:58] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=4 state=LODGING at (26.5 64.6 -248.5) parked, foot BlockPos{x=26, y=64, z=-249} bed null sleeping true | goals: FootGoal nav done=true
+[08:48:00] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=4 state=TRAVELING at (27.5 64.0 -248.5) status, target BlockPos{x=20, y=64, z=-242} failed=false | goals: FootGoal nav done=true
+[08:48:00] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=4 state=TRAVELING at (27.5 64.0 -248.5) phase -> 5 | goals: nav done=true
+[08:48:01] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1a17a55f park=1 state=TRAVELING at (50.6 64.0 -259.4) phase -> 2 | goals: TravelGoal nav done=true
+[08:48:01] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1a17a55f park=2 state=TRAVELING at (49.9 64.0 -259.6) status, target BlockPos{x=32, y=64, z=-256} failed=false | goals: TravelGoal nav done=true
+[08:48:02] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=5 state=TRAVELING at (29.9 64.0 -244.9) arrived on foot | goals: FootGoal nav done=true
+[08:48:02] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1d3caa67 park=5 state=TRAVELING at (29.9 64.0 -244.9) phase -> 0 | goals: FootGoal nav done=true
+[08:48:06] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1a17a55f park=2 state=TRAVELING at (39.3 64.0 -260.4) parking towards (38.5, 64.0, -260.5) | goals: TravelGoal nav done=true
+[08:48:06] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1a17a55f park=2 state=TRAVELING at (39.1 64.0 -260.5) parks the train, on the strip: true | goals: TravelGoal nav done=true
+[08:48:06] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1a17a55f park=2 state=TRAVELING at (39.1 64.0 -260.5) phase -> 3 | goals: TravelGoal nav done=true
+[08:48:06] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1a17a55f park=3 state=HALTED at (38.7 64.0 -260.4) status, target BlockPos{x=32, y=64, z=-256} failed=false | goals: FootGoal nav done=false
+[08:48:09] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1a17a55f park=3 state=HALTED at (35.0 63.9 -256.3) arrived on foot | goals: FootGoal nav done=true
+[08:48:09] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1a17a55f park=3 state=HALTED at (35.0 63.9 -256.3) phase -> 4 | goals: FootGoal nav done=true
+[08:48:11] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1a17a55f park=4 state=HALTED at (34.9 63.9 -256.2) status, target BlockPos{x=32, y=64, z=-256} failed=false | goals: RandomLookAroundGoal nav done=true
+[08:48:13] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] morning: state=HALTED parked=false sleeping=false master=BlockPos{x=24, y=64, z=-243} wagon=BlockPos{x=29, y=64, z=-245}
+[08:48:13] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the master wakes up in the morning
+[08:48:13] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   he goes back to his train and leaves the inn
+[08:48:13] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the train follows him again
+[08:48:13] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the bed is free again
+[08:48:14] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1a17a55f park=4 state=HALTED at (34.9 63.9 -256.2) parked, foot BlockPos{x=34, y=64, z=-256} bed null sleeping false | goals: RandomLookAroundGoal nav done=true
+[08:48:14] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] relay: visitor state=HALTED parked=true post=BlockPos{x=38, y=64, z=-262} head=(39.06769543089075, 64.0, -260.45356538505223) master=BlockPos{x=34, y=63, z=-257} wagon=BlockPos{x=44, y=63, z=-261} draft tied to entity.minecraft.leash_knot
+[08:48:14] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the second caravan parks at a hitching post (the main spot is taken)
+[08:48:14] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   it halts at the relay too
+[08:48:14] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   its master walks to the milestone
+[08:48:14] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   its wagon waits by the post
+[08:48:14] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the draft llama is tied to the post
+[08:48:14] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the relay serves two caravans at once
+[08:48:14] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1a17a55f park=4 state=TRAVELING at (34.9 63.9 -256.2) phase -> 5 | goals: nav done=true
+[08:48:16] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1a17a55f park=5 state=TRAVELING at (38.2 64.0 -259.3) status, target BlockPos{x=20, y=64, z=-265} failed=false | goals: FootGoal nav done=true
+[08:48:17] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1a17a55f park=5 state=TRAVELING at (38.8 64.0 -260.1) arrived on foot | goals: FootGoal nav done=true
+[08:48:17] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 1a17a55f park=5 state=TRAVELING at (38.8 64.0 -260.1) phase -> 0 | goals: FootGoal nav done=true
+[08:48:23] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] relay: after the halt state=TRAVELING parked=false alive=true knots=0
+[08:48:23] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the caravan goes back to its train when it leaves
+[08:48:23] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   its train follows it again
+[08:48:23] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   the lead knot is taken off the post
+[08:48:24] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] RESULT: OK
+[08:48:24] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] READY
+[08:49:03] [Server thread/INFO] [minecraft/PlayerList]: Tester[/127.0.0.1:47612] logged in with entity id 316 at (33.5, 64.0, -264.5)
+[08:49:03] [Server thread/INFO] [minecraft/MinecraftServer]: Tester joined the game
+[08:49:03] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] viewer joined at tick 2911
+[08:49:04] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   recipe unlock advancement loaded
+[08:49:04] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   new player has not unlocked the recipes yet
+[08:49:04] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   placing a milestone unlocks the recipes
+[08:49:04] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   recipe caravan_atlas unlocked
+[08:49:04] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   recipe inn_sign unlocked
+[08:49:04] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   recipe loading_dock unlocked
+[08:49:04] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   recipe trading_post unlocked
+[08:49:04] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   recipe hitching_post unlocked
+[08:49:04] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] ok   recipe relay_charter unlocked
+[08:49:41] [Server thread/WARN] [minecraft/ServerGamePacketListenerImpl]: Tester moved too quickly! 0.9500000000000028,5.0,8.800000000000011
+[08:50:08] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] a second caravan comes to the relay
+[08:50:10] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=0 state=TRAVELING at (56.5 63.9 -255.5) strip (38.5, 64.0, -260.5) <- (49.6, 64.0, -260.5) post BlockPos{x=38, y=64, z=-262} | goals: TravelGoal nav done=false
+[08:50:10] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=0 state=TRAVELING at (56.5 63.9 -255.5) phase -> 1 | goals: TravelGoal nav done=false
+[08:50:13] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=1 state=TRAVELING at (50.6 64.0 -259.4) phase -> 2 | goals: TravelGoal nav done=true
+[08:50:13] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=2 state=TRAVELING at (49.9 64.0 -259.6) status, target BlockPos{x=32, y=64, z=-256} failed=false | goals: TravelGoal nav done=true
+[08:50:18] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=2 state=TRAVELING at (39.3 64.0 -260.4) parking towards (38.5, 64.0, -260.5) | goals: TravelGoal nav done=true
+[08:50:18] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=2 state=TRAVELING at (39.1 64.0 -260.5) parks the train, on the strip: true | goals: TravelGoal nav done=true
+[08:50:18] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=2 state=TRAVELING at (39.1 64.0 -260.5) phase -> 3 | goals: TravelGoal nav done=true
+[08:50:18] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=3 state=HALTED at (38.7 64.0 -260.4) status, target BlockPos{x=32, y=64, z=-256} failed=false | goals: FootGoal nav done=false
+[08:50:21] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=3 state=HALTED at (35.0 63.9 -256.3) arrived on foot | goals: FootGoal nav done=true
+[08:50:21] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=3 state=HALTED at (35.0 63.9 -256.3) phase -> 4 | goals: FootGoal nav done=true
+[08:50:23] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=4 state=HALTED at (34.9 63.9 -256.2) status, target BlockPos{x=32, y=64, z=-256} failed=false | goals: nav done=true
+[08:50:26] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=4 state=HALTED at (34.9 63.9 -256.2) parked, foot BlockPos{x=34, y=64, z=-256} bed null sleeping false | goals: nav done=true
+[08:50:28] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=4 state=HALTED at (34.9 63.9 -256.2) status, target BlockPos{x=32, y=64, z=-256} failed=false | goals: nav done=true
+[08:50:30] [Server thread/WARN] [minecraft/ServerGamePacketListenerImpl]: Tester moved too quickly! 7.939620620033644,-1.0,-7.0
+[08:50:31] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=4 state=HALTED at (34.9 63.9 -256.2) parked, foot BlockPos{x=34, y=64, z=-256} bed null sleeping false | goals: nav done=true
+[08:50:33] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=4 state=HALTED at (34.9 63.9 -256.2) status, target BlockPos{x=32, y=64, z=-256} failed=false | goals: nav done=true
+[08:50:36] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=4 state=HALTED at (34.9 63.9 -256.2) parked, foot BlockPos{x=34, y=64, z=-256} bed null sleeping false | goals: RandomLookAroundGoal nav done=true
+[08:50:38] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=4 state=HALTED at (34.9 63.9 -256.2) status, target BlockPos{x=32, y=64, z=-256} failed=false | goals: nav done=true
+[08:50:38] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] opening the caravan interface for the viewer
+[08:50:41] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=4 state=HALTED at (34.9 63.9 -256.2) parked, foot BlockPos{x=34, y=64, z=-256} bed null sleeping false | goals: nav done=true
+[08:50:43] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=4 state=HALTED at (34.9 63.9 -256.2) status, target BlockPos{x=32, y=64, z=-256} failed=false | goals: nav done=true
+[08:50:44] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] opening the atlas for the viewer
+[08:50:46] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=4 state=HALTED at (34.9 63.9 -256.2) parked, foot BlockPos{x=34, y=64, z=-256} bed null sleeping false | goals: nav done=true
+[08:50:47] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] opening the loading dock for the viewer
+[08:50:48] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 4941f988 park=4 state=HALTED at (34.9 63.9 -256.2) status, target BlockPos{x=32, y=64, z=-256} failed=false | goals: nav done=true
+[08:50:49] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] opening the trading post for the viewer
+[08:50:50] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] night falls on the inn for the viewer
+[08:50:50] [Server thread/WARN] [minecraft/ServerGamePacketListenerImpl]: Tester moved too quickly! 5.5,4.0,21.5
+[08:50:53] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] inn guest: state=TRAVELING parked=false sleeping=false at BlockPos{x=38, y=64, z=-243}
+[08:50:55] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=0 state=TRAVELING at (38.5 64.0 -242.5) status, target BlockPos{x=24, y=64, z=-248} failed=false | goals: nav done=true
+[08:50:55] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=0 state=TRAVELING at (38.5 64.0 -242.5) strip (27.5, 64.0, -261.5) <- (27.5, 64.0, -250.4) post BlockPos{x=26, y=64, z=-262} | goals: TravelGoal nav done=true
+[08:50:55] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=0 state=TRAVELING at (38.5 64.0 -242.5) phase -> 1 | goals: TravelGoal nav done=true
+[08:50:58] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] inn guest: state=TRAVELING parked=false sleeping=false at BlockPos{x=34, y=64, z=-247}
+[08:51:00] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=1 state=TRAVELING at (30.5 64.0 -249.3) status, target BlockPos{x=24, y=64, z=-248} failed=false | goals: TravelGoal nav done=false
+[08:51:00] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=1 state=TRAVELING at (30.5 64.0 -249.3) parking towards (27.5, 64.0, -250.4) | goals: TravelGoal nav done=false
+[08:51:01] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=1 state=TRAVELING at (28.9 64.0 -249.9) phase -> 2 | goals: TravelGoal nav done=true
+[08:51:03] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] inn guest: state=TRAVELING parked=false sleeping=false at BlockPos{x=28, y=64, z=-255}
+[08:51:05] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=2 state=TRAVELING at (27.7 64.0 -259.4) status, target BlockPos{x=24, y=64, z=-248} failed=false | goals: TravelGoal nav done=true
+[08:51:06] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=2 state=TRAVELING at (27.6 64.0 -260.9) parks the train, on the strip: true | goals: TravelGoal nav done=true
+[08:51:06] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=2 state=TRAVELING at (27.6 64.0 -260.9) phase -> 3 | goals: TravelGoal nav done=true
+[08:51:08] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] inn guest: state=LODGING parked=true sleeping=false at BlockPos{x=26, y=64, z=-260}
+[08:51:10] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=3 state=LODGING at (26.8 64.0 -258.4) status, target BlockPos{x=24, y=64, z=-248} failed=false | goals: FootGoal nav done=false
+[08:51:11] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=3 state=LODGING at (26.8 64.0 -258.0) parked, foot BlockPos{x=26, y=64, z=-249} bed (26.5, 64.0, -249.5) sleeping false | goals: FootGoal nav done=false
+[08:51:13] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] inn guest: state=LODGING parked=true sleeping=false at BlockPos{x=27, y=64, z=-255}
+[08:51:15] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=3 state=LODGING at (27.3 64.0 -253.1) status, target BlockPos{x=24, y=64, z=-248} failed=false | goals: FootGoal nav done=false
+[08:51:16] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=3 state=LODGING at (27.3 64.0 -253.1) parked, foot BlockPos{x=26, y=64, z=-249} bed (26.5, 64.0, -249.5) sleeping false | goals: FootGoal nav done=false
+[08:51:18] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] inn guest: state=LODGING parked=true sleeping=false at BlockPos{x=27, y=64, z=-254}
+[08:51:19] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=3 state=LODGING at (27.3 64.0 -253.1) lost his way to (26.5, 64.0, -249.5) | goals: FootGoal nav done=false
+[08:51:19] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=3 state=LODGING at (26.5 64.0 -249.5) arrived on foot | goals: FootGoal nav done=false
+[08:51:19] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=3 state=LODGING at (26.5 64.0 -249.5) phase -> 4 | goals: FootGoal nav done=true
+[08:51:20] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=4 state=LODGING at (26.5 64.6 -248.5) status, target BlockPos{x=24, y=64, z=-248} failed=false | goals: FootGoal nav done=true
+[08:51:23] [Server thread/INFO] [ChronicleCaravans/]: [SELFTEST] inn guest: state=LODGING parked=true sleeping=true at BlockPos{x=26, y=64, z=-249}
+[08:51:23] [Server thread/INFO] [minecraft/ServerGamePacketListenerImpl]: Tester lost connection: Disconnected
+[08:51:23] [Server thread/INFO] [minecraft/MinecraftServer]: Tester left the game
+[08:51:24] [Server thread/INFO] [ChronicleCaravans/]: [PARK] 9ef478b1 park=4 state=LODGING at (26.5 64.6 -248.5) parked, foot BlockPos{x=26, y=64, z=-249} bed null sleeping true | goals: FootGoal nav done=true
+WARN StatusConsoleListener Unable to register Log4j shutdown hook because JVM is shutting down. Using SimpleLogger
