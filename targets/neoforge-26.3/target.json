@@ -145,6 +145,30 @@
     [
       "Blocks.RED_BED",
       "Blocks.BED.red()"
+    ],
+    [
+      "Blocks.WHITE_BED",
+      "Blocks.BED.white()"
+    ],
+    [
+      "Blocks.BLUE_BED",
+      "Blocks.BED.blue()"
+    ],
+    [
+      "Items.RED_WOOL",
+      "Items.WOOL.red()"
+    ],
+    [
+      "Blocks.RED_WOOL",
+      "Blocks.WOOL.red()"
+    ],
+    [
+      "Blocks.WHITE_WOOL",
+      "Blocks.WOOL.white()"
+    ],
+    [
+      "Blocks.RED_CARPET",
+      "Blocks.CARPET.red()"
     ]
   ]
 }

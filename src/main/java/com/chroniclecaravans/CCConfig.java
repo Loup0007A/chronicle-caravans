@@ -100,6 +100,21 @@ public final class CCConfig {
             .comment("Caravans park their train (off the road, or at a hitching post) before going to bed at an inn",
                     "or to an upgraded milestone that already has a caravan.")
             .define("parking", true);
+    public static final ModConfigSpec.BooleanValue TOWNS = B
+            .comment("Merchant towns: a prosperous relay is founded as a hamlet and grows into a trade city, building by building.")
+            .define("merchantTowns", true);
+    public static final ModConfigSpec.IntValue TOWN_TIER = B
+            .comment("Relay tier a milestone needs before a town can be founded around it.")
+            .defineInRange("townMinimumTier", 2, 1, 4);
+    public static final ModConfigSpec.DoubleValue TOWN_GROWTH = B
+            .comment("Prosperity needed for each town level, as a multiple of the default (60, 250, 600, 1200).")
+            .defineInRange("townProsperityScale", 1.0, 0.05, 20.0);
+    public static final ModConfigSpec.IntValue TOWN_BUILD_SPEED = B
+            .comment("Blocks the town's builders lay per second.")
+            .defineInRange("townBuildSpeed", 8, 1, 400);
+    public static final ModConfigSpec.BooleanValue TOWN_VILLAGERS = B
+            .comment("Villagers move into the town's houses.")
+            .define("townVillagers", true);
 
     public static final ModConfigSpec SPEC = B.build();
 

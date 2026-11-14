@@ -40,6 +40,9 @@ public class RoadBuilder extends PathfinderMob {
     private double progress = 2.0;
     private UUID owner;
     private boolean paved, fast;
+    /** A town's building site (the plot's corner) instead of a road: the builder works there until it stands. */
+    private BlockPos site;
+    private int idle;
 
     public RoadBuilder(EntityType<? extends RoadBuilder> type, Level level) {
         super(type, level);
@@ -83,6 +86,48 @@ public class RoadBuilder extends PathfinderMob {
         return to;
     }
 
+    /** A builder for a town's building: it waits at the door and turns to each block being laid. */
+    public static RoadBuilder atSite(ServerLevel level, BlockPos door, BlockPos site) {
+        RoadBuilder b = Compat.create(ChronicleCaravans.BUILDER.get(), level);
+        if (b == null) return null;
+        b.site = site.immutable();
+        b.from = door.immutable();
+        b.to = door.immutable();
+        b.moveTo(door.getX() + 0.5, door.getY(), door.getZ() + 0.5, 0F, 0F);
+        b.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_AXE));
+        b.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+        for (EquipmentSlot s : EquipmentSlot.values()) b.setDropChance(s, 0F);
+        level.addFreshEntity(b);
+        level.sendParticles(ParticleTypes.POOF, b.getX(), b.getY() + 1, b.getZ(), 8, 0.3, 0.5, 0.3, 0.02);
+        return b;
+    }
+
+    public boolean atSite() {
+        return site != null;
+    }
+
+    /** The town just laid a block there: the builder stands nearby (on the ground of the plot) and works at it. */
+    public void workAt(BlockPos pos) {
+        idle = 0;
+        double dx = pos.getX() + 0.5 - getX(), dz = pos.getZ() + 0.5 - getZ();
+        if (dx * dx + dz * dz > 36) {
+            // Walks round the site: a few blocks from the work, at the door's level
+            double d = Math.sqrt(dx * dx + dz * dz);
+            setPos(pos.getX() + 0.5 - dx / d * 3, from.getY(), pos.getZ() + 0.5 - dz / d * 3);
+        }
+        float yaw = (float) (Math.toDegrees(Math.atan2(pos.getZ() + 0.5 - getZ(), pos.getX() + 0.5 - getX())) - 90.0);
+        setYRot(yaw);
+        setYHeadRot(yaw);
+        yBodyRot = yaw;
+    }
+
+    /** The building stands: the builder leaves. */
+    public void leaveSite(ServerLevel level) {
+        level.sendParticles(ParticleTypes.POOF, getX(), getY() + 1, getZ(), 12, 0.3, 0.5, 0.3, 0.02);
+        level.playSound(null, blockPosition(), SoundEvents.VILLAGER_WORK_MASON, SoundSource.NEUTRAL, 1.0F, 1.0F);
+        discard();
+    }
+
     /** Sends a crew from {@code from} to {@code to}. */
     public static RoadBuilder start(ServerLevel level, BlockPos from, BlockPos to, UUID owner, boolean paved, boolean fast) {
         RoadBuilder b = Compat.create(ChronicleCaravans.BUILDER.get(), level);
@@ -108,6 +153,19 @@ public class RoadBuilder extends PathfinderMob {
         super.aiStep();
         if (!(level() instanceof ServerLevel level)) return;
         setDeltaMovement(Vec3.ZERO);
+        if (site != null) {
+            // At a town's site: hammering away, gone when the town no longer needs it
+            if (tickCount % 8 == 0) {
+                //#if mc26
+                //$$ swing(InteractionHand.MAIN_HAND, net.minecraft.world.item.component.SwingAnimation.DEFAULT, true);
+                //#else
+                swing(InteractionHand.MAIN_HAND, true);
+                //#endif
+                if (tickCount % 24 == 0) level.playSound(null, blockPosition(), SoundEvents.WOOD_PLACE, SoundSource.NEUTRAL, 0.6F, 0.9F + random.nextFloat() * 0.2F);
+            }
+            if (++idle > 2400) leaveSite(level);
+            return;
+        }
         if (tickCount % (fast ? 4 : 8) != 0) return;
         double len = RoadWorks.length(from, to);
         if (len < 1 || progress >= len - 2) {
@@ -199,6 +257,7 @@ public class RoadBuilder extends PathfinderMob {
         if (owner != null) Nbt.putUUID(tag, "Owner", owner);
         tag.putBoolean("Paved", paved);
         tag.putBoolean("Fast", fast);
+        if (site != null) tag.putLong("Site", site.asLong());
     }
 
     private void readJob(CompoundTag tag) {
@@ -208,5 +267,6 @@ public class RoadBuilder extends PathfinderMob {
         owner = Nbt.hasUUID(tag, "Owner") ? Nbt.getUUID(tag, "Owner") : null;
         paved = Nbt.getBoolean(tag, "Paved");
         fast = Nbt.getBoolean(tag, "Fast");
+        site = tag.contains("Site") ? BlockPos.of(Nbt.getLong(tag, "Site")) : null;
     }
 }

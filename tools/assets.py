@@ -153,6 +153,8 @@ def skin(name, hair, tunic, trim, pants, boots, hat=None):
 
 skin('caravan_guard', hair=(70, 46, 26), tunic=(52, 74, 120), trim=(200, 170, 70), pants=(70, 60, 50), boots=(50, 34, 20))
 skin('road_builder', hair=(120, 80, 40), tunic=(176, 96, 40), trim=(120, 64, 26), pants=(60, 80, 130), boots=(80, 52, 28), hat=(222, 184, 60))
+# The mayor of a merchant town: a burgundy coat with gold trim, grey hair, a dark hat
+skin('town_mayor', hair=(170, 168, 160), tunic=(122, 28, 40), trim=(214, 176, 60), pants=(44, 40, 52), boots=(34, 26, 22), hat=(40, 34, 44))
 
 # ------------------------------------------------------------------ inn sign models
 

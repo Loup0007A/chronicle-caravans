@@ -19,6 +19,7 @@ public final class ClientSetup {
         e.registerEntityRenderer(ChronicleCaravans.WAGON.get(), WagonRenderer::new);
         e.registerEntityRenderer(ChronicleCaravans.GUARD.get(), ctx -> new HelperRenderer<>(ctx, "caravan_guard"));
         e.registerEntityRenderer(ChronicleCaravans.BUILDER.get(), ctx -> new HelperRenderer<>(ctx, "road_builder"));
+        e.registerEntityRenderer(ChronicleCaravans.MAYOR.get(), ctx -> new HelperRenderer<>(ctx, "town_mayor"));
     }
 
     @SubscribeEvent
@@ -35,6 +36,7 @@ public final class ClientSetup {
         e.register(ChronicleCaravans.DOCK_MENU.get(), com.chroniclecaravans.client.screen.DockScreen::new);
         e.register(ChronicleCaravans.POST_MENU.get(), com.chroniclecaravans.client.screen.TradingPostScreen::new);
         e.register(ChronicleCaravans.PARCEL_MENU.get(), com.chroniclecaravans.client.screen.ParcelScreen::new);
+        e.register(ChronicleCaravans.TOWN_MENU.get(), com.chroniclecaravans.client.screen.TownScreen::new);
     }
     //#else
     //$$ @SubscribeEvent
@@ -45,6 +47,7 @@ public final class ClientSetup {
     //$$         net.minecraft.client.gui.screens.MenuScreens.register(ChronicleCaravans.DOCK_MENU.get(), com.chroniclecaravans.client.screen.DockScreen::new);
     //$$         net.minecraft.client.gui.screens.MenuScreens.register(ChronicleCaravans.POST_MENU.get(), com.chroniclecaravans.client.screen.TradingPostScreen::new);
     //$$         net.minecraft.client.gui.screens.MenuScreens.register(ChronicleCaravans.PARCEL_MENU.get(), com.chroniclecaravans.client.screen.ParcelScreen::new);
+    //$$         net.minecraft.client.gui.screens.MenuScreens.register(ChronicleCaravans.TOWN_MENU.get(), com.chroniclecaravans.client.screen.TownScreen::new);
     //$$     });
     //$$ }
     //#endif

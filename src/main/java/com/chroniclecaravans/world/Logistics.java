@@ -258,6 +258,7 @@ public final class Logistics {
             }
         }
         data.setDirty();
+        if (delivered > 0) Towns.prosper(level, stop.pos, 2 * delivered);
         return delivered;
     }
 

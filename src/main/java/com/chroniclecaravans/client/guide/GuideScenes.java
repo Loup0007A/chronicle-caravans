@@ -5,12 +5,15 @@ import java.util.List;
 import com.chroniclecaravans.ChronicleCaravans;
 import com.chroniclecaravans.Region;
 import com.chroniclecaravans.block.DockBlock;
+import com.chroniclecaravans.block.MilestoneBlock;
 import com.chroniclecaravans.block.TradingPostBlock;
 import com.chroniclecaravans.Guild;
 import com.chroniclecaravans.client.guide.GuideScene.Actor;
 import com.chroniclecaravans.entity.CaravanWagon;
+import com.chroniclecaravans.world.Buildings;
 import com.chroniclecaravans.platform.Compat;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -23,7 +26,10 @@ import net.minecraft.world.entity.monster.Pillager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.ComparatorBlock;
 import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.LeverBlock;
@@ -41,7 +47,7 @@ public final class GuideScenes {
     private static final BlockState PATH = Blocks.DIRT_PATH.defaultBlockState();
 
     public static List<GuideScene> all() {
-        return List.of(milestone(), route(), caravan(), villages(), ambush(), hire(), inn(), services(), weather(), parcel(), freight(), automation());
+        return List.of(milestone(), route(), caravan(), villages(), ambush(), hire(), inn(), services(), weather(), parcel(), freight(), automation(), town());
     }
 
     private static BlockState milestoneBlock() {
@@ -391,6 +397,77 @@ public final class GuideScenes {
         s.item(new ItemStack(Items.BAMBOO, 8), 280, 296, 420, master, new Vec3(9.75, 1.25, 3.6));
         s.text(258, 416, "post", GuideScene.at(9.5, 1.9, 3.5)).icons(new ItemStack(ChronicleCaravans.POST_ITEM.get()), new ItemStack(Items.HOPPER))
                 .highlight(new AABB(9, 1, 3, 10, 3, 4));
+        return s;
+    }
+
+    // ---------------------------------------------------------------- 13. merchant towns
+
+    static Entity mayor(Level level) {
+        Entity e = Compat.create(ChronicleCaravans.MAYOR.get(), level);
+        if (e instanceof net.minecraft.world.entity.Mob m) m.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.WRITABLE_BOOK));
+        return e;
+    }
+
+    /** A town building rising block by block between two ticks (as the builders lay it, without the beds). */
+    static void rise(GuideScene s, Buildings.Type type, BlockPos origin, int variant, int from, int to) {
+        List<Buildings.Op> ops = new java.util.ArrayList<>();
+        for (Buildings.Op op : Buildings.ops(type, Buildings.Palette.OAK, Rotation.NONE, origin, variant)) {
+            if (op.kind() != Buildings.BUILD || op.state().isAir()) continue;
+            if (op.state().getBlock() instanceof BedBlock || op.state().getBlock() instanceof ChestBlock) continue;
+            ops.add(op);
+        }
+        for (int i = 0; i < ops.size(); i++) {
+            Buildings.Op op = ops.get(i);
+            s.block(op.pos().getX(), op.pos().getY(), op.pos().getZ(), op.state(), from + i * (to - from) / Math.max(1, ops.size()));
+        }
+    }
+
+    static GuideScene town() {
+        GuideScene s = new GuideScene("town", 700, 17, 13, new ItemStack(Items.BELL));
+        s.plate(GRASS);
+        for (int x = 0; x < 17; x++) s.ground(x, 11, PATH);
+        s.block(4, 1, 10, milestoneBlock().setValue(MilestoneBlock.TIER, 2), 6);
+        s.block(1, 1, 9, ChronicleCaravans.HITCHING_POST.get().defaultBlockState(), 10);
+        ItemStack parcel = new ItemStack(ChronicleCaravans.PARCEL.get());
+        // A relay of tier 2 prospers with each caravan, deal and parcel
+        Actor[] t = train(s, 11.5, Region.WOODS, 1, 0, -1.0, 80, 7.2, 316, 7.2, 400, 22.0);
+        s.text(20, 124, "prosper", GuideScene.at(4.5, 2.3, 10.5))
+                .icons(new ItemStack(Items.EMERALD), parcel, GuideScene.ARROW, milestoneItem()).highlight(4, 1, 10);
+        s.item(new ItemStack(Items.EMERALD, 3), 92, 106, 128, t[0].pos(92).add(0, 1.3, 0), new Vec3(4.5, 1.9, 10.5));
+        // A plot facing the milestone, its barrel, the materials
+        BlockPos house = new BlockPos(8, 1, 1);
+        Vec3 barrel = new Vec3(8.5, 1.9, 9.5);
+        s.block(8, 1, 9, Blocks.BARREL.defaultBlockState(), 128).block(8, 1, 9, Blocks.AIR.defaultBlockState(), 320);
+        s.text(132, 232, "plot", GuideScene.at(8.5, 2.2, 9.5))
+                .icons(new ItemStack(Items.OAK_PLANKS), new ItemStack(Items.OAK_LOG), new ItemStack(Items.COBBLESTONE), new ItemStack(Items.GLASS), GuideScene.ARROW,
+                        new ItemStack(Items.BARREL))
+                .highlight(new AABB(8, 0, 1, 15, 1, 8));
+        s.item(new ItemStack(Items.OAK_PLANKS, 16), 150, 166, 232, new Vec3(8.5, 4.6, 9.5), barrel);
+        s.item(new ItemStack(Items.OAK_LOG, 8), 162, 178, 232, new Vec3(8.5, 4.6, 9.5), barrel);
+        s.item(new ItemStack(Items.COBBLESTONE, 16), 174, 190, 232, new Vec3(8.5, 4.6, 9.5), barrel);
+        // ... or the caravans bring them, paid from the treasury
+        Vec3 wagonTop = t[2].pos(240).add(0, 1.8, 0);
+        s.text(236, 318, "supply", GuideScene.above(t[2], 2.8))
+                .icons(new ItemStack(Items.EMERALD), GuideScene.ARROW, new ItemStack(Items.GLASS), new ItemStack(Items.WHITE_WOOL), new ItemStack(Items.IRON_INGOT));
+        s.item(new ItemStack(Items.GLASS, 6), 248, 264, 318, wagonTop, barrel);
+        s.item(new ItemStack(Items.WHITE_WOOL, 4), 260, 276, 318, wagonTop, barrel);
+        s.item(new ItemStack(Items.IRON_INGOT, 2), 272, 288, 318, wagonTop, barrel);
+        s.item(new ItemStack(Items.EMERALD, 2), 284, 300, 318, new Vec3(4.5, 1.9, 10.5), t[0].pos(290).add(0, 1.3, 0));
+        // The builder raises the house; villagers move in
+        s.actor(GuideScenes::builder).appear(322).key(322, 11.5, 1, 9.6).key(380, 13.5, 1, 9.6).key(440, 9.6, 1, 9.6).vanish(476).facing(180F);
+        rise(s, Buildings.Type.HOUSE, house, 0, 326, 468);
+        s.text(330, 472, "build", GuideScene.at(11.5, 4.5, 8.5))
+                .icons(new ItemStack(Items.BARREL), GuideScene.ARROW, new ItemStack(Items.IRON_SHOVEL), GuideScene.ARROW, new ItemStack(Items.OAK_DOOR));
+        s.actor(l -> Compat.create(EntityType.VILLAGER, l)).appear(478).key(478, 11.0, 1, 9.4).key(560, 13.2, 1, 10.0).facing(160F);
+        s.actor(l -> Compat.create(EntityType.VILLAGER, l)).appear(486).key(486, 12.0, 1, 9.6).key(570, 9.0, 1, 10.1).facing(200F);
+        // The mayor and the town's ledger
+        Actor mayor = s.actor(GuideScenes::mayor).appear(490).key(490, 6.2, 1, 8.8).facing(20F);
+        s.text(494, 592, "mayor", GuideScene.above(mayor, 2.3)).icons(new ItemStack(Items.BELL), GuideScene.ARROW, new ItemStack(Items.WRITABLE_BOOK));
+        // More prosperity, more buildings: a market stall first
+        rise(s, Buildings.Type.STALL, new BlockPos(1, 1, 2), 1, 596, 640);
+        s.text(596, 696, "levels", GuideScene.at(3.5, 5.2, 4.5))
+                .icons(new ItemStack(Items.RED_WOOL), new ItemStack(Items.RED_BED), new ItemStack(ChronicleCaravans.HITCHING_POST_ITEM.get()), new ItemStack(Items.SPYGLASS))
+                .highlight(new AABB(1, 1, 2, 6, 5, 7));
         return s;
     }
 }

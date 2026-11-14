@@ -10,6 +10,7 @@ import com.chroniclecaravans.item.ParcelItem;
 import com.chroniclecaravans.menu.DockMenu;
 import com.chroniclecaravans.menu.ParcelMenu;
 import com.chroniclecaravans.menu.TradingPostMenu;
+import com.chroniclecaravans.menu.TownMenu;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import com.chroniclecaravans.block.MilestoneBlock;
@@ -17,6 +18,7 @@ import com.chroniclecaravans.entity.CaravanGuard;
 import com.chroniclecaravans.entity.CaravanMaster;
 import com.chroniclecaravans.entity.CaravanWagon;
 import com.chroniclecaravans.entity.RoadBuilder;
+import com.chroniclecaravans.entity.TownMayor;
 import com.chroniclecaravans.item.AtlasItem;
 import com.chroniclecaravans.menu.AtlasMenu;
 import com.chroniclecaravans.menu.CaravanMenu;
@@ -134,6 +136,8 @@ public class ChronicleCaravans {
             () -> humanType(CaravanGuard::new).build(entityKey("caravan_guard")));
     public static final DeferredHolder<EntityType<?>, EntityType<RoadBuilder>> BUILDER = ENTITIES.register("road_builder",
             () -> humanType(RoadBuilder::new).build(entityKey("road_builder")));
+    public static final DeferredHolder<EntityType<?>, EntityType<TownMayor>> MAYOR = ENTITIES.register("town_mayor",
+            () -> humanType(TownMayor::new).build(entityKey("town_mayor")));
     public static final DeferredBlock<InnSignBlock> INN_SIGN = BLOCKS.registerBlock("inn_sign", InnSignBlock::new, INN_PROPS);
     public static final DeferredItem<BlockItem> INN_SIGN_ITEM = ITEMS.registerSimpleBlockItem("inn_sign", INN_SIGN);
     public static final DeferredItem<AtlasItem> ATLAS = ITEMS.registerItem("caravan_atlas", AtlasItem::new, SINGLE);
@@ -161,6 +165,8 @@ public class ChronicleCaravans {
             () -> new MenuType<>(TradingPostMenu::new, FeatureFlags.DEFAULT_FLAGS));
     public static final DeferredHolder<MenuType<?>, MenuType<ParcelMenu>> PARCEL_MENU = MENUS.register("parcel",
             () -> new MenuType<>(ParcelMenu::new, FeatureFlags.DEFAULT_FLAGS));
+    public static final DeferredHolder<MenuType<?>, MenuType<TownMenu>> TOWN_MENU = MENUS.register("town",
+            () -> new MenuType<>(TownMenu::new, FeatureFlags.DEFAULT_FLAGS));
     //#else
     //$$ public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, MODID);
     //$$ public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MODID);
@@ -176,6 +182,8 @@ public class ChronicleCaravans {
     //$$         () -> humanType(CaravanGuard::new).build(entityKey("caravan_guard")));
     //$$ public static final RegistryObject<EntityType<RoadBuilder>> BUILDER = ENTITIES.register("road_builder",
     //$$         () -> humanType(RoadBuilder::new).build(entityKey("road_builder")));
+    //$$ public static final RegistryObject<EntityType<TownMayor>> MAYOR = ENTITIES.register("town_mayor",
+    //$$         () -> humanType(TownMayor::new).build(entityKey("town_mayor")));
     //$$ public static final RegistryObject<InnSignBlock> INN_SIGN = BLOCKS.register("inn_sign", () -> new InnSignBlock(innProps()));
     //$$ public static final RegistryObject<BlockItem> INN_SIGN_ITEM = ITEMS.register("inn_sign", () -> new BlockItem(INN_SIGN.get(), new Item.Properties()));
     //$$ public static final RegistryObject<AtlasItem> ATLAS = ITEMS.register("caravan_atlas", () -> new AtlasItem(new Item.Properties().stacksTo(1)));
@@ -203,6 +211,8 @@ public class ChronicleCaravans {
     //$$         () -> new MenuType<>(TradingPostMenu::new, FeatureFlags.DEFAULT_FLAGS));
     //$$ public static final RegistryObject<MenuType<ParcelMenu>> PARCEL_MENU = MENUS.register("parcel",
     //$$         () -> new MenuType<>(ParcelMenu::new, FeatureFlags.DEFAULT_FLAGS));
+    //$$ public static final RegistryObject<MenuType<TownMenu>> TOWN_MENU = MENUS.register("town",
+    //$$         () -> new MenuType<>(TownMenu::new, FeatureFlags.DEFAULT_FLAGS));
     //#endif
 
     private static EntityType.Builder<CaravanMaster> masterType() {
@@ -283,6 +293,7 @@ public class ChronicleCaravans {
         e.put(CARAVAN_MASTER.get(), CaravanMaster.createAttributes().build());
         e.put(GUARD.get(), CaravanGuard.createAttributes().build());
         e.put(BUILDER.get(), RoadBuilder.createAttributes().build());
+        e.put(MAYOR.get(), TownMayor.createAttributes().build());
     }
 
     private void creativeTab(BuildCreativeModeTabContentsEvent e) {

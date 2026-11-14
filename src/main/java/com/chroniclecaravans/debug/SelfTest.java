@@ -25,6 +25,11 @@ import com.chroniclecaravans.world.Logistics;
 import com.chroniclecaravans.world.Market;
 import com.chroniclecaravans.world.Parcel;
 import com.chroniclecaravans.world.RoadWorks;
+import com.chroniclecaravans.world.Buildings;
+import com.chroniclecaravans.world.Town;
+import com.chroniclecaravans.world.Towns;
+import com.chroniclecaravans.entity.TownMayor;
+import com.chroniclecaravans.menu.TownMenu;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -93,6 +98,8 @@ public final class SelfTest {
     // The viewer's tour of the new screens: 0 none, 1 going to the dock, 2 dock open, 3 going to the post, 4 post open
     private static int menuStep, menuTick, atlasTick;
     private static BlockPos menuFocus;
+    /** The merchant town, built far from the main road (its watchtower keeps bandits away within 64 blocks). */
+    private static BlockPos townPos;
 
     private SelfTest() {}
 
@@ -187,9 +194,22 @@ public final class SelfTest {
             if (tick == 1900) innMorning(level);
             if (tick == 1930) relayCheck(level);
             if (tick == 2110) relayLeft(level);
-            if (tick == 2130) {
+            if (tick == 2130) townStage(level);
+            if (tick == 2160) townTier(level);
+            if (tick == 2190) townFounded(level);
+            if (tick == 2215) townWorks(level);
+            if (tick == 2220) townBuilt(level);
+            if (tick == 2250) townLevel(level, 2);
+            if (tick == 2280) townLevel(level, 3);
+            if (tick == 2310) townLevel(level, 4);
+            if (tick == 2340) {
                 log("RESULT: " + (failures.isEmpty() ? "OK" : "FAIL " + failures));
                 log("READY");
+            }
+            // The main stage stays a plain relay: no town grows around it while the test client watches
+            if (stop != null) {
+                Town main = CaravanData.get(level).town(stop);
+                if (main != null && main.level == 0) main.prosperity = 0;
             }
             if (joinTick >= 0) scene(level, tick - joinTick);
         } catch (Throwable t) {
@@ -204,7 +224,7 @@ public final class SelfTest {
     private static void prepare(ServerLevel level) {
         BlockPos spawn = spawn(level);
         int cx = spawn.getX() >> 4, cz = spawn.getZ() >> 4;
-        for (int dx = -4; dx <= 5; dx++) for (int dz = -4; dz <= 4; dz++) level.setChunkForced(cx + dx, cz + dz, true);
+        for (int dx = -4; dx <= 5; dx++) for (int dz = -4; dz <= 8; dz++) level.setChunkForced(cx + dx, cz + dz, true);
         // A still, empty stage: no night, no rain, no wandering monsters
         command(level, "time set 1000");
         command(level, "weather clear 100000");
@@ -810,6 +830,188 @@ public final class SelfTest {
         if (visitor.isAlive()) visitor.vanish(level);
     }
 
+    // ---------------------------------------------------------------- merchant towns
+
+    private static Town town(ServerLevel level) {
+        return townPos == null ? null : CaravanData.get(level).town(townPos);
+    }
+
+    /** A flat clearing far south, a milestone named Brightwater, and a lot of trade there. */
+    private static void townStage(ServerLevel level) {
+        int y = stop.getY();
+        townPos = new BlockPos(stop.getX() + 20, y, stop.getZ() + 76);
+        for (int dx = -30; dx <= 30; dx++) {
+            for (int dz = -30; dz <= 30; dz++) {
+                BlockPos p = new BlockPos(townPos.getX() + dx, y - 1, townPos.getZ() + dz);
+                level.setBlock(p, Blocks.GRASS_BLOCK.defaultBlockState(), 2);
+                for (int dy = 1; dy <= 3; dy++) level.setBlock(p.below(dy), Blocks.DIRT.defaultBlockState(), 2);
+                for (int dy = 1; dy <= 30; dy++) {
+                    if (!level.getBlockState(p.above(dy)).isAir()) level.setBlock(p.above(dy), Blocks.AIR.defaultBlockState(), 2);
+                }
+            }
+        }
+        level.setBlockAndUpdate(townPos, ChronicleCaravans.MILESTONE.get().defaultBlockState());
+        CaravanData data = CaravanData.get(level);
+        data.addStop(townPos, null, "SelfTest", "Brightwater", Long.MAX_VALUE / 4);
+        Towns.prosper(level, townPos, 100);
+        Town t = town(level);
+        check(t != null && t.prosperity == 100, "trade makes a milestone prosper");
+        check(Towns.at(level, townPos) == null, "prosperity alone does not found a town");
+    }
+
+    private static void townTier(ServerLevel level) {
+        check(Towns.at(level, townPos) == null, "a tier 1 milestone stays a milestone, however prosperous");
+        CaravanData.Stop s = CaravanData.get(level).stop(townPos);
+        s.tier = CCConfig.TOWN_TIER.get();
+        level.setBlockAndUpdate(townPos, level.getBlockState(townPos).setValue(MilestoneBlock.TIER, Math.min(4, s.tier)));
+    }
+
+    /** Founded: two plots with their barrels; materials delivered by hand, by the barrel and by a caravan. */
+    private static void townFounded(ServerLevel level) {
+        Town t = Towns.at(level, townPos);
+        check(t != null && t.level == 1, "a prosperous relay of tier 2 becomes a hamlet");
+        if (t == null) return;
+        check(t.buildings.size() == Towns.plan(1).length, "the hamlet plans its first buildings");
+        boolean plots = true, crates = true, square = true;
+        for (Town.Building b : t.buildings) {
+            if (!b.planned()) {
+                plots = false;
+                continue;
+            }
+            if (b.crate == null || !level.getBlockState(b.crate).is(Blocks.BARREL)) crates = false;
+            int[] sz = Buildings.size(b.type, b.rot);
+            int nx = Math.max(b.origin.getX(), Math.min(townPos.getX(), b.origin.getX() + sz[0] - 1));
+            int nz = Math.max(b.origin.getZ(), Math.min(townPos.getZ(), b.origin.getZ() + sz[1] - 1));
+            if (Math.max(Math.abs(nx - townPos.getX()), Math.abs(nz - townPos.getZ())) <= 5) square = false;
+            log("plot " + b.type + " at " + b.origin + " " + b.rot + " crate " + b.crate);
+        }
+        check(plots, "every building gets a plot");
+        check(crates, "a barrel waits on each plot");
+        check(square, "the market square around the milestone stays free");
+        Town.Building hall = t.buildings.get(0), stall = t.buildings.size() > 1 ? t.buildings.get(1) : null;
+        check(hall.type == Buildings.Type.TOWN_HALL, "the town hall comes first");
+        // By hand (the ledger's Deliver button takes from the inventory the same way)
+        SimpleContainer bag = new SimpleContainer(12);
+        bag.setItem(0, new ItemStack(Items.SPRUCE_PLANKS, 64));
+        bag.setItem(1, new ItemStack(Items.BIRCH_LOG, 32));
+        bag.setItem(2, new ItemStack(Items.COBBLESTONE, 64));
+        bag.setItem(3, new ItemStack(Items.GLASS_PANE, 16));
+        bag.setItem(4, new ItemStack(Items.IRON_INGOT, 8));
+        bag.setItem(5, new ItemStack(Items.DIRT, 10));
+        int need = 0;
+        for (Buildings.Material m : Buildings.Material.values()) need += hall.type.need(m);
+        int moved = Towns.deliver(hall, bag);
+        log("delivered " + moved + " of " + need + " to the town hall");
+        check(moved == need && hall.supplied(), "materials delivered by hand, any wood and stone");
+        check(bag.getItem(5).getCount() == 10 && bag.getItem(0).getCount() == 64 - hall.type.need(Buildings.Material.PLANKS), "only what the works lack is taken");
+        if (stall == null) return;
+        // By a caravan, paid from the treasury
+        t.supply = true;
+        t.treasury = 20;
+        int before = stall.got[0] + stall.got[1] + stall.got[4];
+        Towns.caravanArrived(level, null, townPos);
+        int brought = stall.got[0] + stall.got[1] + stall.got[4] - before;
+        log("caravan brought " + brought + ", treasury " + t.treasury + ", prosperity " + t.prosperity);
+        check(brought == Towns.SUPPLY_BATCH, "a caravan brings materials for the next plot");
+        check(t.treasury == 20 + 1 - Towns.SUPPLY_BATCH / Towns.ITEMS_PER_EMERALD, "the treasury takes the dues and pays the caravan");
+        check(t.prosperity >= 110, "a caravan halt makes the town prosper");
+        // ... and the rest through the barrel on the plot
+        if (stall.crate != null && level.getBlockEntity(stall.crate) instanceof Container c) {
+            c.setItem(0, new ItemStack(Items.RED_WOOL, 16));
+            c.setChanged();
+        }
+    }
+
+    /** The builders at work. */
+    private static void townWorks(ServerLevel level) {
+        Town t = Towns.at(level, townPos);
+        if (t == null || t.buildings.size() < 2) return;
+        Town.Building hall = t.buildings.get(0), stall = t.buildings.get(1);
+        Entity builder = hall.builder == null ? null : level.getEntity(hall.builder);
+        log("town hall: state " + hall.state + " progress " + hall.progress + " builder " + builder + "; stall: state " + stall.state + " got " + java.util.Arrays.toString(stall.got));
+        check(hall.state == Town.BUILDING && hall.progress > 0, "a supplied building is under way");
+        check(builder instanceof RoadBuilder rb && rb.atSite(), "a builder works on the site");
+        check(hall.crate == null, "the barrel goes when the works begin");
+        check(stall.supplied() && stall.state == Town.BUILDING, "the materials left in the barrel are taken");
+        check(t.site() == hall, "the ledger follows the works under way");
+    }
+
+    private static void townBuilt(ServerLevel level) {
+        Town t = Towns.at(level, townPos);
+        if (t == null) return;
+        Towns.finishAll(level, t);
+        Town.Building hall = t.buildings.get(0);
+        check(t.allDone(), "the works are finished");
+        BlockPos door = Buildings.door(hall.type, hall.rot, hall.origin);
+        check(level.getBlockState(door.above().relative(hall.rot.rotate(Direction.NORTH))).getBlock() instanceof net.minecraft.world.level.block.DoorBlock,
+                "the town hall stands, its door on the plot's front");
+        List<TownMayor> mayors = level.getEntitiesOfClass(TownMayor.class, new net.minecraft.world.phys.AABB(townPos).inflate(48));
+        check(mayors.size() == 1 && townPos.equals(mayors.get(0).town()), "a mayor moves into the town hall");
+        check(Towns.stalls(level, townPos) == 1, "the market stall opens");
+        MerchantOffer sell = null, buy = null;
+        for (CaravanMaster m : CaravanSpawner.caravans(level)) {
+            for (MerchantOffer o : m.getOffers()) {
+                if (Region.kindOf(o) == Region.KIND_SELL && sell == null) sell = o;
+                if (Region.kindOf(o) == Region.KIND_BUY && buy == null) buy = o;
+            }
+        }
+        if (sell != null && buy != null) {
+            check(Towns.priceFactor(level, townPos, sell) > 1F && Towns.priceFactor(level, townPos, buy) < 1F && Towns.priceFactor(level, stop, buy) == 1F,
+                    "the stalls make deals better in town only");
+        }
+        boolean path = false;
+        for (int k = 0; k < 4; k++) {
+            BlockPos g = door.relative(hall.rot.rotate(Direction.SOUTH), k).below();
+            for (int dy = -1; dy <= 1; dy++) if (level.getBlockState(g.above(dy)).is(Blocks.DIRT_PATH)) path = true;
+        }
+        check(path, "a path leads from the door to the milestone");
+        check(level.getEntitiesOfClass(RoadBuilder.class, new net.minecraft.world.phys.AABB(townPos).inflate(48), RoadBuilder::atSite).isEmpty(), "the builders leave");
+        // Prosperous enough for every level: the town grows one level at a time, as its works are done
+        t.prosperity = Towns.threshold(Towns.MAX_LEVEL);
+    }
+
+    private static void townLevel(ServerLevel level, int expected) {
+        Town t = Towns.at(level, townPos);
+        if (t == null) return;
+        int planned = 0;
+        for (Town.Building b : t.buildings) if (b.planned()) planned++;
+        log("town level " + t.level + ": " + t.buildings.size() + " buildings, " + planned + " with a plot");
+        check(t.level == expected, "the town reaches level " + expected);
+        check(planned == t.buildings.size(), "level " + expected + ": every new building gets a plot");
+        // At the last level, the last plot is left half supplied: the test client shows its works in the ledger
+        Town.Building pending = expected == Towns.MAX_LEVEL ? t.buildings.remove(t.buildings.size() - 1) : null;
+        Towns.finishAll(level, t);
+        check(t.allDone(), "level " + expected + ": the works are finished");
+        if (pending != null) {
+            t.buildings.add(pending);
+            pending.got[Buildings.Material.PLANKS.ordinal()] = Math.min(12, pending.type.need(Buildings.Material.PLANKS));
+            pending.got[Buildings.Material.LOGS.ordinal()] = Math.min(2, pending.type.need(Buildings.Material.LOGS));
+            check(!t.allDone() && t.site() == pending && pending.crate != null, "a plot waits for its materials");
+        }
+        CaravanData data = CaravanData.get(level);
+        switch (expected) {
+            case 2 -> {
+                check(t.villagers == 4 && Towns.residents(level, t) >= 4, "villagers move into the houses");
+                check(t.count(Buildings.Type.WAREHOUSE, true) == 1, "the warehouse is built");
+            }
+            case 3 -> {
+                CaravanData.Inn inn = data.nearestInn(townPos, 48);
+                check(inn != null, "the town's inn takes travellers");
+                check(Towns.postRange(level, townPos) == 40 && data.postsNear(level, townPos, 40).size() >= 2, "the stable's hitching posts serve the relay");
+                check(CaravanSpawner.capacity(level, data.stop(townPos)) == 2, "the tier 2 town takes two caravans");
+                check(Towns.stalls(level, townPos) == 2, "a second stall");
+            }
+            default -> {
+                check(Towns.safe(level, townPos.offset(40, 0, 0)), "no ambush near the watchtower");
+                check(!Towns.safe(level, stop), "but still on the main road");
+                check(Towns.extraRoom(level) == 4 && Math.abs(Towns.visitBoost(level, townPos) - 2.0) < 1e-6, "a trade city draws more caravans");
+                check(Towns.stalls(level, townPos) == 2 && t.count(Buildings.Type.WATCHTOWER, true) == 1, "the watchtower stands");
+                long houses = t.count(Buildings.Type.HOUSE, true);
+                check(houses == 4 && t.villagers == 8, "four houses, eight villagers");
+            }
+        }
+    }
+
     private static void clearBandits(ServerLevel level) {
         int n = 0;
         // Collect first: discarding while walking the live entity list can leave holes in it (26.x)
@@ -928,12 +1130,37 @@ public final class SelfTest {
             guest = CaravanSpawner.spawnCaravanAt(level, stop.offset(6, 0, 13), null, Region.WOODS);
             log("night falls on the inn for the viewer");
         }
+        // Then the merchant town: from above, then its ledger
+        if (menuStep == 5 && t > menuTick + 700 && townPos != null && Towns.at(level, townPos) != null) {
+            menuStep = 6;
+            menuTick = t;
+            if (guest != null && guest.isAlive()) guest.vanish(level, false);
+            command(level, "time set 4000");
+            CaravanData.Stop ts = CaravanData.get(level).stop(townPos);
+            ts.owner = viewer.getUUID();
+            ts.ownerName = viewer.getName().getString();
+            Town town = town(level);
+            town.treasury = 37;
+            log("the viewer flies over the merchant town (" + town.buildings.size() + " buildings, level " + town.level + ")");
+        }
+        if (menuStep == 6 && t == menuTick + 100) {
+            menuStep = 7;
+            log("opening the town ledger for the viewer");
+            TownMenu.open(viewer, townPos);
+        }
+        if (menuStep == 7 && t == menuTick + 110) {
+            check(viewer.containerMenu instanceof TownMenu tm && townPos.equals(tm.town()), "the town ledger opens for the viewer");
+        }
         if (menuStep == 5 && guest != null && t % 100 == 0) {
             log("inn guest: state=" + guest.state() + " parked=" + guest.parked() + " sleeping=" + guest.isSleeping() + " at " + guest.blockPosition());
         }
         if (t % 5 != 0) return;
         double x, y, z, lx, ly, lz;
-        if (menuStep == 5 && guest != null && guest.isAlive()) {
+        if (menuStep >= 6 && townPos != null) {
+            // The town from the south-east, high up
+            x = townPos.getX() + 25; y = townPos.getY() + 21; z = townPos.getZ() + 33;
+            lx = townPos.getX() - 1; ly = townPos.getY(); lz = townPos.getZ() - 2;
+        } else if (menuStep == 5 && guest != null && guest.isAlive()) {
             Entity w = guest.wagon(level);
             if (guest.isSleeping()) {
                 // Close-up of the bed

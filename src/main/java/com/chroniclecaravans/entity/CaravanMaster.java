@@ -19,6 +19,7 @@ import com.chroniclecaravans.world.CaravanData;
 import com.chroniclecaravans.world.CaravanSpawner;
 import com.chroniclecaravans.world.Logistics;
 import com.chroniclecaravans.world.Parcel;
+import com.chroniclecaravans.world.Towns;
 import com.chroniclecaravans.platform.Compat;
 import com.chroniclecaravans.platform.Nbt;
 import net.minecraft.ChatFormatting;
@@ -604,7 +605,7 @@ public class CaravanMaster extends WanderingTrader {
 
     /** Hitching posts around {@code center} that no other caravan uses. */
     private List<BlockPos> freePosts(ServerLevel level, BlockPos center) {
-        List<BlockPos> out = new ArrayList<>(CaravanData.get(level).postsNear(level, center, com.chroniclecaravans.block.HitchingPostBlock.RANGE));
+        List<BlockPos> out = new ArrayList<>(CaravanData.get(level).postsNear(level, center, Towns.postRange(level, center)));
         for (CaravanMaster m : CaravanSpawner.caravans(level)) if (m != this && m.park != PARK_NONE && m.parkPost != null) out.remove(m.parkPost);
         out.removeIf(p -> !level.isLoaded(p));
         return out;
@@ -1297,7 +1298,9 @@ public class CaravanMaster extends WanderingTrader {
         long interval = CCConfig.VISIT_INTERVAL.get() * 20L;
         // A relay takes several caravans: they come 3, 6 or 10 times as often (tiers 2, 3, 4)
         int cap = CaravanSpawner.capacity(level, stop);
-        stop.nextVisit = now + (long) (interval * (0.75 + random.nextDouble() * 0.5) / (cap * (cap + 1) / 2.0));
+        // A merchant town draws them more often still
+        stop.nextVisit = now + (long) (interval * (0.75 + random.nextDouble() * 0.5) / (cap * (cap + 1) / 2.0) / Towns.visitBoost(level, stop.pos));
+        Towns.caravanArrived(level, this, stop.pos);
         stop.lastServed = now;
         stop.hired = false;
         data.setDirty();
@@ -1579,6 +1582,8 @@ public class CaravanMaster extends WanderingTrader {
 
     private void maybeAmbush(ServerLevel level) {
         if (ambushDone || ambushActive || state == State.LEAVING || state == State.LODGING || park != PARK_NONE || !CCConfig.AMBUSH_ENABLED.get()) return;
+        // Bandits keep out of sight of a town's watchtower
+        if (Towns.safe(level, blockPosition())) return;
         if (level.getDifficulty() == Difficulty.PEACEFUL || lifeTicks < 600) return;
         if (level.getNearestPlayer(this, 48) == null) return;
         // Bandits like the dark, and stay away from an escort

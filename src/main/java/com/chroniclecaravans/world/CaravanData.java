@@ -123,6 +123,8 @@ public class CaravanData extends SavedData {
     }
 
     private final Map<BlockPos, Stop> stops = new LinkedHashMap<>();
+    /** Merchant towns (and the prosperity of milestones that are not towns yet), by milestone. */
+    private final Map<BlockPos, Town> towns = new LinkedHashMap<>();
     private final Map<BlockPos, Inn> inns = new LinkedHashMap<>();
     private final Map<String, Route> routes = new LinkedHashMap<>();
     private final Map<UUID, Profile> profiles = new HashMap<>();
@@ -182,6 +184,19 @@ public class CaravanData extends SavedData {
 
     public void removeStop(BlockPos pos) {
         if (stops.remove(pos) != null) setDirty();
+        if (towns.remove(pos) != null) setDirty();
+    }
+
+    public Town town(BlockPos stop) {
+        return towns.get(stop);
+    }
+
+    public Town townOrCreate(BlockPos stop) {
+        return towns.computeIfAbsent(stop.immutable(), Town::new);
+    }
+
+    public Collection<Town> towns() {
+        return towns.values();
     }
 
     /** Closest stop to {@code from} within {@code range}, skipping the positions in {@code visited}. */
@@ -522,6 +537,11 @@ public class CaravanData extends SavedData {
         }
         for (long l : Nbt.getLongArray(tag, "Docks")) d.docks.add(BlockPos.of(l));
         for (long l : Nbt.getLongArray(tag, "Posts")) d.posts.add(BlockPos.of(l));
+        ListTag townList = Nbt.getList(tag, "Towns");
+        for (int i = 0; i < townList.size(); i++) {
+            Town t = Town.load(Nbt.at(townList, i));
+            d.towns.put(t.pos, t);
+        }
         CompoundTag prof = Nbt.getCompound(tag, "Guild");
         for (String k : Nbt.keys(prof)) {
             try {
@@ -637,6 +657,9 @@ public class CaravanData extends SavedData {
         tag.put("Depots", list);
         tag.putLongArray("Docks", docks.stream().mapToLong(BlockPos::asLong).toArray());
         tag.putLongArray("Posts", posts.stream().mapToLong(BlockPos::asLong).toArray());
+        ListTag townList = new ListTag();
+        for (Town t : towns.values()) townList.add(t.save());
+        tag.put("Towns", townList);
         CompoundTag prof = new CompoundTag();
         profiles.forEach((k, p) -> {
             CompoundTag t = new CompoundTag();

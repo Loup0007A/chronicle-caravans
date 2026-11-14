@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.0
+
+- **Merchant towns**: a relay that prospers grows into a town on its own. Every caravan halt (+10), every deal at a caravan or a trading post (+1) and every parcel sent or delivered (+2) makes a milestone prosper; a relay of tier 2 or more with 60 prosperity is founded as a **Hamlet**, then grows into a **Market Village** (250), a **Town** (600) and a **Trade City** (1,200).
+- **Building orders**: each level marks out new plots around the milestone, facing it, on flat natural ground (never over a road, water or anything you built), and leaves a barrel on each. Fill the barrel with planks, logs, stone, glass, wool or iron ingots (any wood, any stone), hand them over from the town's ledger, or let the caravans bring them, paid from the town's treasury (one emerald per eight blocks). Once a plot has everything, a builder comes and the building rises block by block, with a path to the milestone.
+- **Thirteen buildings in four levels**, in oak, spruce or sandstone depending on the climate: the **Town Hall** (and its **Mayor**), **Market Stalls** (each makes the deals at the caravans halted in town 4% better, up to three), **Houses** (two villagers move into each), a **Well**, a **Warehouse** (caravans bring twice the materials), an **Inn** (beds and an inn sign: caravans sleep in town), a **Stable** (hitching posts, counted up to 40 blocks from a town's milestone) and a **Watchtower** (no ambush within 64 blocks).
+- **The town's ledger**: talk to the mayor, or use the milestone (crouch for its own news), to see the town's level and prosperity, its treasury (the dues each caravan pays: the town's level in emeralds; the owner can withdraw them), its residents, the works under way and what they still need, and every building. A town draws caravans 25% more often per level and makes room for one more caravan on the roads per level.
+- **New guide scene, "Merchant Towns"**: hold [W] over a Relay Charter. The guide now has thirteen scenes.
+- Everything can be adjusted or switched off in the config: towns, the tier they need, the prosperity per level, the builders' speed, the villagers.
+
 ## 1.4.1
 
 - Freight tab: the "On board" column is wider (no more cut-off lines), the caravan ledger is a little taller, and the four steps on how parcels work now fit under the destinations.

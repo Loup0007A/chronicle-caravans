@@ -5,8 +5,10 @@ import com.chroniclecaravans.client.guide.GuideScreen;
 import com.chroniclecaravans.client.screen.AtlasScreen;
 import com.chroniclecaravans.client.screen.CaravanScreen;
 import com.chroniclecaravans.client.screen.DockScreen;
+import com.chroniclecaravans.client.screen.TownScreen;
 import com.chroniclecaravans.client.screen.TradingPostScreen;
 import com.chroniclecaravans.menu.AtlasMenu;
+import com.chroniclecaravans.menu.TownMenu;
 import com.chroniclecaravans.entity.CaravanMaster;
 import com.chroniclecaravans.entity.CaravanWagon;
 import net.minecraft.client.Minecraft;
@@ -29,18 +31,20 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 public final class ClientTest {
     private static final boolean ON = Boolean.getBoolean("chroniclecaravans.clienttest");
     private static final int[] SHOTS = {200, 270, 340, 500, 600, 850, 930};
-    /** Guide: {client tick, scene, scene tick to jump to}; the screenshot is taken 14 ticks later. */
+    /** Guide: {client tick, scene, scene tick to jump to}; the screenshot is taken 14 ticks later (done before the relay shot at 1810). */
     private static final int[][] GUIDE = {
-            {960, 0, 100}, {1000, 1, 236}, {1040, 2, 70}, {1080, 2, 280}, {1120, 3, 60}, {1160, 3, 200}, {1200, 4, 120}, {1240, 4, 300}, {1280, 5, 80},
-            {1320, 6, 150}, {1360, 6, 270}, {1400, 7, 120}, {1440, 7, 300}, {1480, 8, 140}, {1520, 9, 150}, {1560, 9, 360},
-            {1600, 10, 160}, {1640, 10, 360}, {1680, 11, 100}, {1720, 11, 200}, {1760, 11, 300}};
+            {960, 0, 100}, {992, 1, 236}, {1024, 2, 70}, {1056, 2, 280}, {1088, 3, 60}, {1120, 3, 200}, {1152, 4, 120}, {1184, 4, 300},
+            {1216, 5, 80}, {1248, 6, 150}, {1280, 6, 270}, {1312, 7, 120}, {1344, 7, 300}, {1376, 8, 140}, {1408, 9, 150}, {1440, 9, 360},
+            {1472, 10, 160}, {1504, 10, 360}, {1536, 11, 100}, {1568, 11, 200}, {1600, 11, 300}, {1632, 12, 160}, {1664, 12, 400}, {1696, 12, 560},
+            {1728, 12, 660}};
 
     private static int t;
     private static int total;
     private static boolean seenMaster, seenWagon, guideShown;
     private static boolean seenGuard, caravanShown, atlasShown, dockShown, postShown;
     private static int caravanTicks, atlasTicks, dockTicks, postTicks, innTicks;
-    private static boolean innShown;
+    private static boolean innShown, townShown;
+    private static int townTicks;
     private static String uiProblem;
     private static boolean done;
 
@@ -74,7 +78,7 @@ public final class ClientTest {
         if (++total > 14000) finish(mc, "FAIL timeout (never got into the world)");
         if (mc.player == null || mc.level == null) return;
         if (mc.screen != null && !(mc.screen instanceof GuideScreen) && !(mc.screen instanceof CaravanScreen) && !(mc.screen instanceof AtlasScreen)
-                && !(mc.screen instanceof DockScreen) && !(mc.screen instanceof TradingPostScreen)) return;
+                && !(mc.screen instanceof DockScreen) && !(mc.screen instanceof TradingPostScreen) && !(mc.screen instanceof TownScreen)) return;
         t++;
         hideHud(mc, (!(t > 420 && t < 700) && t < 950) || (t > 1795 && t < 1830) || innTicks > 0);
         if (t % 20 == 0 && t < 950) {
@@ -170,7 +174,22 @@ public final class ClientTest {
                 innShown = true;
             }
         }
-        if ((innShown && innTicks > 660) || t > last + 1700) {
+        // Then the merchant town the server built: from above, then its ledger
+        if (innShown && innTicks == 760) shot(mc, "town_0");
+        if (mc.screen instanceof TownScreen ts) {
+            townTicks++;
+            if (townTicks == 10) {
+                int level = ts.getMenu().get(TownMenu.D_LEVEL), count = ts.getMenu().get(TownMenu.D_COUNT);
+                ChronicleCaravans.LOG.info("[CLIENTTEST] town ledger open: level {}, {} buildings, site {}", level, count, ts.getMenu().get(TownMenu.D_SITE));
+                if (level < 1 || count < 2) uiProblem = "FAIL the town ledger shows level " + level + " with " + count + " buildings";
+            }
+            if (townTicks == 24) {
+                shot(mc, "town_1");
+                townShown = true;
+            }
+            if (townTicks == 34) ts.onClose();
+        }
+        if ((townShown && mc.screen == null) || t > last + 2400) {
             String why = !seenMaster ? "FAIL the caravan master was never rendered"
                     : !seenWagon ? "FAIL the wagon was never rendered"
                     : !guideShown ? "FAIL the guide never opened"
@@ -178,6 +197,8 @@ public final class ClientTest {
                     : !atlasShown ? "FAIL the atlas never opened"
                     : !dockShown ? "FAIL the loading dock screen never opened"
                     : !postShown ? "FAIL the trading post screen never opened"
+                    : !innShown ? "FAIL the inn was never shown"
+                    : !townShown ? "FAIL the town ledger never opened"
                     : uiProblem != null ? uiProblem : "OK";
             finish(mc, why);
         }

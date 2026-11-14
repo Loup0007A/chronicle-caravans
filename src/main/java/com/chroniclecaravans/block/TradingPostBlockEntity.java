@@ -179,7 +179,7 @@ public class TradingPostBlockEntity extends BlockEntity implements WorldlyContai
         // Sell what the caravan asks for
         for (MerchantOffer o : offers) {
             if (Region.kindOf(o) != Region.KIND_SELL || o.isOutOfStock() || !Trading.unlocked(o, lvl, skills)) continue;
-            Trading.Quote q = Trading.quote(o, skills, Market.factor(data, m.region(), o, now));
+            Trading.Quote q = Trading.quote(o, skills, Market.factor(data, m.region(), o, now) * com.chroniclecaravans.world.Towns.priceFactor(level, m.currentStop(), o));
             if (Trading.affordable(o, q, in) <= 0) continue;
             if (!fits(q.result())) {
                 full = true;
@@ -194,7 +194,7 @@ public class TradingPostBlockEntity extends BlockEntity implements WorldlyContai
             for (MerchantOffer o : offers) {
                 if (Region.kindOf(o) == Region.KIND_SELL || o.isOutOfStock() || !Trading.unlocked(o, lvl, skills)) continue;
                 if (!matches(sample, o.getResult())) continue;
-                Trading.Quote q = Trading.quote(o, skills, Market.factor(data, m.region(), o, now));
+                Trading.Quote q = Trading.quote(o, skills, Market.factor(data, m.region(), o, now) * com.chroniclecaravans.world.Towns.priceFactor(level, m.currentStop(), o));
                 if (Trading.affordable(o, q, in) <= 0) continue;
                 if (!fits(q.result())) {
                     full = true;
@@ -219,6 +219,8 @@ public class TradingPostBlockEntity extends BlockEntity implements WorldlyContai
         if (done <= 0) return false;
         Market.traded(data, o, done, level.getGameTime());
         if (owner != null) data.traded(level.getServer(), owner, Trading.value(q));
+        CaravanData.Stop near = data.nearestStop(worldPosition, 24, null);
+        if (near != null) com.chroniclecaravans.world.Towns.prosper(level, near.pos, 1);
         deals++;
         totalDeals++;
         level.playSound(null, worldPosition, SoundEvents.VILLAGER_TRADE, SoundSource.BLOCKS, 0.5F, 1.0F);

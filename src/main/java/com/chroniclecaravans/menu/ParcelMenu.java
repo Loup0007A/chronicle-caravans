@@ -115,6 +115,7 @@ public class ParcelMenu extends AbstractContainerMenu {
         Parcel parcel = Parcel.of(level, goods, origin, dest, sp.getUUID(), sp.getName().getString(), false);
         cd.depot(origin).add(parcel);
         cd.setDirty();
+        com.chroniclecaravans.world.Towns.prosper(level, origin, 2);
         CaravanData.Stop to = cd.stop(dest);
         level.playSound(null, sp.blockPosition(), SoundEvents.BUNDLE_INSERT, SoundSource.PLAYERS, 0.8F, 1.0F);
         sp.sendSystemMessage(Component.translatable("msg.chroniclecaravans.parcel_sent", goods.size(), to == null ? Component.literal("?") : to.displayName(), fee, hops)

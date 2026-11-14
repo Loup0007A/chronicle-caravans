@@ -9,6 +9,9 @@ import com.chroniclecaravans.ChronicleCaravans;
 import com.chroniclecaravans.Guild;
 import com.chroniclecaravans.world.CaravanData;
 import com.chroniclecaravans.world.CaravanSpawner;
+import com.chroniclecaravans.world.Town;
+import com.chroniclecaravans.world.Towns;
+import com.chroniclecaravans.menu.TownMenu;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import com.chroniclecaravans.platform.Compat;
@@ -82,7 +85,7 @@ public class MilestoneBlock extends Block {
         CaravanData.Stop stop = data.stop(pos);
         if (stop == null || stop.village) return NOT_A_STOP;
         if (stop.tier >= CCConfig.MAX_TIER.get()) return MAX_TIER;
-        int posts = data.postsNear(level, pos, HitchingPostBlock.RANGE).size();
+        int posts = data.postsNear(level, pos, Towns.postRange(level, pos)).size();
         if (posts < stop.tier) return NEEDS_POSTS;
         stop.tier++;
         data.setDirty();
@@ -386,9 +389,19 @@ public class MilestoneBlock extends Block {
                 p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.overworld_only").withStyle(ChatFormatting.RED));
                 return;
             }
+            // A merchant town: its ledger (crouch for the milestone's own news)
+            if (Towns.at(server, pos) != null && !p.isShiftKeyDown()) {
+                TownMenu.open(p, pos);
+                return;
+            }
             p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.stop_header", stop.displayName()).withStyle(ChatFormatting.GOLD));
+            if (CCConfig.TOWNS.get() && !stop.village && Towns.at(server, pos) == null) {
+                Town town = data.town(pos);
+                p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.stop_prosperity", town == null ? 0 : town.prosperity, Towns.threshold(1),
+                        CCConfig.TOWN_TIER.get()).withStyle(ChatFormatting.GRAY));
+            }
             if (CCConfig.RELAYS.get()) {
-                int posts = data.postsNear(server, pos, HitchingPostBlock.RANGE).size();
+                int posts = data.postsNear(server, pos, Towns.postRange(server, pos)).size();
                 p.sendSystemMessage(Component.translatable("msg.chroniclecaravans.stop_relay", stop.tier, CaravanSpawner.capacity(server, stop), posts)
                         .withStyle(ChatFormatting.GRAY));
             }

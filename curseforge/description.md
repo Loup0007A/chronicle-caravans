@@ -26,7 +26,7 @@ Place a second milestone, build a road between the two, and you have a **trade r
 - Right-click the master or the wagon to open the **caravan interface**, a hand-drawn trader's ledger: Market (one click to buy, shift-click to buy all), Requests, Freight, Services and Guild.
 
 ### ✦ A guide in the style of Create's Ponder
-Hold **[W]** over the Caravan Milestone, a Parcel, a Loading Dock or a Trading Post in your inventory: twelve animated 3D scenes show how everything works, with text bubbles and a timeline. Turn the scene, zoom in, replay. Or type `/caravanguide`.
+Hold **[W]** over the Caravan Milestone, a Parcel, a Loading Dock, a Trading Post or a Relay Charter in your inventory: thirteen animated 3D scenes show how everything works, with text bubbles and a timeline. Turn the scene, zoom in, replay. Or type `/caravanguide`.
 
 ### ✦ Villages come alive
 Every village bell is a caravan stop: caravans travel between villages **on their own**, with no milestone to build. Village paths are already roads, so they follow them from one village to the next. Your milestones join the same network.
@@ -43,7 +43,15 @@ Every village bell is a caravan stop: caravans travel between villages **on thei
 - **Road crews**: from a stop, pay builders who lay the road to the next stop for you — dirt path, plank bridges over rivers, trees cleared.
 - **Escorts**: hire guards who walk with a caravan and fight off monsters and bandits.
 - **Inns**: put up an **Inn Sign** near a bed. At nightfall caravans come to your inn: the master **parks his train off the road** (or at a hitching post), walks in and **sleeps in a bed**, safe from bandits. In the morning he walks back to his train and pays you.
-- **Relays**: use a **Relay Charter** on a milestone to upgrade it, up to tier 4. Place a **Hitching Post** around it for each extra caravan: when the main spot is taken, the next caravan parks its train at a post, ties its llama and walks to the milestone. A tier 4 relay hosts four caravans at once, and they come much more often. The milestone grows a gold collar and guild pennants.
+- **Relays**: use a **Relay Charter** on a milestone to upgrade it, up to tier 4. Place a **Hitching Post** around it for each extra caravan: when the main spot is taken, the next caravan parks its train at a post, ties its llama and walks to the milestone. A tier 4 relay hosts four caravans at once, and they come much more often. The milestone grows a gold collar and guild pennants. A prosperous relay becomes a **merchant town**.
+
+### ✦ Merchant towns (new in 2.0)
+Trade makes a place grow. Every caravan halt, every deal and every parcel makes a milestone **prosper**, and a prosperous relay is founded as a **Hamlet** — then grows into a **Market Village**, a **Town** and a **Trade City**.
+- Each level marks out **building plots** around the milestone, facing it, on natural ground only (never over your roads or builds), with a barrel on each.
+- **Bring the materials** — planks, logs, stone, glass, wool, iron — into the barrel, hand them over from the town's ledger, or let the **caravans deliver them**, paid from the town's treasury.
+- Then a **builder** comes and the building **rises block by block**: the Town Hall and its **Mayor**, Market Stalls (better prices for every deal in town), Houses (villagers move in), a Well, a Warehouse, an Inn where caravans sleep, a Stable with hitching posts, and a **Watchtower** that keeps bandits away.
+- Talk to the mayor for the **town's ledger**: level, prosperity, treasury (every caravan pays its dues), residents, works under way and buildings. Towns draw caravans more often and put more of them on the roads.
+- Oak, spruce or sandstone: the buildings follow the climate.
 
 ### ✦ A living world
 - **Supply and demand**: sell a lot of one good and the caravans pay less for it, buy a lot and prices rise; the market calms down day after day. Every region has its **news of the day**: a shortage paid 50% more, a surplus sold 25% cheaper.

@@ -26,7 +26,7 @@ import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 
 /**
  * Opens the Caravan Guide like Create's Ponder: hold the guide key (W) while hovering the milestone (or a loading
- * dock, or a trading post: their own scene) in an inventory. Also {@code /caravanguide [scene]}.
+ * dock, a trading post or a relay charter: their own scene) in an inventory. Also {@code /caravanguide [scene]}.
  */
 @EventBusSubscriber(modid = ChronicleCaravans.MODID, value = Dist.CLIENT)
 public final class GuideKeys {
@@ -66,6 +66,9 @@ public final class GuideKeys {
         } else if (stack.is(ChronicleCaravans.POST_ITEM.get())) {
             scene = 11;
             key = "item.chroniclecaravans.trading_post.tooltip";
+        } else if (stack.is(ChronicleCaravans.CHARTER.get())) {
+            scene = 12;
+            key = "item.chroniclecaravans.relay_charter.tooltip";
         } else {
             return;
         }
@@ -135,7 +138,7 @@ public final class GuideKeys {
                     pendingScene = 0;
                     return 1;
                 })
-                .then(Commands.argument("scene", IntegerArgumentType.integer(1, 12)).executes(c -> {
+                .then(Commands.argument("scene", IntegerArgumentType.integer(1, 13)).executes(c -> {
                     pendingScene = IntegerArgumentType.getInteger(c, "scene") - 1;
                     return 1;
                 })));

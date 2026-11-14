@@ -17,6 +17,7 @@ import com.chroniclecaravans.world.Logistics;
 import com.chroniclecaravans.world.Market;
 import com.chroniclecaravans.world.Parcel;
 import com.chroniclecaravans.world.RoadWorks;
+import com.chroniclecaravans.world.Towns;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -226,7 +227,7 @@ public class CaravanMenu extends AbstractContainerMenu {
             }
             MerchantOffer o = offers.get(i);
             int kind = Region.kindOf(o);
-            Trading.Quote q = Trading.quote(o, skills, Market.factor(cd, master.region(), o, now));
+            Trading.Quote q = Trading.quote(o, skills, Market.factor(cd, master.region(), o, now) * Towns.priceFactor(level(), master.currentStop(), o));
             setIfChanged(i * 3, q.a());
             setIfChanged(i * 3 + 1, q.b());
             setIfChanged(i * 3 + 2, q.result());
@@ -393,13 +394,14 @@ public class CaravanMenu extends AbstractContainerMenu {
         int skills = cd.skills(sp.getUUID());
         if (!Trading.unlocked(o, cd.level(sp.getUUID()), skills)) return false;
         long now = level().getGameTime();
-        Trading.Quote q = Trading.quote(o, skills, Market.factor(cd, master.region(), o, now));
+        Trading.Quote q = Trading.quote(o, skills, Market.factor(cd, master.region(), o, now) * Towns.priceFactor(level(), master.currentStop(), o));
         int done = Trading.execute(o, q, sp.getInventory(), stack -> {
             if (!sp.getInventory().add(stack)) net.minecraft.world.level.block.Block.popResource(sp.level(), sp.blockPosition(), stack);
         }, times);
         if (done <= 0) return false;
         Market.traded(cd, o, done, now);
         cd.traded(sp, Trading.value(q) * done);
+        Towns.prosper(level(), master.currentStop(), done);
         return true;
     }
 

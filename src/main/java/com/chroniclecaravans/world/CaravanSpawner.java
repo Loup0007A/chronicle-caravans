@@ -101,6 +101,7 @@ public final class CaravanSpawner {
         if (!(world instanceof ServerLevel level) || level.dimension() != Level.OVERWORLD) return;
         if (level.getGameTime() % 20 == 0) updateSignals(level);
         if (level.getGameTime() % 1200 == 0) Logistics.cleanDepots(level);
+        Towns.tick(level);
         if (level.getGameTime() % 100 != 0) return;
         CaravanData data = CaravanData.get(level);
         if (CCConfig.VILLAGE_STOPS.get() && level.getGameTime() % 600 == 0) {
@@ -128,7 +129,7 @@ public final class CaravanSpawner {
     /** How many caravans a stop takes at once: its tier, with one hitching post nearby for each caravan beyond the first. */
     public static int capacity(ServerLevel level, CaravanData.Stop stop) {
         if (stop.village || stop.tier <= 1 || !CCConfig.RELAYS.get()) return 1;
-        int posts = CaravanData.get(level).postsNear(level, stop.pos, com.chroniclecaravans.block.HitchingPostBlock.RANGE).size();
+        int posts = CaravanData.get(level).postsNear(level, stop.pos, Towns.postRange(level, stop.pos)).size();
         return Math.max(1, Math.min(Math.min(stop.tier, CCConfig.MAX_TIER.get()), 1 + posts));
     }
 
@@ -148,7 +149,7 @@ public final class CaravanSpawner {
     private static int extraRoom(ServerLevel level, CaravanData data) {
         int extra = 0;
         for (CaravanData.Stop s : data.stops()) if (s.tier > 1 && !s.village) extra += capacity(level, s) - 1;
-        return Math.min(extra, 16);
+        return Math.min(extra, 16) + Towns.extraRoom(level);
     }
 
     /**
