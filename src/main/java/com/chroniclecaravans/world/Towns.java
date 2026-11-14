@@ -369,6 +369,8 @@ public final class Towns {
                 || s.is(BlockTags.FLOWERS) || s.is(BlockTags.SAPLINGS) || s.is(BlockTags.SNOW) || s.is(BlockTags.TERRACOTTA)) {
             return true;
         }
+        // (26.x: the dirt tag no longer holds the grass block and its kin)
+        if (s.is(Blocks.GRASS_BLOCK) || s.is(Blocks.PODZOL) || s.is(Blocks.MYCELIUM) || s.is(Blocks.MUD) || s.is(Blocks.MOSS_BLOCK)) return true;
         if (s.is(Blocks.GRAVEL) || s.is(Blocks.SANDSTONE) || s.is(Blocks.RED_SANDSTONE) || s.is(Blocks.CLAY) || s.is(Blocks.ICE)
                 || s.is(Blocks.SNOW_BLOCK) || s.is(Blocks.PUMPKIN) || s.is(Blocks.MELON)) {
             return true;
@@ -522,18 +524,30 @@ public final class Towns {
         tell(level, t, msg, 64);
     }
 
-    /** A dirt path from a door to the milestone, over the grass only. */
+    /** A dirt path from a door to the milestone, over the grass only (never over a roof: it follows the ground from the door). */
     static void path(ServerLevel level, BlockPos from, BlockPos to) {
         int dx = to.getX() - from.getX(), dz = to.getZ() - from.getZ();
         int n = Math.max(Math.abs(dx), Math.abs(dz));
+        int y = from.getY() - 1;
+        BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
         for (int k = 0; k <= n - 2; k++) {
             int x = from.getX() + Math.round((float) dx * k / Math.max(1, n)), z = from.getZ() + Math.round((float) dz * k / Math.max(1, n));
-            int y = ground(level, x, z);
-            BlockPos g = new BlockPos(x, y, z);
-            BlockState s = level.getBlockState(g);
+            // The ground near the last step: a block or two up or down
+            int g = Integer.MIN_VALUE;
+            for (int gy = y + 2; gy >= y - 3; gy--) {
+                BlockState s = level.getBlockState(p.set(x, gy, z));
+                if (!s.isAir() && !s.canBeReplaced()) {
+                    g = gy;
+                    break;
+                }
+            }
+            if (g == Integer.MIN_VALUE) continue;
+            y = g;
+            BlockPos at = new BlockPos(x, g, z);
+            BlockState s = level.getBlockState(at);
             if (!(s.is(Blocks.GRASS_BLOCK) || s.is(Blocks.DIRT) || s.is(Blocks.COARSE_DIRT) || s.is(Blocks.PODZOL))) continue;
-            if (!level.getBlockState(g.above()).isAir()) continue;
-            level.setBlock(g, Blocks.DIRT_PATH.defaultBlockState(), 2);
+            if (!level.getBlockState(at.above()).isAir()) continue;
+            level.setBlock(at, Blocks.DIRT_PATH.defaultBlockState(), 2);
         }
     }
 

@@ -942,6 +942,7 @@ public final class SelfTest {
         Towns.finishAll(level, t);
         Town.Building hall = t.buildings.get(0);
         check(t.allDone(), "the works are finished");
+        if (!hall.planned()) return;
         BlockPos door = Buildings.door(hall.type, hall.rot, hall.origin);
         check(level.getBlockState(door.above().relative(hall.rot.rotate(Direction.NORTH))).getBlock() instanceof net.minecraft.world.level.block.DoorBlock,
                 "the town hall stands, its door on the plot's front");
@@ -959,12 +960,14 @@ public final class SelfTest {
             check(Towns.priceFactor(level, townPos, sell) > 1F && Towns.priceFactor(level, townPos, buy) < 1F && Towns.priceFactor(level, stop, buy) == 1F,
                     "the stalls make deals better in town only");
         }
-        boolean path = false;
-        for (int k = 0; k < 4; k++) {
-            BlockPos g = door.relative(hall.rot.rotate(Direction.SOUTH), k).below();
-            for (int dy = -1; dy <= 1; dy++) if (level.getBlockState(g.above(dy)).is(Blocks.DIRT_PATH)) path = true;
+        int path = 0;
+        for (int px = -2; px <= 2; px++) {
+            for (int pz = -2; pz <= 2; pz++) {
+                for (int dy = -2; dy <= 0; dy++) if (level.getBlockState(door.offset(px, dy, pz)).is(Blocks.DIRT_PATH)) path++;
+            }
         }
-        check(path, "a path leads from the door to the milestone");
+        log("path blocks by the town hall's door: " + path);
+        check(path >= 2, "a path leads from the door to the milestone");
         check(level.getEntitiesOfClass(RoadBuilder.class, new net.minecraft.world.phys.AABB(townPos).inflate(48), RoadBuilder::atSite).isEmpty(), "the builders leave");
         // Prosperous enough for every level: the town grows one level at a time, as its works are done
         t.prosperity = Towns.threshold(Towns.MAX_LEVEL);

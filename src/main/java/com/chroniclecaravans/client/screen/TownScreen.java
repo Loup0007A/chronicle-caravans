@@ -23,6 +23,8 @@ import net.minecraft.world.item.Items;
  */
 public class TownScreen extends CCScreen implements MenuAccess<TownMenu> {
     private static final int W = 352, H = 236, LW = 190;
+    /** The treasury column, from the right edge (the seal is to its right). */
+    private static final int TREASURY_X = 106;
     private static final String[] NUMERALS = {"", "I", "II", "III", "IV"};
 
     private final TownMenu menu;
@@ -127,9 +129,9 @@ public class TownScreen extends CCScreen implements MenuAccess<TownMenu> {
         if (mayor != null) UiKit.portrait(g, x0 + 16, y0 + 15, x0 + 52, y0 + 57, 19, mx, my, mayor);
         else g.renderItem(menu.shown(TownMenu.S_NAME), x0 + 26, y0 + 28);
         int level = menu.get(TownMenu.D_LEVEL);
-        UiKit.text(g, font, UiKit.fit(font, title.getString(), W - 196), x0 + 60, y0 + 15, UiKit.HEAD);
+        UiKit.text(g, font, UiKit.fit(font, title.getString(), W - TREASURY_X - 66), x0 + 60, y0 + 15, UiKit.HEAD);
         Component sub = Component.translatable("gui.chroniclecaravans.town.subtitle", levelName(level), menu.shown(TownMenu.S_FOUNDER).getHoverName().getString());
-        UiKit.text(g, font, UiKit.fit(font, sub.getString(), W - 196), x0 + 60, y0 + 27, UiKit.INK);
+        UiKit.text(g, font, UiKit.fit(font, sub.getString(), W - TREASURY_X - 66), x0 + 60, y0 + 27, UiKit.INK);
         // Prosperity towards the next level
         int p = menu.get(TownMenu.D_PROSPERITY), next = menu.get(TownMenu.D_NEXT);
         UiKit.bar(g, x0 + 60, y0 + 40, 150, next == 0 ? 1 : p, next == 0 ? 1 : next, true);
@@ -149,7 +151,7 @@ public class TownScreen extends CCScreen implements MenuAccess<TownMenu> {
         }
         // Treasury, residents
         int treasury = menu.get(TownMenu.D_TREASURY);
-        int tx = x0 + W - 128;
+        int tx = x0 + W - TREASURY_X;
         g.renderItem(new ItemStack(Items.EMERALD), tx, y0 + 12);
         UiKit.text(g, font, "×" + treasury, tx + 17, y0 + 17, UiKit.INK);
         if (in(mx, my, tx, y0 + 12, 50, 16)) tip = List.of(Component.translatable("gui.chroniclecaravans.town.treasury_tip", treasury));
@@ -261,7 +263,7 @@ public class TownScreen extends CCScreen implements MenuAccess<TownMenu> {
     @Override
     protected boolean click(double mx, double my, int button, boolean shift) {
         int cy = y0 + 68, bh = H - 96, lx = x0 + 14;
-        int tx = x0 + W - 128;
+        int tx = x0 + W - TREASURY_X;
         if (in(mx, my, tx, y0 + 30, 50, 14)) {
             send(TownMenu.B_WITHDRAW);
             ding();

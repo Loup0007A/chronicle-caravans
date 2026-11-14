@@ -368,7 +368,7 @@ public final class CaravanSpawner {
             if (ground.is(BlockTags.PLANKS) || ground.is(BlockTags.LOGS) || ground.is(BlockTags.STAIRS)
                     || ground.is(BlockTags.SLABS) || ground.is(BlockTags.LEAVES) || ground.is(BlockTags.WOOL)) continue;
             int score = ground.is(ChronicleCaravans.ROADS) ? 0
-                    : ground.is(BlockTags.DIRT) || ground.is(BlockTags.SAND) || ground.is(BlockTags.SNOW) ? 10 : 20;
+                    : ground.is(BlockTags.DIRT) || ground.is(Blocks.GRASS_BLOCK) || ground.is(BlockTags.SAND) || ground.is(BlockTags.SNOW) ? 10 : 20;
             score += Math.abs(p.getY() - center.getY()) > 10 ? 30 : Math.abs(p.getY() - center.getY());
             if (score < bestScore) {
                 bestScore = score;

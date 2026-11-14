@@ -430,7 +430,7 @@ public final class GuideScenes {
         s.block(1, 1, 9, ChronicleCaravans.HITCHING_POST.get().defaultBlockState(), 10);
         ItemStack parcel = new ItemStack(ChronicleCaravans.PARCEL.get());
         // A relay of tier 2 prospers with each caravan, deal and parcel
-        Actor[] t = train(s, 11.5, Region.WOODS, 1, 0, -1.0, 80, 7.2, 316, 7.2, 400, 22.0);
+        Actor[] t = train(s, 11.5, Region.WOODS, 1, 0, -1.0, 80, 7.2, 316, 7.2, 470, 34.0);
         s.text(20, 124, "prosper", GuideScene.at(4.5, 2.3, 10.5))
                 .icons(new ItemStack(Items.EMERALD), parcel, GuideScene.ARROW, milestoneItem()).highlight(4, 1, 10);
         s.item(new ItemStack(Items.EMERALD, 3), 92, 106, 128, t[0].pos(92).add(0, 1.3, 0), new Vec3(4.5, 1.9, 10.5));
