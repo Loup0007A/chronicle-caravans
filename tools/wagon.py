@@ -157,6 +157,15 @@ for j, z in enumerate((BED_Z0 + 2, -6, 6, BED_Z1 - 3)):
 for z in (-10, 0, 10):
     body.box(-BED_X - 1, SIDE_TOP - 2, z, 1, 3, 1, "rope").box(BED_X, SIDE_TOP - 2, z, 1, 3, 1, "rope")
 
+# Parcels tied on the roof, one per parcel carried (the renderer shows as many as the caravan carries, up to six):
+# x, z of the centre, width, height, depth, yaw. The sixth one sits on the third.
+ROOF_Y = ARC_C + ARC_RY
+PARCELS = [(-0.5, -13, 6, 4, 5, 0.10), (0.5, -7, 5, 3, 5, -0.12), (-0.5, -1, 6, 4, 5, 0.06),
+           (0.5, 5, 5, 4, 5, -0.08), (-0.5, 11, 6, 3, 5, 0.12), (0.0, -1, 4, 3, 4, -0.22)]
+for i, (cx, cz, w, h, d, yaw) in enumerate(PARCELS):
+    y = ROOF_Y + (4 if i == 5 else 0)
+    body.child(f"parcel{i}", (cx, y, cz), (0, yaw, 0)).box(-w / 2, 0, -d / 2, w, h, d, "parcel")
+
 # Lantern hanging under the front hoop (rendered full-bright)
 lantern.box(-0.5, 29, BED_Z0 + 2, 1, 4, 1, "chain")
 lantern.box(-2, 23, BED_Z0 + 1, 4, 6, 4, "lantern")
@@ -179,6 +188,7 @@ PALETTE = {
     "rope": ((178, 150, 100), (130, 104, 66)),
     "chain": ((80, 80, 88), (50, 50, 56)),
     "lantern": ((255, 210, 110), (60, 56, 60)),
+    "parcel": ((198, 158, 104), (112, 80, 48)),
 }
 
 
@@ -225,6 +235,12 @@ def paint(img, mat, x0, y0, w, h, long_u, rnd):
             elif mat == "rope":
                 if (a + b) % 2 == 0:
                     c = shade(dark, 1.0)
+            elif mat == "parcel":
+                # kraft paper tied with twine: a cross of string on every face
+                if i == w // 2 or j == h // 2:
+                    c = shade(dark, 1.0 + rnd.random() * 0.1)
+                elif i in (0, w - 1) or j in (0, h - 1):
+                    c = shade(base, 0.86)
             elif mat == "lantern":
                 frame = i in (0, w - 1) or j in (0, h - 1)
                 c = dark if frame else shade(base, 0.9 + 0.2 * (1 - abs(j - h / 2) / max(1, h / 2)))
@@ -351,6 +367,8 @@ public class WagonModel extends EntityModel<CaravanWagon> {{
     public final ModelPart canopy;
     public final ModelPart lantern;
     public final ModelPart[] wheels = new ModelPart[{len(WHEELS)}];
+    /** Parcels on the roof: as many are shown as the caravan carries. */
+    public final ModelPart[] parcels = new ModelPart[{len(PARCELS)}];
 
     public WagonModel(ModelPart root) {{
         //#if !mc26
@@ -360,6 +378,12 @@ public class WagonModel extends EntityModel<CaravanWagon> {{
         this.canopy = root.getChild("canopy");
         this.lantern = root.getChild("lantern");
 {wheels}
+        for (int i = 0; i < parcels.length; i++) this.parcels[i] = this.body.getChild("parcel" + i);
+    }}
+
+    /** Shows {{@code n}} parcels on the roof. */
+    public void showParcels(int n) {{
+        for (int i = 0; i < parcels.length; i++) parcels[i].visible = i < n;
     }}
 
     public static LayerDefinition createLayer() {{

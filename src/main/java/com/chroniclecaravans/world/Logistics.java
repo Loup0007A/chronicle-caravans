@@ -187,6 +187,29 @@ public final class Logistics {
         return null;
     }
 
+    /**
+     * What a caravan leaving {@code at} now would do with the parcels waiting there: the stop it would head for
+     * (null: the parcels do not decide its way), and, in the depot's order, whether each one would board
+     * ({@code room}: free places on board). Same rules as {@link #pickNext} and {@link #load}.
+     */
+    public record Departure(BlockPos next, List<Parcel> waiting, boolean[] boards) {}
+
+    public static Departure departure(ServerLevel level, BlockPos at, int room) {
+        CaravanData data = CaravanData.get(level);
+        List<Parcel> waiting = data.depots().get(at);
+        if (waiting == null || waiting.isEmpty()) return new Departure(null, List.of(), new boolean[0]);
+        BlockPos next = pickNext(level, at);
+        boolean[] boards = new boolean[waiting.size()];
+        for (int i = 0; i < waiting.size(); i++) {
+            Parcel p = waiting.get(i);
+            if (next != null && room > 0 && next.equals(nextHop(data, at, p.dest))) {
+                boards[i] = true;
+                room--;
+            }
+        }
+        return new Departure(next, List.copyOf(waiting), boards);
+    }
+
     /** Loads the parcels of {@code at} that go through {@code next}, as long as the caravan has room. */
     public static int load(ServerLevel level, CaravanMaster m, BlockPos at, BlockPos next) {
         CaravanData data = CaravanData.get(level);

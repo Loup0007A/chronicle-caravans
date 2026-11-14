@@ -42,10 +42,11 @@ import net.minecraft.world.item.trading.MerchantOffer;
  * is a menu button click: it works the same on every loader.
  */
 public class CaravanMenu extends AbstractContainerMenu {
-    public static final int OFFERS = 20, DESTS = 4, FREIGHT = 5, CARGO = 4;
+    public static final int OFFERS = 20, DESTS = 4, FREIGHT = 5, CARGO = 4, WAITING = 3;
     // Display slots: three per offer (cost A, cost B, result), then the rest
     public static final int S_ROAD = OFFERS * 3, S_STOP = S_ROAD + DESTS, S_FREIGHT = S_STOP + 1, S_CARGO = S_FREIGHT + FREIGHT,
-            S_SHORTAGE = S_CARGO + CARGO, S_SURPLUS = S_SHORTAGE + 1, DISPLAY = S_SURPLUS + 1;
+            S_SHORTAGE = S_CARGO + CARGO, S_SURPLUS = S_SHORTAGE + 1, S_WAITING = S_SURPLUS + 1, S_NEXT = S_WAITING + WAITING,
+            DISPLAY = S_NEXT + 1;
 
     // Data slots (values are sent as shorts: everything stays within ±32767)
     public static final int D_MARKET = OFFERS, D_OFFER_COUNT = OFFERS * 2, D_PROGRESS = D_OFFER_COUNT + 1, D_NEEDED = D_OFFER_COUNT + 2,
@@ -55,7 +56,7 @@ public class CaravanMenu extends AbstractContainerMenu {
             D_ROAD_PRICE = D_OFFER_COUNT + 14, D_ROAD_DIST = D_ROAD_PRICE + DESTS, D_XP = D_ROAD_DIST + DESTS, D_FLAGS = D_XP + 1,
             D_CAMP = D_FLAGS + 1, D_FREIGHT_FEE = D_CAMP + 1, D_FREIGHT_HOPS = D_FREIGHT_FEE + FREIGHT, D_FREIGHT_DIST = D_FREIGHT_HOPS + FREIGHT,
             D_CARGO = D_FREIGHT_DIST + FREIGHT, D_CAPACITY = D_CARGO + 1, D_WAITING = D_CARGO + 2, D_ENTITY_LO = D_CARGO + 3,
-            D_ENTITY_HI = D_CARGO + 4, DATA = D_CARGO + 5;
+            D_ENTITY_HI = D_CARGO + 4, D_BOARDS = D_CARGO + 5, DATA = D_CARGO + 6;
     public static final int FLAG_AT_STOP = 1, FLAG_REPUTATION = 2, FLAG_TO_INN = 4, FLAG_LINKED = 8, FLAG_MARKET = 16, FLAG_FREIGHT = 32;
 
     // Buttons (ids stay under 128: 1.20.1 sends them as a byte)
@@ -150,6 +151,21 @@ public class CaravanMenu extends AbstractContainerMenu {
 
     public ItemStack freightDestination(int k) {
         return shown(S_FREIGHT + k);
+    }
+
+    /** A parcel waiting at this stop (its destination and size in the name). */
+    public ItemStack waitingParcel(int k) {
+        return shown(S_WAITING + k);
+    }
+
+    /** The waiting parcel {@code k} leaves with this caravan. */
+    public boolean boards(int k) {
+        return (data.get(D_BOARDS) & (1 << k)) != 0;
+    }
+
+    /** Where the parcels send this caravan next (empty: they do not decide). */
+    public ItemStack nextShown() {
+        return shown(S_NEXT);
     }
 
     public ItemStack cargo(int k) {
@@ -309,8 +325,27 @@ public class CaravanMenu extends AbstractContainerMenu {
         }
         data.set(D_CARGO, cargo.size());
         data.set(D_CAPACITY, master.cargoCapacity());
-        List<Parcel> waiting = here == null ? null : cd.depots().get(here.pos);
-        data.set(D_WAITING, waiting == null ? 0 : waiting.size());
+        // Parcels waiting at this stop, and which of them leave with this caravan
+        Logistics.Departure plan = here == null || !CCConfig.FREIGHT.get() ? null
+                : Logistics.departure((ServerLevel) master.level(), here.pos, master.cargoCapacity() - cargo.size());
+        int boards = 0;
+        for (k = 0; k < WAITING; k++) {
+            if (plan == null || k >= plan.waiting().size()) {
+                display.setItem(S_WAITING + k, ItemStack.EMPTY);
+                continue;
+            }
+            Parcel p = plan.waiting().get(k);
+            CaravanData.Stop to = cd.stop(p.dest);
+            ItemStack box = new ItemStack(ChronicleCaravans.PARCEL.get());
+            Compat.setName(box, Component.translatable("gui.chroniclecaravans.cargo_line", to == null ? Component.literal("?") : to.displayName(), p.stacks));
+            setIfChanged(S_WAITING + k, box);
+            if (plan.boards()[k]) boards |= 1 << k;
+        }
+        CaravanData.Stop next = plan == null || plan.next() == null ? null : cd.stop(plan.next());
+        if (next == null) display.setItem(S_NEXT, ItemStack.EMPTY);
+        else setIfChanged(S_NEXT, named(next));
+        data.set(D_BOARDS, boards);
+        data.set(D_WAITING, plan == null ? 0 : plan.waiting().size());
     }
 
     private void setIfChanged(int slot, ItemStack stack) {

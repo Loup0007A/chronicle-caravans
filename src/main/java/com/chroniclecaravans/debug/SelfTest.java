@@ -509,10 +509,20 @@ public final class SelfTest {
         check(shipped == 1 && out.goodsCount() == 0, "the dock hands its goods to the guild");
         check(out.emeralds() == 3 - fee && out.status() == DockBlockEntity.SHIPPED, "the dock pays the freight");
         check(hamlet.equals(Logistics.pickNext(level, stop)), "waiting parcels choose the caravan's next stop");
+        // The freight tab tells which waiting parcels leave with the caravan (and none when it is full)
+        Logistics.Departure plan = Logistics.departure(level, stop, master.cargoCapacity() - master.cargo().size());
+        Logistics.Departure full = Logistics.departure(level, stop, 0);
+        check(hamlet.equals(plan.next()) && plan.boards().length == 1 && plan.boards()[0] && !full.boards()[0],
+                "the freight tab shows which parcels leave with this caravan");
         int loaded = Logistics.load(level, master, stop, hamlet);
         check(loaded == 1 && master.cargo().size() == 1, "the caravan loads the parcel");
+        master.showCargo(level);
+        CaravanWagon wagon = master.wagon(level);
+        check(wagon != null && wagon.parcels() == 1, "a package on the wagon's roof shows the parcel on board");
         int delivered = Logistics.unload(level, master, h);
         check(delivered == 1 && master.cargo().isEmpty(), "the parcel is delivered at its stop");
+        master.showCargo(level);
+        check(wagon != null && wagon.parcels() == 0, "the roof is empty once the parcel is delivered");
         int cobble = 0, logs = 0;
         for (int i = 0; i < in.getContainerSize(); i++) {
             ItemStack s = in.getItem(i);
@@ -854,6 +864,12 @@ public final class SelfTest {
             for (CaravanMaster m : CaravanSpawner.caravans(level)) m.vanish(level);
             command(level, "time set 1000");
             spawn(level, Region.DUNES);
+        }
+        if (t == 70 && master != null && hamlet != null && CaravanData.get(level).stop(hamlet) != null) {
+            for (Item it : new Item[] {Items.OAK_LOG, Items.WHEAT, Items.IRON_INGOT}) {
+                master.cargo().add(Parcel.of(level, List.of(new ItemStack(it, 16)), stop, hamlet, viewer.getUUID(), viewer.getName().getString(), false));
+            }
+            master.showCargo(level);
         }
         if (t == 640 && master != null && master.isAlive()) master.startEscort(level, 3, 6000, true, null);
         if (t == 760 && master != null && master.isAlive()) master.startAmbush(level);

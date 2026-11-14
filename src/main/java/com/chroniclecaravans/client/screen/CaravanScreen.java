@@ -177,6 +177,17 @@ public class CaravanScreen extends CCScreen implements MenuAccess<CaravanMenu> {
         if (in(mx, my, x0 + W - 46, y0 + 14, 28, 28)) {
             hoverTip = List.of(Component.translatable("gui.chroniclecaravans.level", level), Guild.title(xp, skills));
         }
+        // Parcels on board (also shown by the packages on the wagon's roof)
+        if ((flags() & CaravanMenu.FLAG_FREIGHT) != 0) {
+            String n = menu.get(CaravanMenu.D_CARGO) + "/" + menu.get(CaravanMenu.D_CAPACITY);
+            int px = x0 + W - 18 - font.width(n);
+            UiKit.icon(g, UiKit.I_PARCEL, px - 13, y0 + 47);
+            UiKit.text(g, font, n, px, y0 + 48, UiKit.INK);
+            if (in(mx, my, px - 14, y0 + 45, font.width(n) + 16, 12)) {
+                hoverTip = List.of(Component.translatable("gui.chroniclecaravans.freight.header", menu.get(CaravanMenu.D_CARGO)),
+                        Component.translatable("gui.chroniclecaravans.freight.roof").withStyle(ChatFormatting.GRAY));
+            }
+        }
     }
 
     /** A price: the item in its frame, and its count written beside it ("×12"), easier to read than the stack number. */
@@ -324,14 +335,35 @@ public class CaravanScreen extends CCScreen implements MenuAccess<CaravanMenu> {
 
     private static final int FREIGHT_W = 206;
 
+    /** The guide scene about parcels sent by hand (opened by the "?" of the freight tab). */
+    public static final int PARCEL_GUIDE = 9;
+    private static final String[] PARCEL_STEPS = {"choose", "fill", "wait", "arrive"};
+
+    /** The "?" of the freight tab: opens the guide on parcels. */
+    private boolean overGuide(int mx, int my, int cy) {
+        return in(mx, my, x0 + 14 + FREIGHT_W - 20, cy + 3, 15, 14);
+    }
+
     private List<Component> drawFreight(GuiGraphics g, int cy, int mx, int my) {
         int lx = x0 + 14, lw = FREIGHT_W, bh = H - 96;
+        List<Component> tip = null;
         UiKit.card(g, lx, cy, lw, bh, UiKit.CARD);
         cardTitle(g, UiKit.I_PARCEL, Component.translatable("gui.chroniclecaravans.freight.send"), lx + 6, cy + 6);
+        boolean help = overGuide(mx, my, cy);
+        UiKit.button(g, font, lx + lw - 20, cy + 3, 15, 14, Component.literal("?"), help ? UiKit.BUTTON_HOVER : UiKit.BUTTON);
+        if (help) {
+            tip = new ArrayList<>();
+            tip.add(Component.translatable("gui.chroniclecaravans.freight.how").withStyle(ChatFormatting.GOLD));
+            for (int i = 0; i < PARCEL_STEPS.length; i++) {
+                tip.add(Component.literal((i + 1) + ". ").append(Component.translatable("gui.chroniclecaravans.freight.step." + PARCEL_STEPS[i])));
+            }
+            tip.add(Component.translatable("gui.chroniclecaravans.freight.open_guide").withStyle(ChatFormatting.GRAY));
+        }
+        int below = cy + 22;
         if ((flags() & CaravanMenu.FLAG_FREIGHT) == 0) {
-            UiKit.wrap(g, font, Component.translatable("gui.chroniclecaravans.freight.off"), lx + 6, cy + 22, lw - 12, UiKit.INK_SOFT);
+            below = UiKit.wrap(g, font, Component.translatable("gui.chroniclecaravans.freight.off"), lx + 6, cy + 22, lw - 12, UiKit.INK_SOFT);
         } else if ((flags() & CaravanMenu.FLAG_AT_STOP) == 0) {
-            UiKit.wrap(g, font, Component.translatable("gui.chroniclecaravans.freight.not_here"), lx + 6, cy + 22, lw - 12, UiKit.INK_SOFT);
+            below = UiKit.wrap(g, font, Component.translatable("gui.chroniclecaravans.freight.not_here"), lx + 6, cy + 22, lw - 12, UiKit.INK_SOFT);
         } else {
             int any = 0;
             for (int k = 0; k < CaravanMenu.FREIGHT; k++) {
@@ -349,25 +381,73 @@ public class CaravanScreen extends CCScreen implements MenuAccess<CaravanMenu> {
                 boolean hover = ok && in(mx, my, lx + lw - 34, ry, 30, 16);
                 UiKit.button(g, font, lx + lw - 34, ry, 30, 16, Component.translatable("gui.chroniclecaravans.freight.go"),
                         ok ? (hover ? UiKit.BUTTON_HOVER : UiKit.BUTTON) : UiKit.BUTTON_OFF);
+                if (in(mx, my, lx + lw - 34, ry, 30, 16)) {
+                    tip = List.of(Component.translatable("gui.chroniclecaravans.freight.go_tip", d.getHoverName().getString(), fee));
+                }
             }
-            if (any == 0) UiKit.wrap(g, font, Component.translatable("gui.chroniclecaravans.freight.none"), lx + 6, cy + 22, lw - 12, UiKit.INK_SOFT);
+            if (any == 0) below = UiKit.wrap(g, font, Component.translatable("gui.chroniclecaravans.freight.none"), lx + 6, cy + 22, lw - 12, UiKit.INK_SOFT);
+            else below = cy + 20 + any * 20;
         }
-        // The cargo on board
+        // How it works, in four steps, when there is room for it
+        int need = 6;
+        for (String st : PARCEL_STEPS) need += font.split(Component.translatable("gui.chroniclecaravans.freight.step." + st), lw - 24).size() * 9;
+        if (cy + bh - 4 - below >= need) {
+            int y = cy + bh - 4 - need + 6;
+            UiKit.separator(g, lx + 8, y - 4, lw - 16);
+            for (int i = 0; i < PARCEL_STEPS.length; i++) {
+                UiKit.text(g, font, (i + 1) + ".", lx + 8, y, UiKit.GOLD);
+                for (var line : font.split(Component.translatable("gui.chroniclecaravans.freight.step." + PARCEL_STEPS[i]), lw - 24)) {
+                    g.drawString(font, line, lx + 19, y, UiKit.INK_SOFT, false);
+                    y += 9;
+                }
+            }
+        }
+
+        // On board, then waiting at this stop
         int rx = x0 + 14 + FREIGHT_W + 6, rw = W - 28 - FREIGHT_W - 6;
         UiKit.card(g, rx, cy, rw, bh, UiKit.CARD);
         cardTitle(g, UiKit.I_SCALES, Component.translatable("gui.chroniclecaravans.freight.cargo"), rx + 6, cy + 6);
         int cargo = menu.get(CaravanMenu.D_CARGO), cap = menu.get(CaravanMenu.D_CAPACITY);
         UiKit.bar(g, rx + 6, cy + 20, rw - 12, cargo, Math.max(1, cap), true);
         UiKit.text(g, font, Component.translatable("gui.chroniclecaravans.freight.load", cargo, cap), rx + 6, cy + 31, UiKit.INK);
-        for (int k = 0; k < CaravanMenu.CARGO; k++) {
+        if (in(mx, my, rx + 4, cy + 18, rw - 8, 22)) tip = List.of(Component.translatable("gui.chroniclecaravans.freight.roof"));
+        int y = cy + 43;
+        if (cargo == 0) {
+            UiKit.text(g, font, UiKit.fit(font, Component.translatable("gui.chroniclecaravans.freight.empty").getString(), rw - 12), rx + 6, y, UiKit.INK_SOFT);
+            y += 11;
+        }
+        for (int k = 0; k < Math.min(cargo, 3) && k < CaravanMenu.CARGO; k++) {
             ItemStack c = menu.cargo(k);
             if (c.isEmpty()) continue;
-            int ry = cy + 44 + k * 12;
-            UiKit.icon(g, UiKit.I_PARCEL, rx + 6, ry - 1);
-            UiKit.text(g, font, UiKit.fit(font, c.getHoverName().getString(), rw - 24), rx + 18, ry, UiKit.INK_SOFT);
+            UiKit.icon(g, UiKit.I_PARCEL, rx + 6, y - 1);
+            UiKit.text(g, font, UiKit.fit(font, c.getHoverName().getString(), rw - 24), rx + 18, y, UiKit.INK);
+            y += 11;
         }
-        UiKit.text(g, font, Component.translatable("gui.chroniclecaravans.freight.waiting", menu.get(CaravanMenu.D_WAITING)), rx + 6, cy + bh - 13, UiKit.INK_SOFT);
-        return null;
+        if (cargo > 3) {
+            UiKit.text(g, font, Component.translatable("gui.chroniclecaravans.freight.more", cargo - 3), rx + 18, y, UiKit.INK_SOFT);
+            y += 11;
+        }
+        int waiting = menu.get(CaravanMenu.D_WAITING);
+        UiKit.separator(g, rx + 8, y + 1, rw - 16);
+        y += 5;
+        UiKit.icon(g, UiKit.I_CLOCK, rx + 6, y - 1);
+        UiKit.text(g, font, UiKit.fit(font, Component.translatable("gui.chroniclecaravans.freight.waiting", waiting).getString(), rw - 24), rx + 18, y, UiKit.INK);
+        y += 11;
+        for (int k = 0; k < CaravanMenu.WAITING && y <= cy + bh - 12; k++) {
+            ItemStack w = menu.waitingParcel(k);
+            if (w.isEmpty()) continue;
+            boolean boards = menu.boards(k);
+            UiKit.icon(g, boards ? UiKit.I_CHECK : UiKit.I_CLOCK, rx + 6, y - 1);
+            UiKit.text(g, font, UiKit.fit(font, w.getHoverName().getString(), rw - 24), rx + 18, y, boards ? UiKit.GOOD : UiKit.INK_SOFT);
+            if (in(mx, my, rx + 4, y - 2, rw - 8, 11)) {
+                ItemStack next = menu.nextShown();
+                tip = List.of(boards
+                        ? Component.translatable("gui.chroniclecaravans.freight.boards", next.isEmpty() ? "?" : next.getHoverName().getString())
+                        : Component.translatable("gui.chroniclecaravans.freight.later"));
+            }
+            y += 11;
+        }
+        return tip;
     }
 
     private int roadsTop(int cy, int rw) {
@@ -547,6 +627,10 @@ public class CaravanScreen extends CCScreen implements MenuAccess<CaravanMenu> {
                 }
             }
             case FREIGHT -> {
+                if (overGuide((int) mx, (int) my, cy)) {
+                    minecraft.setScreen(new com.chroniclecaravans.client.guide.GuideScreen(this, PARCEL_GUIDE));
+                    return true;
+                }
                 int lx = x0 + 14, lw = FREIGHT_W, any = 0;
                 for (int k = 0; k < CaravanMenu.FREIGHT; k++) {
                     if (menu.freightDestination(k).isEmpty()) continue;

@@ -41,7 +41,7 @@ public final class GuideScenes {
     private static final BlockState PATH = Blocks.DIRT_PATH.defaultBlockState();
 
     public static List<GuideScene> all() {
-        return List.of(milestone(), route(), caravan(), villages(), ambush(), hire(), inn(), services(), weather(), freight(), automation());
+        return List.of(milestone(), route(), caravan(), villages(), ambush(), hire(), inn(), services(), weather(), parcel(), freight(), automation());
     }
 
     private static BlockState milestoneBlock() {
@@ -299,6 +299,40 @@ public final class GuideScenes {
     }
 
     // ---------------------------------------------------------------- 10. freight and loading docks
+
+    // ---------------------------------------------------------------- 10. a parcel sent by hand
+
+    static GuideScene parcel() {
+        GuideScene s = new GuideScene("parcel", 460, 19, 8, new ItemStack(ChronicleCaravans.PARCEL.get()));
+        s.plate(GRASS);
+        for (int x = 0; x < 19; x++) s.ground(x, 5, PATH);
+        s.block(3, 1, 4, milestoneBlock(), 4);
+        s.block(16, 1, 4, milestoneBlock(), 8).block(16, 1, 3, Blocks.BARREL.defaultBlockState(), 12);
+        ItemStack parcel = new ItemStack(ChronicleCaravans.PARCEL.get());
+        Actor[] t = train(s, 5.5, Region.COAST, 1, 0, 6.2, 200, 6.2, 330, 19.4);
+        Actor wagon = t[2];
+        // One package on the roof per parcel on board
+        wagon.each((e, time) -> {
+            if (e instanceof CaravanWagon w) w.setParcels(time >= 176 && time < 352 ? 2 : time >= 160 && time < 352 ? 1 : 0);
+        });
+        Vec3 onMilestone = new Vec3(3.5, 2.3, 4.5), barrel = new Vec3(16.5, 2.1, 3.5);
+        // Packed at the caravan, the parcels wait at the milestone, then board
+        s.item(new ItemStack(Items.EMERALD, 2), 16, 34, 60, new Vec3(3.5, 4.0, 7.0), t[0].pos(20).add(0, 1.2, 0));
+        s.item(parcel, 40, 58, 146, new Vec3(3.5, 4.0, 7.0), onMilestone);
+        s.item(parcel, 60, 78, 162, new Vec3(3.5, 4.0, 7.0), onMilestone.add(0, 0.35, 0));
+        s.text(14, 120, "send", GuideScene.at(3.5, 2.4, 4.5)).icons(new ItemStack(Items.EMERALD), GuideScene.ARROW, parcel)
+                .highlight(3, 1, 4);
+        s.item(parcel, 146, 160, 160, onMilestone, wagon.pos(160).add(0, 2.7, 0));
+        s.item(parcel, 162, 176, 176, onMilestone.add(0, 0.35, 0), wagon.pos(176).add(0, 2.7, 0));
+        s.text(130, 250, "roof", GuideScene.above(wagon, 3.2)).icons(parcel, GuideScene.ARROW, milestoneItem());
+        // At the destination: into the barrel against the milestone, then unpacked
+        s.item(parcel, 352, 368, 460, wagon.pos(352).add(0, 2.7, 0), barrel);
+        s.text(340, 410, "arrive", GuideScene.at(16.5, 2.2, 3.5)).icons(parcel, GuideScene.ARROW, new ItemStack(Items.BARREL))
+                .highlight(new AABB(16, 1, 3, 17, 2, 5));
+        s.item(new ItemStack(Items.APPLE, 12), 410, 424, 460, barrel, barrel.add(0, 1.2, 1.5));
+        s.text(404, 458, "open", GuideScene.at(16.5, 2.6, 4.5)).icons(parcel, GuideScene.ARROW, new ItemStack(Items.APPLE));
+        return s;
+    }
 
     static GuideScene freight() {
         GuideScene s = new GuideScene("freight", 520, 19, 8, new ItemStack(ChronicleCaravans.PARCEL.get()));

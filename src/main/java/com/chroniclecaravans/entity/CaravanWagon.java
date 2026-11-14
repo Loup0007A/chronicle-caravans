@@ -28,6 +28,8 @@ import net.minecraft.world.phys.Vec3;
  */
 public class CaravanWagon extends Entity {
     private static final EntityDataAccessor<Integer> REGION = SynchedEntityData.defineId(CaravanWagon.class, EntityDataSerializers.INT);
+    /** Parcels on board: as many packages are tied on the roof (up to six). */
+    private static final EntityDataAccessor<Integer> PARCELS = SynchedEntityData.defineId(CaravanWagon.class, EntityDataSerializers.INT);
     /** Distance from the wagon's centre to its rear hitch (where the first pack llama is tied), in blocks. */
     public static final double REAR_HITCH = 1.65;
 
@@ -50,11 +52,13 @@ public class CaravanWagon extends Entity {
     //$$ @Override
     //$$ protected void defineSynchedData() {
     //$$     entityData.define(REGION, Region.STEPPE.ordinal());
+    //$$     entityData.define(PARCELS, 0);
     //$$ }
     //#else
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         builder.define(REGION, Region.STEPPE.ordinal());
+        builder.define(PARCELS, 0);
     }
     //#endif
 
@@ -66,6 +70,14 @@ public class CaravanWagon extends Entity {
 
     public void setRegion(Region region) {
         entityData.set(REGION, region.ordinal());
+    }
+
+    public int parcels() {
+        return entityData.get(PARCELS);
+    }
+
+    public void setParcels(int n) {
+        if (entityData.get(PARCELS) != n) entityData.set(PARCELS, n);
     }
 
     public void setMaster(UUID id) {

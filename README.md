@@ -27,7 +27,7 @@ Place a **Caravan Milestone** at your base. A few minutes later, a caravan appea
 | **Milestones** | Broken, a milestone gives back its lantern. With Silk Touch, you keep it, and it keeps its schedule. |
 | **Supply and demand** | Every deal moves the market: goods sold a lot are paid less, goods bought a lot cost more; it fades by half every day. Each region has its news of the day: a shortage (+50% for one request) and a surplus (one good 25% cheaper). |
 | **Weather and camps** | Rain slows caravans by a quarter. In a thunderstorm, or at night with no inn within reach, they camp beside the road around a campfire. |
-| **Freight** | From the Freight tab of a halted caravan, send a parcel to any stop of the network: it goes from stop to stop, over several legs if needed (1 emerald + 1 per leg), and lands in a dock or a chest next to the destination's milestone. |
+| **Freight** | From the Freight tab of a halted caravan, send a parcel to any stop of the network (1 emerald + 1 per leg). It waits at the milestone, leaves with the next caravan going its way, goes from stop to stop over several legs if needed, and lands in a dock or a chest next to the destination's milestone; right-click it to unpack. One package is tied on the wagon's roof per parcel on board, and the Freight tab shows which waiting parcels leave with this caravan. |
 | **Loading Dock** | Barrel + hopper + lead. Near a milestone; named after a stop (anvil), it ships what you put in with the next caravan, paid with its emeralds; unnamed, it receives the deliveries. Hoppers fill and empty it. |
 | **Trading Post** | Chest + emerald + comparator + wool + slab. Trades on its own with the caravans halting nearby: sells them what they ask for from its stock, then buys what its orders show. Hoppers in and out, comparator output, a redstone signal pauses it. |
 | **Redstone** | A comparator next to a milestone reads 15 while a caravan halts there, 1 to 7 while one is coming. A redstone pulse on a milestone calls a caravan, paid with an emerald block from a chest or barrel beside it. |
@@ -37,7 +37,7 @@ Place a **Caravan Milestone** at your base. A few minutes later, a caravan appea
 
 ## Caravan Guide
 
-Like Create's Ponder: hold **[W]** while hovering the Caravan Milestone, a Loading Dock or a Trading Post in your inventory (or type `/caravanguide`). Eleven animated 3D scenes explain milestones, routes, the caravan, villages, ambushes and the guild, hiring, inns, road crews and escorts, weather and camps, freight and docks, redstone and trading posts. Drag to turn the scene, scroll to zoom, click the timeline to jump.
+Like Create's Ponder: hold **[W]** while hovering the Caravan Milestone, a Parcel, a Loading Dock or a Trading Post in your inventory (or type `/caravanguide`). Twelve animated 3D scenes explain milestones, routes, the caravan, villages, ambushes and the guild, hiring, inns, road crews and escorts, weather and camps, sending a parcel, freight and docks, redstone and trading posts. Drag to turn the scene, scroll to zoom, click the timeline to jump.
 
 ## Commands
 

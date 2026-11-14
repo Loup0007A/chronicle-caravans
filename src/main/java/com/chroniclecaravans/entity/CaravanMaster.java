@@ -356,6 +356,7 @@ public class CaravanMaster extends WanderingTrader {
         } else {
             tickParked(level);
         }
+        if (tickCount % 10 == 0) showCargo(level);
         if (tickCount % 40 == 0) {
             setDespawnDelay(6000);
             tendTrain(level);
@@ -1359,7 +1360,15 @@ public class CaravanMaster extends WanderingTrader {
         if (here != null && CCConfig.FREIGHT.get()) Logistics.load(level, this, here, next.pos);
         target = next.pos;
         state = State.TRAVELING;
-        announce(level, Component.translatable("msg.chroniclecaravans.departs", region.caravanName().withStyle(region.color), next.displayName()), null);
+        if (cargo.isEmpty()) announce(level, Component.translatable("msg.chroniclecaravans.departs", region.caravanName().withStyle(region.color), next.displayName()), null);
+        else announce(level, Component.translatable("msg.chroniclecaravans.departs_cargo", region.caravanName().withStyle(region.color), next.displayName(), cargo.size()), null);
+        showCargo(level);
+    }
+
+    /** The packages on the wagon's roof: one per parcel carried. */
+    public void showCargo(ServerLevel level) {
+        CaravanWagon w = wagon(level);
+        if (w != null) w.setParcels(cargo.size());
     }
 
     public void startLeaving(ServerLevel level) {

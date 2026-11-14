@@ -53,12 +53,23 @@ public final class GuideKeys {
         if (e.getEntity() == null) return;
         ItemStack stack = e.getItemStack();
         int scene;
-        if (stack.is(ChronicleCaravans.MILESTONE_ITEM.get())) scene = 0;
-        else if (stack.is(ChronicleCaravans.DOCK_ITEM.get())) scene = 9;
-        else if (stack.is(ChronicleCaravans.POST_ITEM.get())) scene = 10;
-        else return;
-        if (scene > 0) {
-            String key = stack.is(ChronicleCaravans.DOCK_ITEM.get()) ? "item.chroniclecaravans.loading_dock.tooltip" : "item.chroniclecaravans.trading_post.tooltip";
+        String key;
+        if (stack.is(ChronicleCaravans.MILESTONE_ITEM.get())) {
+            scene = 0;
+            key = null;
+        } else if (stack.is(ChronicleCaravans.PARCEL.get())) {
+            scene = 9;
+            key = "item.chroniclecaravans.caravan_parcel.tooltip";
+        } else if (stack.is(ChronicleCaravans.DOCK_ITEM.get())) {
+            scene = 10;
+            key = "item.chroniclecaravans.loading_dock.tooltip";
+        } else if (stack.is(ChronicleCaravans.POST_ITEM.get())) {
+            scene = 11;
+            key = "item.chroniclecaravans.trading_post.tooltip";
+        } else {
+            return;
+        }
+        if (key != null) {
             for (String line : Component.translatable(key).getString().split("\n")) e.getToolTip().add(Component.literal(line).withStyle(ChatFormatting.GRAY));
         }
         lastTooltip = clientTicks;
@@ -124,7 +135,7 @@ public final class GuideKeys {
                     pendingScene = 0;
                     return 1;
                 })
-                .then(Commands.argument("scene", IntegerArgumentType.integer(1, 11)).executes(c -> {
+                .then(Commands.argument("scene", IntegerArgumentType.integer(1, 12)).executes(c -> {
                     pendingScene = IntegerArgumentType.getInteger(c, "scene") - 1;
                     return 1;
                 })));

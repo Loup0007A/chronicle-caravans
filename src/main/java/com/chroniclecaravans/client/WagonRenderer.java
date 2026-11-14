@@ -44,6 +44,7 @@ public class WagonRenderer extends EntityRenderer<CaravanWagon> {
     public void render(CaravanWagon wagon, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource buffer, int light) {
         float yaw = Mth.rotLerp(partialTick, wagon.yRotO, wagon.getYRot());
         float pitch = Mth.lerp(partialTick, wagon.xRotO, wagon.getXRot());
+        model.showParcels(wagon.parcels());
         renderWagon(model, wagon.region(), yaw, pitch, Mth.lerp(partialTick, wagon.rollO, wagon.roll), poseStack, buffer, light);
         super.render(wagon, entityYaw, partialTick, poseStack, buffer, light);
     }

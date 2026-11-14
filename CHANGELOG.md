@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0
+
+- **Parcels you can see**: one package tied on the wagon's roof for each parcel the caravan carries (up to six). The caravan interface shows the parcels on board in its header, and the caravan announces how many parcels it leaves with.
+- **The Freight tab explains itself**: the parcels on board (destination, size), the parcels waiting at the milestone and, for each one, whether it leaves with this caravan or waits for another going its way. When there is room, the four steps are written at the bottom; the **[?]** button lists them and opens the guide.
+- **New guide scene, "Sending a Parcel"**: packing at a halted caravan, waiting at the milestone, boarding (packages on the roof), arrival in a barrel or chest against the destination milestone, unpacking. Hold [W] over a parcel to open it. The guide now has twelve scenes.
+- The parcel crate says when the fee is paid and where the parcel will arrive; a parcel's tooltip says how to send and unpack one.
+
 ## 1.3.0
 
 - **Relays**: a **Relay Charter** (paper + emerald block + gold ingot + honeycomb) used on a milestone raises it one tier, up to tier 4. A tier 2, 3 or 4 relay takes 2, 3 or 4 caravans at once, and caravans come 3, 6 or 10 times as often. Each caravan beyond the first needs a **Hitching Post** (wooden fence + iron ingot) within 16 blocks. The milestone shows its tier: a gold collar, then guild pennants. Silk Touch keeps the tier.

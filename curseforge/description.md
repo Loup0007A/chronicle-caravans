@@ -26,7 +26,7 @@ Place a second milestone, build a road between the two, and you have a **trade r
 - Right-click the master or the wagon to open the **caravan interface**, a hand-drawn trader's ledger: Market (one click to buy, shift-click to buy all), Requests, Freight, Services and Guild.
 
 ### ✦ A guide in the style of Create's Ponder
-Hold **[W]** over the Caravan Milestone, a Loading Dock or a Trading Post in your inventory: eleven animated 3D scenes show how everything works, with text bubbles and a timeline. Turn the scene, zoom in, replay. Or type `/caravanguide`.
+Hold **[W]** over the Caravan Milestone, a Parcel, a Loading Dock or a Trading Post in your inventory: twelve animated 3D scenes show how everything works, with text bubbles and a timeline. Turn the scene, zoom in, replay. Or type `/caravanguide`.
 
 ### ✦ Villages come alive
 Every village bell is a caravan stop: caravans travel between villages **on their own**, with no milestone to build. Village paths are already roads, so they follow them from one village to the next. Your milestones join the same network.
@@ -48,7 +48,7 @@ Every village bell is a caravan stop: caravans travel between villages **on thei
 ### ✦ A living world
 - **Supply and demand**: sell a lot of one good and the caravans pay less for it, buy a lot and prices rise; the market calms down day after day. Every region has its **news of the day**: a shortage paid 50% more, a surplus sold 25% cheaper.
 - **Weather**: rain slows the caravans; in a thunderstorm, or at night far from any inn, they **make camp** beside the road around a campfire.
-- **Freight**: from the Freight tab of a halted caravan, send a **parcel** to any stop of the network. It travels from stop to stop, over several legs if needed, and lands in a chest or a dock at its destination.
+- **Freight**: from the Freight tab of a halted caravan, send a **parcel** to any stop of the network. It waits at the milestone, leaves with the next caravan going its way (you see the packages tied on the wagon's roof), travels from stop to stop over several legs if needed, and lands in a chest or a dock at its destination.
 
 ### ✦ Automation for the engineers
 - **Loading Dock**: name it after a stop with an anvil, fill it (hoppers welcome) with goods and a few emeralds: the next caravan ships it all there. An unnamed dock receives the deliveries, and a hopper below empties it. Build real supply chains between your bases!

@@ -27,6 +27,7 @@ public class ParcelScreen extends CCContainerScreen<ParcelMenu> {
         int rx = x + ParcelMenu.GRID_X + 60;
         g.renderItem(new ItemStack(Items.EMERALD), rx, y + ParcelMenu.GRID_Y);
         UiKit.text(g, font, "×" + menu.get(ParcelMenu.D_FEE), rx + 17, y + ParcelMenu.GRID_Y + 5, UiKit.INK);
+        UiKit.wrap(g, font, Component.translatable("gui.chroniclecaravans.parcel.fee"), rx, y + ParcelMenu.GRID_Y + 20, imageWidth - (rx - x) - 10, UiKit.INK_SOFT);
         UiKit.wrap(g, font, Component.translatable("gui.chroniclecaravans.parcel.help").withStyle(ChatFormatting.ITALIC), x + 14, y + ParcelMenu.GRID_Y + 58,
                 imageWidth - 28, UiKit.INK_SOFT);
         UiKit.separator(g, x + 14, y + ParcelMenu.INV_Y - 5, imageWidth - 28);

@@ -28,6 +28,7 @@ public class WagonRenderer extends EntityRenderer<CaravanWagon, WagonRenderer.St
     public static class State extends EntityRenderState {
         public Region region = Region.STEPPE;
         public float yaw, pitch, roll;
+        public int parcels;
     }
 
     /** The three parts are drawn separately: plain body, tinted canopy, full-bright lantern. */
@@ -41,6 +42,7 @@ public class WagonRenderer extends EntityRenderer<CaravanWagon, WagonRenderer.St
             public void setupAnim(State s) {
                 super.setupAnim(s);
                 model.setRoll(s.roll / SCALE);
+                model.showParcels(s.parcels);
             }
         };
         this.canopy = new Model<>(model.canopy, RenderTypes::entityCutout) {};
@@ -74,6 +76,7 @@ public class WagonRenderer extends EntityRenderer<CaravanWagon, WagonRenderer.St
         s.yaw = Mth.rotLerp(partialTick, wagon.yRotO, wagon.getYRot());
         s.pitch = Mth.lerp(partialTick, wagon.xRotO, wagon.getXRot());
         s.roll = Mth.lerp(partialTick, wagon.rollO, wagon.roll);
+        s.parcels = wagon.parcels();
     }
 
     @Override

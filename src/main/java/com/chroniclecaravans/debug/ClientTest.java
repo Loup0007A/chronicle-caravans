@@ -32,8 +32,8 @@ public final class ClientTest {
     /** Guide: {client tick, scene, scene tick to jump to}; the screenshot is taken 14 ticks later. */
     private static final int[][] GUIDE = {
             {960, 0, 100}, {1000, 1, 236}, {1040, 2, 70}, {1080, 2, 280}, {1120, 3, 60}, {1160, 3, 200}, {1200, 4, 120}, {1240, 4, 300}, {1280, 5, 80},
-            {1320, 6, 150}, {1360, 6, 270}, {1400, 7, 120}, {1440, 7, 300}, {1480, 8, 140}, {1520, 9, 70}, {1560, 9, 160},
-            {1600, 9, 360}, {1640, 10, 100}, {1680, 10, 200}, {1720, 10, 300}};
+            {1320, 6, 150}, {1360, 6, 270}, {1400, 7, 120}, {1440, 7, 300}, {1480, 8, 140}, {1520, 9, 150}, {1560, 9, 360},
+            {1600, 10, 160}, {1640, 10, 360}, {1680, 11, 100}, {1720, 11, 200}, {1760, 11, 300}};
 
     private static int t;
     private static int total;
@@ -76,7 +76,7 @@ public final class ClientTest {
         if (mc.screen != null && !(mc.screen instanceof GuideScreen) && !(mc.screen instanceof CaravanScreen) && !(mc.screen instanceof AtlasScreen)
                 && !(mc.screen instanceof DockScreen) && !(mc.screen instanceof TradingPostScreen)) return;
         t++;
-        hideHud(mc, (!(t > 420 && t < 700) && t < 950) || (t > 1755 && t < 1790) || innTicks > 0);
+        hideHud(mc, (!(t > 420 && t < 700) && t < 950) || (t > 1795 && t < 1830) || innTicks > 0);
         if (t % 20 == 0 && t < 950) {
             for (Entity en : mc.level.entitiesForRendering()) {
                 if (en instanceof CaravanMaster && !seenMaster) {
@@ -95,7 +95,7 @@ public final class ClientTest {
         }
         for (int i = 0; i < SHOTS.length; i++) if (t == SHOTS[i]) shot(mc, "caravan_" + i);
         // The relay: a second caravan's train parked at a hitching post
-        if (t == 1775) shot(mc, "relay_0");
+        if (t == 1810) shot(mc, "relay_0");
         for (int i = 0; i < GUIDE.length; i++) {
             int[] g = GUIDE[i];
             if (t == g[0]) {
