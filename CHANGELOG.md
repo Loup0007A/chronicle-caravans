@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.1
+
+- Freight tab: the "On board" column is wider (no more cut-off lines), the caravan ledger is a little taller, and the four steps on how parcels work now fit under the destinations.
+
 ## 1.4.0
 
 - **Parcels you can see**: one package tied on the wagon's roof for each parcel the caravan carries (up to six). The caravan interface shows the parcels on board in its header, and the caravan announces how many parcels it leaves with.

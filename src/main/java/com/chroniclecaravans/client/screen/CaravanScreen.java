@@ -24,7 +24,7 @@ import net.minecraft.world.item.Items;
  * the requests (goods the caravan pays for), freight (parcels), services (escort, road crews) and the guild.
  */
 public class CaravanScreen extends CCScreen implements MenuAccess<CaravanMenu> {
-    private static final int W = 352, H = 220, ROW = 25, ROWS = 5;
+    private static final int W = 352, H = 236, ROW = 25, ROWS = 5;
     public static final int MARKET = 0, REQUESTS = 1, FREIGHT = 2, SERVICES = 3, GUILD = 4;
     private static final String[] TABS = {"market", "requests", "freight", "services", "guild"};
 
@@ -333,7 +333,7 @@ public class CaravanScreen extends CCScreen implements MenuAccess<CaravanMenu> {
         UiKit.text(g, font, title.copy().withStyle(ChatFormatting.BOLD), x + 13, y + 1, UiKit.HEAD);
     }
 
-    private static final int FREIGHT_W = 206;
+    private static final int FREIGHT_W = 190;
 
     /** The guide scene about parcels sent by hand (opened by the "?" of the freight tab). */
     public static final int PARCEL_GUIDE = 9;
@@ -373,7 +373,7 @@ public class CaravanScreen extends CCScreen implements MenuAccess<CaravanMenu> {
                 any++;
                 int fee = menu.get(CaravanMenu.D_FREIGHT_FEE + k), hops = menu.get(CaravanMenu.D_FREIGHT_HOPS + k), dist = menu.get(CaravanMenu.D_FREIGHT_DIST + k);
                 g.renderItem(d, lx + 5, ry);
-                UiKit.text(g, font, UiKit.fit(font, d.getHoverName().getString(), 98), lx + 24, ry, UiKit.INK);
+                UiKit.text(g, font, UiKit.fit(font, d.getHoverName().getString(), lw - 98), lx + 24, ry, UiKit.INK);
                 UiKit.text(g, font, Component.translatable("gui.chroniclecaravans.freight.legs", hops, dist), lx + 24, ry + 9, UiKit.INK_SOFT);
                 g.renderItem(new ItemStack(Items.EMERALD), lx + lw - 68, ry);
                 UiKit.text(g, font, "×" + fee, lx + lw - 51, ry + 5, UiKit.INK);
@@ -390,13 +390,13 @@ public class CaravanScreen extends CCScreen implements MenuAccess<CaravanMenu> {
         }
         // How it works, in four steps, when there is room for it
         int need = 6;
-        for (String st : PARCEL_STEPS) need += font.split(Component.translatable("gui.chroniclecaravans.freight.step." + st), lw - 24).size() * 9;
+        for (String st : PARCEL_STEPS) need += font.split(Component.translatable("gui.chroniclecaravans.freight.step." + st), lw - 26).size() * 9;
         if (cy + bh - 4 - below >= need) {
             int y = cy + bh - 4 - need + 6;
             UiKit.separator(g, lx + 8, y - 4, lw - 16);
             for (int i = 0; i < PARCEL_STEPS.length; i++) {
                 UiKit.text(g, font, (i + 1) + ".", lx + 8, y, UiKit.GOLD);
-                for (var line : font.split(Component.translatable("gui.chroniclecaravans.freight.step." + PARCEL_STEPS[i]), lw - 24)) {
+                for (var line : font.split(Component.translatable("gui.chroniclecaravans.freight.step." + PARCEL_STEPS[i]), lw - 26)) {
                     g.drawString(font, line, lx + 19, y, UiKit.INK_SOFT, false);
                     y += 9;
                 }
