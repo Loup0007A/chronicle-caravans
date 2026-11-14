@@ -1,0 +1,9 @@
+build: success  test: success  042878420c5afc248785add108c7cdb92785cce2
+forge-1.20.1 server: RESULT: OK
+forge-1.21.1 server: RESULT: OK
+neoforge-1.21.1 server: RESULT: OK
+neoforge-26.3 server: RESULT: OK
+forge-1.20.1 client: RESULT: OK
+forge-1.21.1 client: RESULT: OK
+neoforge-1.21.1 client: RESULT: OK
+neoforge-26.3 client: RESULT: OK
